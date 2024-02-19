@@ -1,0 +1,8 @@
+# Cargo output directory
+/target
+
+# VS Code user settings
+/.vscode
+
+# Helix user settings
+/.helix

@@ -1,0 +1,24 @@
+[package]
+name = "compose_spec_macros"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+description = "Procedural macros for use in the compose_spec crate"
+
+[lib]
+proc-macro = true
+
+[lints]
+workspace = true
+
+[dependencies]
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+syn = "2.0.48"
+
+[dev-dependencies]
+serde.workspace = true
+serde_yaml.workspace = true
