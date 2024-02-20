@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Rust Format Check
+        run: cargo fmt --verbose --check --all
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Clippy Checks
+        run: cargo clippy --verbose --workspace --tests -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --verbose --workspace
+
+      - name: Run Tests
+        run: cargo test --verbose --workspace
+
+      - name: Run Ignored (Slow) Tests
+        run: cargo test --verbose --workspace -- --ignored
+
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rust-docs
+
+      - name: Build docs
+        env:
+          RUSTDOCFLAGS: "-Dwarnings"
+        run: cargo doc --verbose --workspace --document-private-items
+
+  docs-rs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust Nightly Toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-docs-rs
+        uses: dtolnay/install@cargo-docs-rs
+
+      - name: Build docs as docs.rs does
+        run: cargo docs-rs --verbose
+
+  spellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Typos
+        uses: crate-ci/typos@v1.18.2
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cargo-binstall
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-binstall
+
+      - name: Install cargo-msrv
+        run: cargo binstall --version 0.16.0-beta.20 --no-confirm cargo-msrv
+
+      - name: Verify MSRV
+        run: cargo msrv verify
+
+  minimal-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust Nightly Toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-minimal-versions
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack,cargo-minimal-versions    
+
+      - name: Check Minimal Versions of Dependencies
+        run: cargo minimal-versions check --workspace
+
+      - name: Test Minimal Versions of Dependencies
+        run: cargo minimal-versions test --workspace
