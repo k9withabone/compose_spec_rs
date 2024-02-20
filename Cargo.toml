@@ -8,6 +8,7 @@ edition = "2021"
 license = "MPL-2.0"
 readme = "README.md"
 repository = "https://github.com/k9withabone/compose_spec_rs"
+rust-version = "1.70"
 
 [workspace.lints.clippy]
 pedantic = "warn"
@@ -25,6 +26,7 @@ edition.workspace = true
 license.workspace = true
 readme.workspace = true
 repository.workspace = true
+rust-version.workspace = true
 description = "Types for (de)serializing from/to the compose-spec"
 keywords = ["compose", "containers", "docker", "podman"]
 categories = ["api-bindings"]
