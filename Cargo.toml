@@ -16,7 +16,7 @@ pedantic = "warn"
 [workspace.dependencies]
 compose_spec_macros = { version = "=0.1.0", path = "compose_spec_macros" }
 serde = "1"
-serde_yaml = "0.9.30"
+serde_yaml = "0.9"
 
 [package]
 name = "compose_spec"
@@ -38,10 +38,10 @@ workspace = true
 compose_spec_macros.workspace = true
 indexmap = { version = "2", features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
-serde-untagged = "0.1.5"
+serde-untagged = "0.1"
 serde_yaml.workspace = true
-thiserror = "1.0.56"
-url = { version = "2.5", features = ["serde"] }
+thiserror = "1.0.7"
+url = { version = "2.3", features = ["serde"] }
 
 [dev-dependencies]
-proptest = "1.4"
+proptest = "1"
