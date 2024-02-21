@@ -1,3 +1,5 @@
+//! Provides long [`Build`] syntax for the `build` field of [`Service`](super::Service).
+
 mod cache;
 mod context;
 mod dockerfile;

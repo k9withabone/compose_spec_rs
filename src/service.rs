@@ -1,5 +1,6 @@
 //! Provides [`Service`] for the [`Compose`](super::Compose) top-level `services` field.
 
+pub mod blkio_config;
 pub mod build;
 mod byte_value;
 mod config_or_secret;
@@ -19,6 +20,7 @@ use crate::{
 
 use self::build::Context;
 pub use self::{
+    blkio_config::BlkioConfig,
     build::Build,
     byte_value::{ByteValue, ParseByteValueError},
     config_or_secret::ConfigOrSecret,
@@ -47,6 +49,12 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#build)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub build: Option<ShortOrLong<Context, Build>>,
+
+    /// Configuration options to set block IO limits for a [`Service`].
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#blkio_config)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blkio_config: Option<BlkioConfig>,
 
     /// Specifies a build's container isolation technology.
     ///
