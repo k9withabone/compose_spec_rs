@@ -1,4 +1,6 @@
 pub(crate) mod display_from_str_option;
+pub(crate) mod duration_option;
+pub(crate) mod duration_us_option;
 
 use std::{
     error::Error,

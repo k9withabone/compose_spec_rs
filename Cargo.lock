@@ -47,6 +47,7 @@ version = "0.1.0"
 dependencies = [
  "compose_spec_macros",
  "indexmap",
+ "itoa",
  "proptest",
  "serde",
  "serde-untagged",

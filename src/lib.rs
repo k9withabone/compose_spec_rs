@@ -10,6 +10,7 @@
 //! [`Vec`]s.
 
 mod common;
+pub mod duration;
 mod include;
 mod name;
 mod serde;
