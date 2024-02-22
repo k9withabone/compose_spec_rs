@@ -20,7 +20,7 @@ pub struct Input<'a> {
     generics: &'a Generics,
 
     /// The field marked with `#[as_short(short)]`.
-    short_field: (&'a Ident, &'a Type),
+    short_field: ShortField<'a>,
 
     /// [`Field`]s not marked with `#[as_short(short)]`.
     other_fields: Vec<Field<'a>>,
@@ -66,7 +66,7 @@ impl<'a> Input<'a> {
                         if short_field.is_some() {
                             return Some(Err(Error::new(span, "duplicate `short`")));
                         }
-                        short_field = Some((ident, &field.ty));
+                        short_field = Some(ShortField::new(ident, &field.ty));
                         None
                     }
                     Attribute::Other { if_fn, default_fn } => Some(Ok(Field {
@@ -93,7 +93,12 @@ impl<'a> Input<'a> {
         let Self {
             ident,
             generics,
-            short_field: (short, short_ty),
+            short_field:
+                ShortField {
+                    ident: short,
+                    ty: short_ty,
+                    optional,
+                },
             ref other_fields,
         } = *self;
 
@@ -104,7 +109,7 @@ impl<'a> Input<'a> {
             let ty = field.ty;
             let if_fn = field.if_fn.as_ref().map_or_else(
                 || {
-                    if is_option(ty) {
+                    if option_type(ty).is_some() {
                         quote!(::std::option::Option::is_none)
                     } else if is_bool(ty) {
                         quote!(::std::ops::Not::not)
@@ -117,13 +122,19 @@ impl<'a> Input<'a> {
             quote!((#if_fn)(&self.#ident))
         });
 
+        let short = if optional {
+            quote!(self.#short.as_ref())
+        } else {
+            quote!(::std::option::Option::Some(&self.#short))
+        };
+
         quote! {
             impl #impl_generics crate::AsShort for #ident #ty_generics #where_clause {
                 type Short = #short_ty;
 
-                fn as_short(&self) -> Option<&Self::Short> {
+                fn as_short(&self) -> ::std::option::Option<&Self::Short> {
                     if #(#if_expressions)&&* {
-                        Some(&self.#short)
+                        #short
                     } else {
                         None
                     }
@@ -137,11 +148,22 @@ impl<'a> Input<'a> {
         let Self {
             ident,
             generics,
-            short_field: (short, short_ty),
+            short_field:
+                ShortField {
+                    ident: short,
+                    ty: short_ty,
+                    optional,
+                },
             ref other_fields,
         } = *self;
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        let short_field = if optional {
+            quote!(#short: ::std::option::Option::Some(#short))
+        } else {
+            short.to_token_stream()
+        };
 
         let other_fields = other_fields.iter().map(|field| {
             let ident = field.ident;
@@ -158,7 +180,7 @@ impl<'a> Input<'a> {
             {
                 fn from(#short: #short_ty) -> Self {
                     Self {
-                        #short,
+                        #short_field,
                         #(#other_fields,)*
                     }
                 }
@@ -167,28 +189,32 @@ impl<'a> Input<'a> {
     }
 }
 
-/// Returns `true` if the given [`Type`] is an [`Option`].
-fn is_option(ty: &Type) -> bool {
+/// Returns the inner [`Type`] if `ty` is [`Option<Type>`].
+fn option_type(ty: &Type) -> Option<&Type> {
     let Type::Path(TypePath { qself: None, path }) = ty else {
-        return false;
+        return None;
     };
 
     if path.segments.len() != 1 {
-        return false;
+        return None;
     }
     let segment = &path.segments[0];
 
     let PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }) =
         &segment.arguments
     else {
-        return false;
+        return None;
     };
 
-    if args.len() != 1 {
-        return false;
+    if args.len() != 1 || segment.ident != "Option" {
+        return None;
     }
 
-    segment.ident == "Option" && matches!(&args[0], GenericArgument::Type(_))
+    if let GenericArgument::Type(ty) = &args[0] {
+        Some(ty)
+    } else {
+        None
+    }
 }
 
 /// Returns `true` if the given [`Type`] is a [`bool`].
@@ -198,6 +224,37 @@ fn is_bool(ty: &Type) -> bool {
     };
 
     path.is_ident("bool")
+}
+
+/// Field marked with `#[as_short(short)]`.
+struct ShortField<'a> {
+    /// Field name.
+    ident: &'a Ident,
+
+    /// Field type, or inner [`Option`] type if `optional` is true.
+    ty: &'a Type,
+
+    /// Whether the field is optional.
+    optional: bool,
+}
+
+impl<'a> ShortField<'a> {
+    /// Create a [`ShortField`].
+    fn new(ident: &'a Ident, ty: &'a Type) -> Self {
+        if let Some(ty) = option_type(ty) {
+            Self {
+                ident,
+                ty,
+                optional: true,
+            }
+        } else {
+            Self {
+                ident,
+                ty,
+                optional: false,
+            }
+        }
+    }
 }
 
 /// Field with an optional `#[as_short([default = {default_fn},][if_fn = {if_fn}])]` attribute.

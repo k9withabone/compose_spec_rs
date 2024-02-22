@@ -32,9 +32,9 @@ pub struct Build {
     /// Path to a directory containing a Dockerfile/Containerfile, or a URL to a git repository.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#context)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[as_short(short)]
-    pub context: Context,
+    pub context: Option<Context>,
 
     /// Set an alternate Dockerfile/Containerfile or define its content inline.
     /// A relative path is resolved from the build context.
