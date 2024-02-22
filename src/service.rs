@@ -3,27 +3,23 @@
 pub mod blkio_config;
 pub mod build;
 mod byte_value;
+mod cgroup;
+mod command;
 mod config_or_secret;
 mod cpuset;
 pub mod image;
 pub mod platform;
 mod ulimit;
 
-use std::{
-    fmt::{self, Display, Formatter},
-    net::IpAddr,
-    str::FromStr,
-    time::Duration,
-};
+use std::{net::IpAddr, time::Duration};
 
-use compose_spec_macros::{DeserializeFromStr, SerializeDisplay};
 use indexmap::{IndexMap, IndexSet};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 use crate::{
     serde::{default_true, duration_option, duration_us_option, skip_true},
-    ListOrMap, MapKey, ShortOrLong, Value,
+    Identifier, ListOrMap, MapKey, ShortOrLong, Value,
 };
 
 use self::build::Context;
@@ -31,6 +27,8 @@ pub use self::{
     blkio_config::BlkioConfig,
     build::Build,
     byte_value::{ByteValue, ParseByteValueError},
+    cgroup::{Cgroup, ParseCgroupError},
+    command::Command,
     config_or_secret::ConfigOrSecret,
     cpuset::{CpuSet, ParseCpuSetError},
     image::Image,
@@ -161,6 +159,20 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cgroup_parent: Option<String>,
 
+    /// Overrides the default command declared by the container image.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#command)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<Command>,
+
+    /// Configs allow services to adapt their behavior without the need to rebuild a container image.
+    ///
+    /// Services can only access configs when explicitly granted by the `configs` field.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#configs)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub configs: Vec<ShortOrLong<Identifier, ConfigOrSecret>>,
+
     /// Specifies a build's container isolation technology.
     ///
     /// Supported values are platform specific.
@@ -220,72 +232,6 @@ impl PartialEq<u8> for Percent {
         self.0.eq(other)
     }
 }
-
-/// [Cgroup](https://man7.org/linux/man-pages/man7/cgroups.7.html) namespace to join.
-///
-/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#cgroup)
-#[derive(SerializeDisplay, DeserializeFromStr, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Cgroup {
-    /// Run the container in the Container runtime cgroup namespace.
-    Host,
-
-    /// Run the container in its own private cgroup namespace.
-    Private,
-}
-
-impl Cgroup {
-    /// [`Cgroup`] option as a static string slice.
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Host => "host",
-            Self::Private => "private",
-        }
-    }
-}
-
-impl AsRef<str> for Cgroup {
-    fn as_ref(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl Display for Cgroup {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl From<Cgroup> for &'static str {
-    fn from(value: Cgroup) -> Self {
-        value.as_str()
-    }
-}
-
-impl FromStr for Cgroup {
-    type Err = ParseCgroupError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "host" => Ok(Self::Host),
-            "private" => Ok(Self::Private),
-            s => Err(ParseCgroupError(s.to_owned())),
-        }
-    }
-}
-
-impl TryFrom<&str> for Cgroup {
-    type Error = ParseCgroupError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        value.parse()
-    }
-}
-
-/// Error returned when parsing a [`Cgroup`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
-#[error("invalid cgroup option `{0}`, cgroup must be `host` or `private`")]
-pub struct ParseCgroupError(String);
 
 /// Deserialize `extra_hosts` field of [`Service`] and long [`Build`] syntax.
 ///

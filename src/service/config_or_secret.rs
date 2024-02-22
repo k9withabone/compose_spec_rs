@@ -11,7 +11,7 @@ use crate::{serde::display_from_str_option, Extensions, Identifier};
 ///
 /// Configs allow services to adapt their behavior without the need to rebuild a container image.
 /// Services can only access configs when explicitly granted by the
-/// [`configs`](super::Service#structfield.configs) attribute.
+/// [`configs`](super::Service#structfield.configs) field.
 ///
 /// [service config compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#configs)
 ///
