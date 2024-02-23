@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use indexmap::IndexSet;
 use serde::{
     de::{
         self,
@@ -18,7 +19,7 @@ use serde::{
 };
 
 use crate::{
-    service::{build::Context, Build, ConfigOrSecret},
+    service::{build::Context, Build, ConfigOrSecret, DependsOn, Ulimit},
     Identifier, Include,
 };
 
@@ -26,9 +27,9 @@ use crate::{
 ///
 /// The [`Serialize`] implementation forwards to the wrapped types.
 ///
-/// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, and
-/// enums are [`Deserialize`]d into the [`Short`] syntax. Sequences and maps are [`Deserialize`]d
-/// into the [`Long`] syntax.
+/// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, enums,
+/// and sequences are [`Deserialize`]d into the [`Short`] syntax. Maps are [`Deserialize`]d into the
+/// [`Long`] syntax.
 ///
 /// [`Short`]: Self::Short
 /// [`Long`]: Self::Long
@@ -166,6 +167,7 @@ impl_from_short! {
     OsString,
     Box<OsStr>,
     Identifier,
+    IndexSet<Identifier>,
     Context,
 }
 
@@ -195,10 +197,12 @@ impl_long_conversion! {
     Include,
     Build,
     ConfigOrSecret,
+    Ulimit,
+    DependsOn,
 }
 
-/// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, and
-/// enums are deserialized into the [`Short`] syntax. Sequences and maps are deserialized into the
+/// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, enums,
+/// and sequences are deserialized into the [`Short`] syntax. Maps are deserialized into the
 /// [`Long`] syntax.
 ///
 /// [`Short`]: Self::Short
@@ -330,8 +334,8 @@ where
     where
         A: SeqAccess<'de>,
     {
-        let value = L::deserialize(SeqAccessDeserializer::new(seq))?;
-        Ok(ShortOrLong::Long(value))
+        let value = S::deserialize(SeqAccessDeserializer::new(seq))?;
+        Ok(ShortOrLong::Short(value))
     }
 
     fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>

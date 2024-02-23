@@ -9,6 +9,7 @@ mod config_or_secret;
 mod container_name;
 mod cpuset;
 mod credential_spec;
+pub mod depends_on;
 pub mod image;
 pub mod platform;
 mod ulimit;
@@ -35,6 +36,7 @@ pub use self::{
     container_name::{ContainerName, InvalidContainerNameError},
     cpuset::{CpuSet, ParseCpuSetError},
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
+    depends_on::DependsOn,
     image::Image,
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
@@ -189,6 +191,12 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credential_spec: Option<CredentialSpec>,
 
+    /// Startup and shutdown dependencies between services.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#depends_on)
+    #[serde(default, skip_serializing_if = "depends_on_is_empty")]
+    pub depends_on: ShortOrLong<IndexSet<Identifier>, DependsOn>,
+
     /// Specifies a build's container isolation technology.
     ///
     /// Supported values are platform specific.
@@ -246,6 +254,15 @@ impl From<Percent> for u8 {
 impl PartialEq<u8> for Percent {
     fn eq(&self, other: &u8) -> bool {
         self.0.eq(other)
+    }
+}
+
+/// Returns `true` if `depends_on` is in short syntax form and the [`IndexSet`] is empty.
+fn depends_on_is_empty(depends_on: &ShortOrLong<IndexSet<Identifier>, DependsOn>) -> bool {
+    if let ShortOrLong::Short(set) = depends_on {
+        set.is_empty()
+    } else {
+        false
     }
 }
 
