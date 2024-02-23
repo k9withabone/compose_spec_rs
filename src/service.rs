@@ -6,7 +6,9 @@ mod byte_value;
 mod cgroup;
 mod command;
 mod config_or_secret;
+mod container_name;
 mod cpuset;
+mod credential_spec;
 pub mod image;
 pub mod platform;
 mod ulimit;
@@ -30,7 +32,9 @@ pub use self::{
     cgroup::{Cgroup, ParseCgroupError},
     command::Command,
     config_or_secret::ConfigOrSecret,
+    container_name::{ContainerName, InvalidContainerNameError},
     cpuset::{CpuSet, ParseCpuSetError},
+    credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
     image::Image,
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
@@ -172,6 +176,18 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#configs)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub configs: Vec<ShortOrLong<Identifier, ConfigOrSecret>>,
+
+    /// Custom container name.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#container_name)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub container_name: Option<ContainerName>,
+
+    /// Credential spec for a managed service account.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#credential_spec)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_spec: Option<CredentialSpec>,
 
     /// Specifies a build's container isolation technology.
     ///
