@@ -66,13 +66,16 @@ impl FromStr for ByteValue {
             Err(ParseByteValueError::Empty)
         } else if let Ok(bytes) = s.parse() {
             Ok(Self::Bytes(bytes))
-        } else if let Some(gigabytes) = s.strip_suffix("gb").or_else(|| s.strip_suffix('g')) {
+        } else if let Some(gigabytes) = s.strip_suffix("gb").or_else(|| s.strip_suffix(['g', 'G']))
+        {
             parse_u64(gigabytes, Self::Gigabytes)
-        } else if let Some(megabytes) = s.strip_suffix("mb").or_else(|| s.strip_suffix('m')) {
+        } else if let Some(megabytes) = s.strip_suffix("mb").or_else(|| s.strip_suffix(['m', 'M']))
+        {
             parse_u64(megabytes, Self::Megabytes)
-        } else if let Some(kilobytes) = s.strip_suffix("kb").or_else(|| s.strip_suffix('k')) {
+        } else if let Some(kilobytes) = s.strip_suffix("kb").or_else(|| s.strip_suffix(['k', 'K']))
+        {
             parse_u64(kilobytes, Self::Kilobytes)
-        } else if let Some(bytes) = s.strip_suffix('b') {
+        } else if let Some(bytes) = s.strip_suffix(['b', 'B']) {
             parse_u64(bytes, Self::Bytes)
         } else {
             Err(ParseByteValueError::UnknownUnit(s.to_owned()))

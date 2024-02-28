@@ -10,6 +10,7 @@ mod container_name;
 mod cpuset;
 mod credential_spec;
 pub mod depends_on;
+pub mod deploy;
 pub mod image;
 pub mod platform;
 mod ulimit;
@@ -22,7 +23,7 @@ use thiserror::Error;
 
 use crate::{
     serde::{default_true, duration_option, duration_us_option, skip_true},
-    Identifier, ListOrMap, MapKey, ShortOrLong, Value,
+    Extensions, Identifier, ListOrMap, MapKey, ShortOrLong, Value,
 };
 
 use self::build::Context;
@@ -37,6 +38,7 @@ pub use self::{
     cpuset::{CpuSet, ParseCpuSetError},
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
     depends_on::DependsOn,
+    deploy::Deploy,
     image::Image,
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
@@ -197,6 +199,12 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "depends_on_is_empty")]
     pub depends_on: ShortOrLong<IndexSet<Identifier>, DependsOn>,
 
+    /// Configuration for the deployment and lifecycle of services.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#deploy)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deploy: Option<Deploy>,
+
     /// Specifies a build's container isolation technology.
     ///
     /// Supported values are platform specific.
@@ -204,6 +212,12 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#isolation)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub isolation: Option<String>,
+
+    /// Extension values, which are (de)serialized via flattening.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
+    #[serde(flatten)]
+    pub extensions: Extensions,
 }
 
 /// A percentage, must be between 0 and 100, inclusive.
