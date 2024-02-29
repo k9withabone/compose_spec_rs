@@ -12,7 +12,7 @@ mod credential_spec;
 pub mod depends_on;
 pub mod deploy;
 pub mod develop;
-pub mod device_cgroup_rule;
+pub mod device;
 pub mod image;
 pub mod platform;
 mod ulimit;
@@ -42,7 +42,7 @@ pub use self::{
     depends_on::DependsOn,
     deploy::Deploy,
     develop::Develop,
-    device_cgroup_rule::DeviceCgroupRule,
+    device::Device,
     image::Image,
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
@@ -219,7 +219,13 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#device_cgroup_rules)
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
-    pub device_cgroup_rules: IndexSet<DeviceCgroupRule>,
+    pub device_cgroup_rules: IndexSet<device::CgroupRule>,
+
+    /// List of device mappings for the created container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#device)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub devices: IndexSet<Device>,
 
     /// Specifies a build's container isolation technology.
     ///
@@ -321,4 +327,16 @@ where
             Ok((key, value.parse().map_err(de::Error::custom)?))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use proptest::{arbitrary::Arbitrary, path::PathParams, strategy::Strategy};
+
+    /// [`Strategy`] for generating [`PathBuf`]s that do not contain colons.
+    pub(super) fn path_no_colon() -> impl Strategy<Value = PathBuf> {
+        PathBuf::arbitrary_with(PathParams::default().with_component_regex("[^:]*"))
+    }
 }
