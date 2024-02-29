@@ -11,6 +11,7 @@ mod cpuset;
 mod credential_spec;
 pub mod depends_on;
 pub mod deploy;
+pub mod develop;
 pub mod image;
 pub mod platform;
 mod ulimit;
@@ -39,6 +40,7 @@ pub use self::{
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
     depends_on::DependsOn,
     deploy::Deploy,
+    develop::Develop,
     image::Image,
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
@@ -204,6 +206,12 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#deploy)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deploy: Option<Deploy>,
+
+    /// Development configuration for maintaining a container in sync with source.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#develop)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub develop: Option<Develop>,
 
     /// Specifies a build's container isolation technology.
     ///
