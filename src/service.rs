@@ -12,6 +12,7 @@ mod credential_spec;
 pub mod depends_on;
 pub mod deploy;
 pub mod develop;
+pub mod device_cgroup_rule;
 pub mod image;
 pub mod platform;
 mod ulimit;
@@ -41,6 +42,7 @@ pub use self::{
     depends_on::DependsOn,
     deploy::Deploy,
     develop::Develop,
+    device_cgroup_rule::DeviceCgroupRule,
     image::Image,
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
@@ -212,6 +214,12 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#develop)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub develop: Option<Develop>,
+
+    /// List of device cgroup rules for this container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#device_cgroup_rules)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub device_cgroup_rules: IndexSet<DeviceCgroupRule>,
 
     /// Specifies a build's container isolation technology.
     ///
