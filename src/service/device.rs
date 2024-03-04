@@ -93,7 +93,7 @@ impl Display for Device {
     }
 }
 
-/// [`Device`] or [`DeviceCgroupRule`](super::DeviceCgroupRule) access permissions.
+/// [`Device`] or [`CgroupRule`] access permissions.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Permissions {
     /// Device read permissions.

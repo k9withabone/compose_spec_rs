@@ -19,7 +19,7 @@ use serde::{
 };
 
 use crate::{
-    service::{build::Context, Build, ConfigOrSecret, DependsOn, Ulimit},
+    service::{build::Context, env_file, Build, ConfigOrSecret, DependsOn, Ulimit},
     Identifier, Include,
 };
 
@@ -171,6 +171,12 @@ impl_from_short! {
     Context,
 }
 
+impl<L> From<String> for ShortOrLong<PathBuf, L> {
+    fn from(value: String) -> Self {
+        Self::Short(value.into())
+    }
+}
+
 /// `impl<S> From<Type> for ShortOrLong<S, Type>` and `impl<S> From<ShortOrLong<S, Type>> for Type`
 macro_rules! impl_long_conversion {
     ($($t:ty),* $(,)?) => {
@@ -199,6 +205,7 @@ impl_long_conversion! {
     ConfigOrSecret,
     Ulimit,
     DependsOn,
+    env_file::Config,
 }
 
 /// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, enums,

@@ -4,7 +4,6 @@ pub mod blkio_config;
 pub mod build;
 mod byte_value;
 mod cgroup;
-mod command;
 mod config_or_secret;
 mod container_name;
 mod cpuset;
@@ -13,6 +12,7 @@ pub mod depends_on;
 pub mod deploy;
 pub mod develop;
 pub mod device;
+pub mod env_file;
 mod hostname;
 pub mod image;
 pub mod platform;
@@ -25,7 +25,7 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 use crate::{
-    serde::{default_true, duration_option, duration_us_option, skip_true},
+    serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
     Extensions, Identifier, ItemOrList, ListOrMap, ShortOrLong, Value,
 };
 
@@ -35,7 +35,6 @@ pub use self::{
     build::Build,
     byte_value::{ByteValue, ParseByteValueError},
     cgroup::{Cgroup, ParseCgroupError},
-    command::Command,
     config_or_secret::ConfigOrSecret,
     container_name::{ContainerName, InvalidContainerNameError},
     cpuset::{CpuSet, ParseCpuSetError},
@@ -44,6 +43,7 @@ pub use self::{
     deploy::Deploy,
     develop::Develop,
     device::Device,
+    env_file::EnvFile,
     hostname::{Hostname, InvalidHostnameError},
     image::Image,
     platform::Platform,
@@ -258,6 +258,24 @@ pub struct Service {
     )]
     pub domain_name: Option<Hostname>,
 
+    /// Overrides the default entrypoint declared by the container image.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#entrypoint)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entrypoint: Option<Command>,
+
+    /// Add environment variables to the container from one or more files.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#env_file)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub env_file: Option<EnvFile>,
+
+    /// Define environment variables set in the container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#environment)
+    #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
+    pub environment: ListOrMap,
+
     /// Specifies a build's container isolation technology.
     ///
     /// Supported values are platform specific.
@@ -321,6 +339,39 @@ impl From<Percent> for u8 {
 impl PartialEq<u8> for Percent {
     fn eq(&self, other: &u8) -> bool {
         self.0.eq(other)
+    }
+}
+
+/// Override the default command or entrypoint declared by the container image.
+///
+/// [command compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#command)
+///
+/// [entrypoint compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#entrypoint)
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum Command {
+    /// Command run with `/bin/sh -c`.
+    String(String),
+
+    /// Arguments to the entrypoint.
+    List(Vec<String>),
+}
+
+impl From<String> for Command {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<Vec<String>> for Command {
+    fn from(value: Vec<String>) -> Self {
+        Self::List(value)
+    }
+}
+
+impl<'de> Deserialize<'de> for Command {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        ItemOrListVisitor::<_, String>::new("a string or list of strings").deserialize(deserializer)
     }
 }
 

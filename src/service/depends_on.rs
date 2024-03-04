@@ -104,17 +104,17 @@ impl<'a> IntoIterator for &'a mut DependsOn {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     /// Condition under which the dependency is considered satisfied.
-    condition: Condition,
+    pub condition: Condition,
 
     /// When `true`, Compose restarts this service after it updates the dependency service.
     #[serde(default, skip_serializing_if = "Not::not")]
-    restart: bool,
+    pub restart: bool,
 
     /// When `false`, Compose only warns you when the dependency service isn't started or available.
     ///
     /// Default is `true`.
     #[serde(default = "default_true", skip_serializing_if = "skip_true")]
-    required: bool,
+    pub required: bool,
 }
 
 impl Default for Config {

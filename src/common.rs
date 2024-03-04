@@ -11,12 +11,12 @@ use std::{
 };
 
 use indexmap::{indexset, IndexMap, IndexSet};
-use serde::{de::IntoDeserializer, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_untagged::UntaggedEnumVisitor;
 pub use serde_yaml::Value as YamlValue;
 use thiserror::Error;
 
-use crate::serde::ValueEnumVisitor;
+use crate::serde::{ItemOrListVisitor, ValueEnumVisitor};
 
 pub(crate) use self::keys::key_impls;
 pub use self::{
@@ -35,8 +35,6 @@ pub use self::{
 pub type Extensions = IndexMap<ExtensionKey, YamlValue>;
 
 /// A single item or a list of unique items.
-///
-/// `T` must be able to deserialize from a string.
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ItemOrList<T> {
@@ -106,10 +104,7 @@ where
     T: Deserialize<'de> + Eq + Hash,
 {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        UntaggedEnumVisitor::new()
-            .string(|string| T::deserialize(string.into_deserializer()).map(Self::Item))
-            .seq(|seq| seq.deserialize().map(Self::List))
-            .deserialize(deserializer)
+        ItemOrListVisitor::<_, T, IndexSet<T>>::default().deserialize(deserializer)
     }
 }
 

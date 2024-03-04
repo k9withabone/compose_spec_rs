@@ -10,8 +10,11 @@ use std::{
 };
 
 use serde::{
-    de::{self, Expected, Unexpected, Visitor},
-    Deserializer,
+    de::{
+        self, value::SeqAccessDeserializer, Expected, IntoDeserializer, SeqAccess, Unexpected,
+        Visitor,
+    },
+    Deserialize, Deserializer,
 };
 
 pub(crate) const fn default_true() -> bool {
@@ -164,6 +167,97 @@ where
         } else {
             Err(self.invalid_type(Unexpected::Str(&v)))
         }
+    }
+}
+
+/// A [`Visitor`] for deserializing a single item or a list.
+#[derive(Debug)]
+pub(crate) struct ItemOrListVisitor<V, I, L = Vec<I>> {
+    expecting: &'static str,
+    value: PhantomData<V>,
+    item: PhantomData<I>,
+    list: PhantomData<L>,
+}
+
+impl<V, I, L> ItemOrListVisitor<V, I, L> {
+    /// Create a new [`ItemOrListVisitor`].
+    ///
+    /// `expecting` should complete the sentence "This Visitor expects to receive ...",
+    /// the [`Default`] implementation uses "a single value or sequence".
+    pub fn new(expecting: &'static str) -> Self {
+        Self {
+            expecting,
+            value: PhantomData,
+            item: PhantomData,
+            list: PhantomData,
+        }
+    }
+}
+
+impl<V, I, L> Default for ItemOrListVisitor<V, I, L> {
+    fn default() -> Self {
+        Self::new("a single value or sequence")
+    }
+}
+
+impl<'de, V, I, L> ItemOrListVisitor<V, I, L>
+where
+    I: Into<V> + Deserialize<'de>,
+    L: Into<V> + Deserialize<'de>,
+{
+    /// Alias for `deserializer.deserialize_any(visitor)`.
+    pub fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
+        deserializer.deserialize_any(self)
+    }
+}
+
+/// Implement [`Visitor`] by using [`IntoDeserializer`] on the input, deserializing into `t`, and
+/// then turning it [`Into`] the [`Value`](Visitor::Value).
+macro_rules! visit_item {
+    (item: $t:ty, $($f:ident: $ty:ty,)*) => {
+        $(
+            fn $f<E: de::Error>(self, v: $ty) -> Result<Self::Value, E> {
+                <$t>::deserialize(v.into_deserializer()).map(Into::into)
+            }
+        )*
+    };
+}
+
+impl<'de, V, I, L> Visitor<'de> for ItemOrListVisitor<V, I, L>
+where
+    I: Into<V> + Deserialize<'de>,
+    L: Into<V> + Deserialize<'de>,
+{
+    type Value = V;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str(self.expecting)
+    }
+
+    visit_item! {
+        item: I,
+        visit_bool: bool,
+        visit_i8: i8,
+        visit_i16: i16,
+        visit_i32: i32,
+        visit_i64: i64,
+        visit_i128: i128,
+        visit_u8: u8,
+        visit_u16: u16,
+        visit_u32: u32,
+        visit_u64: u64,
+        visit_u128: u128,
+        visit_f32: f32,
+        visit_f64: f64,
+        visit_char: char,
+        visit_str: &str,
+        visit_string: String,
+        visit_bytes: &[u8],
+        visit_byte_buf: Vec<u8>,
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> Result<Self::Value, A::Error> {
+        L::deserialize(SeqAccessDeserializer::new(seq)).map(Into::into)
     }
 }
 
