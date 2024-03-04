@@ -133,7 +133,7 @@ impl<'a> Display for Tag<'a> {
 
 #[cfg(test)]
 mod tests {
-    use proptest::{prop_assert, proptest};
+    use proptest::proptest;
 
     use super::*;
 
@@ -149,7 +149,7 @@ mod tests {
         /// [OCI distribution spec](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
         #[test]
         fn new(tag in "[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}") {
-            prop_assert!(Tag::new(&tag).is_ok());
+            Tag::new(&tag)?;
         }
     }
 }

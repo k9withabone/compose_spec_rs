@@ -191,7 +191,7 @@ mod tests {
         #[test]
         fn round_trip(set: BTreeSet<u64>) {
             let test = CpuSet(set);
-            let test2 = test.to_string().parse().unwrap();
+            let test2 = test.to_string().parse()?;
             prop_assert_eq!(test, test2);
         }
     }

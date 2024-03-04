@@ -295,7 +295,7 @@ mod tests {
         #[test]
         fn round_trip(secs: u64, micros in ..=(u32::MAX / 1000)) {
             let test = Duration::new(secs, micros * 1000);
-            let test2 = parse(&to_string(test)).unwrap();
+            let test2 = parse(&to_string(test))?;
             prop_assert_eq!(test, test2);
         }
     }

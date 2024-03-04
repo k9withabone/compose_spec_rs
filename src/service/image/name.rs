@@ -23,8 +23,7 @@ use super::char_is_alnum;
 ///
 /// Image name parts must:
 ///
-/// - Not have more than one dots (.) in a row.
-/// - Not have more than two underscores (_) in a row.
+/// - Not have more than one separator (., _, __, any number of -) in a row.
 /// - Only contain lowercase ASCII letters (a-z), digits (0-9), dashes (-), dots (.),
 ///   or underscores (_).
 /// - Not be empty.
@@ -49,8 +48,7 @@ impl<'a> Name<'a> {
     ///
     /// Returns an error if:
     ///
-    /// - The part has multiple dot (.) characters in a row.
-    /// - The part has more than two underscores (_) in a row.
+    /// - The part has more than one separator (., _, __, any number of -) in a row.
     /// - The part contains a character other than a lowercase ASCII letter (a-z), digit (0-9),
     ///   dash (-), dot (.), or underscore (_).
     /// - The part is empty.
@@ -141,8 +139,7 @@ impl<'a> Name<'a> {
 ///
 /// Returns an error if:
 ///
-/// - The part has multiple dot (.) characters in a row.
-/// - The part has more than two underscores (_) in a row.
+/// - The part has more than one separator (., _, __, any number of -) in a row.
 /// - The part contains a character other than a lowercase ASCII letter (a-z), digit (0-9),
 ///   dash (-), dot (.), or underscore (_).
 /// - The part is empty.
@@ -151,32 +148,42 @@ impl<'a> Name<'a> {
 fn validate_part(part: &str) -> Result<(), InvalidNamePartError> {
     let mut dots: u8 = 0;
     let mut underscores: u8 = 0;
-    for char in part.chars() {
-        match char {
-            'a'..='z' | '0'..='9' | '-' => {
-                dots = 0;
-                underscores = 0;
+    let mut prev_char_dash = false;
+    part.chars().try_for_each(|char| match char {
+        'a'..='z' | '0'..='9' => {
+            dots = 0;
+            underscores = 0;
+            prev_char_dash = false;
+            Ok(())
+        }
+        '-' => {
+            if dots == 0 && underscores == 0 {
+                prev_char_dash = true;
                 Ok(())
+            } else {
+                Err(InvalidNamePartError::MultipleSeparators)
             }
-            '.' => {
-                dots += 1;
-                if dots <= 1 {
-                    Ok(())
-                } else {
-                    Err(InvalidNamePartError::Dots)
-                }
+        }
+        '.' => {
+            dots += 1;
+            if dots == 1 && underscores == 0 && !prev_char_dash {
+                prev_char_dash = false;
+                Ok(())
+            } else {
+                Err(InvalidNamePartError::MultipleSeparators)
             }
-            '_' => {
-                underscores += 1;
-                if underscores <= 2 {
-                    Ok(())
-                } else {
-                    Err(InvalidNamePartError::Underscores)
-                }
+        }
+        '_' => {
+            underscores += 1;
+            if dots == 0 && underscores <= 2 && !prev_char_dash {
+                prev_char_dash = false;
+                Ok(())
+            } else {
+                Err(InvalidNamePartError::MultipleSeparators)
             }
-            char => Err(InvalidNamePartError::Character(char)),
-        }?;
-    }
+        }
+        char => Err(InvalidNamePartError::Character(char)),
+    })?;
 
     if part.is_empty() {
         // empty means multiple '/' in a row
@@ -194,13 +201,9 @@ fn validate_part(part: &str) -> Result<(), InvalidNamePartError> {
 #[derive(Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum InvalidNamePartError {
-    /// Part had more than one dot (.) in a row.
-    #[error("image name parts my only have one dots (.) in a row")]
-    Dots,
-
-    /// Part had more than one or two underscores (_) in a row.
-    #[error("image name parts my only have one or two underscores (_) in a row")]
-    Underscores,
+    /// Part had more than one separator (., _, __, any number of -) in a row.
+    #[error("image name parts may only have one separator (., _, __, any number of -) in a row")]
+    MultipleSeparators,
 
     /// Name parts must only contain lowercase ASCII letters (a-z), digits (0-9), dashes (-),
     /// dots (.), and underscores (_).
@@ -290,9 +293,26 @@ impl<'a> Display for Name<'a> {
 
 #[cfg(test)]
 mod tests {
-    use proptest::{prop_assert, prop_assert_eq, proptest};
+    use pomsky_macro::pomsky;
+    use proptest::{prop_assert_eq, proptest};
 
     use super::*;
+
+    const NAME: &str = pomsky! {
+        let end = [ascii_lower ascii_digit]+;
+        let separator = '.' | '_' | "__" | '-'+;
+        let part = end (separator end)*;
+
+        part ('/' part)*
+    };
+
+    const REGISTRY: &str = pomsky! {
+        let end = [ascii_lower ascii_digit]+;
+        let separator = '.' | '_' | "__" | '-'+;
+        let part = end (separator end)*;
+
+        part '.' part
+    };
 
     proptest! {
         #[test]
@@ -306,21 +326,16 @@ mod tests {
         /// [OCI distribution spec](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
         #[test]
         #[ignore]
-        fn new(
-            name in r"[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*",
-        ) {
-            prop_assert!(Name::new(&name).is_ok());
+        fn new(name in NAME) {
+            Name::new(&name)?;
         }
 
         /// Test `registry_end` is accurately parsed.
         #[test]
         #[ignore]
-        fn registry(
-            registry in r"[a-z0-9]+(\.[a-z0-9]+)+",
-            rest in r"(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)+",
-        ) {
-            let name = format!("{registry}{rest}");
-            let name = Name::new(&name).unwrap();
+        fn registry(registry in REGISTRY, rest in NAME) {
+            let name = format!("{registry}/{rest}");
+            let name = Name::new(&name)?;
             prop_assert_eq!(name.registry(), Some(registry.as_str()));
         }
     }
