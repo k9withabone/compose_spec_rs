@@ -45,4 +45,5 @@ thiserror = "1.0.7"
 url = { version = "2.3", features = ["serde"] }
 
 [dev-dependencies]
+pomsky-macro = "0.11"
 proptest = "1"

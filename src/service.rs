@@ -13,6 +13,7 @@ pub mod depends_on;
 pub mod deploy;
 pub mod develop;
 pub mod device;
+mod hostname;
 pub mod image;
 pub mod platform;
 mod ulimit;
@@ -25,7 +26,7 @@ use thiserror::Error;
 
 use crate::{
     serde::{default_true, duration_option, duration_us_option, skip_true},
-    Extensions, Identifier, ListOrMap, MapKey, ShortOrLong, Value,
+    Extensions, Identifier, ItemOrList, ListOrMap, ShortOrLong, Value,
 };
 
 use self::build::Context;
@@ -43,6 +44,7 @@ pub use self::{
     deploy::Deploy,
     develop::Develop,
     device::Device,
+    hostname::{Hostname, InvalidHostnameError},
     image::Image,
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
@@ -227,6 +229,35 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
     pub devices: IndexSet<Device>,
 
+    /// Custom DNS servers to set on the container network interface configuration.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#dns)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dns: Option<ItemOrList<IpAddr>>,
+
+    /// List of custom DNS options to be passed to the container's DNS resolver (`/etc/resolv.conf`
+    /// file on Linux).
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#dns_opt)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub dns_opt: IndexSet<String>,
+
+    /// Custom DNS search domains to set on the container network interface configuration.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#dns_search)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dns_search: Option<ItemOrList<Hostname>>,
+
+    /// Custom domain name to use for the service container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#domainname)
+    #[serde(
+        rename = "domainname",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub domain_name: Option<Hostname>,
+
     /// Specifies a build's container isolation technology.
     ///
     /// Supported values are platform specific.
@@ -305,7 +336,7 @@ fn depends_on_is_empty(depends_on: &ShortOrLong<IndexSet<Identifier>, DependsOn>
 /// Deserialize `extra_hosts` field of [`Service`] and long [`Build`] syntax.
 ///
 /// Converts from [`ListOrMap`].
-fn extra_hosts<'de, D>(deserializer: D) -> Result<IndexMap<MapKey, IpAddr>, D::Error>
+fn extra_hosts<'de, D>(deserializer: D) -> Result<IndexMap<Hostname, IpAddr>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -324,7 +355,10 @@ where
             let value = value.strip_prefix('[').unwrap_or(value);
             let value = value.strip_suffix(']').unwrap_or(value);
 
-            Ok((key, value.parse().map_err(de::Error::custom)?))
+            Ok((
+                Hostname::new(key).map_err(de::Error::custom)?,
+                value.parse().map_err(de::Error::custom)?,
+            ))
         })
         .collect()
 }

@@ -22,7 +22,7 @@ pub use self::{
     ssh_auth::{Id as SshAuthId, IdError as SshAuthIdError, SshAuth},
 };
 
-use super::{extra_hosts, ByteValue, ConfigOrSecret, Image, Platform, Ulimits};
+use super::{extra_hosts, ByteValue, ConfigOrSecret, Hostname, Image, Platform, Ulimits};
 
 /// Long syntax build configuration for creating a container image from source.
 ///
@@ -92,7 +92,7 @@ pub struct Build {
         skip_serializing_if = "IndexMap::is_empty",
         deserialize_with = "extra_hosts"
     )]
-    pub extra_hosts: IndexMap<MapKey, IpAddr>,
+    pub extra_hosts: IndexMap<Hostname, IpAddr>,
 
     /// Specifies a build’s container isolation technology.
     ///
