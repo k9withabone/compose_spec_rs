@@ -13,9 +13,11 @@ pub mod deploy;
 pub mod develop;
 pub mod device;
 pub mod env_file;
+mod expose;
 mod hostname;
 pub mod image;
 pub mod platform;
+pub mod ports;
 mod ulimit;
 
 use std::{net::IpAddr, time::Duration};
@@ -44,6 +46,7 @@ pub use self::{
     develop::Develop,
     device::Device,
     env_file::EnvFile,
+    expose::Expose,
     hostname::{Hostname, InvalidHostnameError},
     image::Image,
     platform::Platform,
@@ -275,6 +278,12 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#environment)
     #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
     pub environment: ListOrMap,
+
+    /// Incoming port or range of ports which are exposed from the service container to the host.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#expose)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub expose: IndexSet<Expose>,
 
     /// Specifies a build's container isolation technology.
     ///
