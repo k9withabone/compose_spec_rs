@@ -19,9 +19,17 @@ pub mod image;
 pub mod platform;
 pub mod ports;
 mod ulimit;
+pub mod user_or_group;
 
-use std::{net::IpAddr, time::Duration};
+use std::{
+    fmt::{self, Display, Formatter},
+    net::IpAddr,
+    path::PathBuf,
+    str::FromStr,
+    time::Duration,
+};
 
+use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use indexmap::{IndexMap, IndexSet};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
@@ -51,6 +59,7 @@ pub use self::{
     image::Image,
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
+    user_or_group::UserOrGroup,
 };
 
 /// A service is an abstract definition of a computing resource within an application which can be
@@ -285,6 +294,41 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
     pub expose: IndexSet<Expose>,
 
+    /// Share common configurations among different services or [`Compose`](super::Compose) files.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#extends)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extends: Option<Extends>,
+
+    /// Annotations for the container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#annotations)
+    #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
+    pub annotations: ListOrMap,
+
+    /// Link service containers to services managed externally.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#external_links)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub external_links: IndexSet<ExternalLink>,
+
+    /// Add hostname mappings to the container network interface configuration
+    /// (`/etc/hosts` for Linux).
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#extra_hosts)
+    #[serde(
+        default,
+        skip_serializing_if = "IndexMap::is_empty",
+        deserialize_with = "extra_hosts"
+    )]
+    pub extra_hosts: IndexMap<Hostname, IpAddr>,
+
+    /// Additional groups which the user inside the container must be a member of.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#group_add)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub group_add: IndexSet<UserOrGroup>,
+
     /// Specifies a build's container isolation technology.
     ///
     /// Supported values are platform specific.
@@ -390,6 +434,121 @@ fn depends_on_is_empty(depends_on: &ShortOrLong<IndexSet<Identifier>, DependsOn>
         set.is_empty()
     } else {
         false
+    }
+}
+
+/// Share common configurations among different [`Service`]s or [`Compose`](super::Compose) files.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#extends)
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Extends {
+    /// Name of the [`Service`] referenced as a base.
+    pub service: Identifier,
+
+    /// Location of a [`Compose`](super::Compose) configuration file defining the `service`.
+    ///
+    /// If [`None`], that indicates `service` refers to another service within this Compose file.
+    /// May be an absolute path or a path relative to the directory of this Compose file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<PathBuf>,
+}
+
+/// Link from a [`Service`] container to a container managed externally.
+///
+/// (De)serializes from/to a string in the format `{container}[:{alias}]`.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#external_link)
+#[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ExternalLink {
+    /// Externally managed container.
+    pub container: ContainerName,
+
+    /// Optional alias.
+    pub alias: Option<String>,
+}
+
+impl From<ContainerName> for ExternalLink {
+    fn from(container: ContainerName) -> Self {
+        Self {
+            container,
+            alias: None,
+        }
+    }
+}
+
+impl FromStr for ExternalLink {
+    type Err = InvalidContainerNameError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Format is "{container}[:{alias}]".
+        let (container, alias) = s.split_once(':').map_or((s, None), |(container, alias)| {
+            (container, Some(alias.to_owned()))
+        });
+
+        Ok(Self {
+            container: container.parse()?,
+            alias,
+        })
+    }
+}
+
+impl TryFrom<&str> for ExternalLink {
+    type Error = InvalidContainerNameError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl TryFrom<Box<str>> for ExternalLink {
+    type Error = InvalidContainerNameError;
+
+    fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
+        // Format is "{container}[:{alias}]".
+        if let Some((container, alias)) = value.split_once(':') {
+            Ok(Self {
+                container: container.parse()?,
+                alias: Some(alias.to_owned()),
+            })
+        } else {
+            // Reuse string allocation.
+            ContainerName::try_from(value).map(Into::into)
+        }
+    }
+}
+
+impl TryFrom<String> for ExternalLink {
+    type Error = InvalidContainerNameError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.into_boxed_str().try_into()
+    }
+}
+
+impl Display for ExternalLink {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let Self { container, alias } = self;
+
+        // Format is "{container}[:{alias}]".
+
+        Display::fmt(container, f)?;
+
+        if let Some(alias) = alias {
+            write!(f, ":{alias}")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl From<ExternalLink> for String {
+    fn from(value: ExternalLink) -> Self {
+        if value.alias.is_none() {
+            // Reuse `container`'s string allocation if there is no `alias`.
+            value.container.into()
+        } else {
+            value.to_string()
+        }
     }
 }
 

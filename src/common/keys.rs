@@ -40,6 +40,11 @@ impl Identifier {
 
         Ok(Self(identifier.into()))
     }
+
+    /// Create a new [`Identifier`] without checking its constraints.
+    pub(crate) fn new_unchecked(identifier: impl Into<Box<str>>) -> Self {
+        Self(identifier.into())
+    }
 }
 
 /// Error returned when attempting to create a [`Identifier`].

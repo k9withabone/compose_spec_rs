@@ -13,6 +13,8 @@ use serde::{
     Deserializer, Serialize, Serializer,
 };
 
+use super::forward_visitor;
+
 /// Serialize an [`Option<Duration>`] as a duration string.
 pub(crate) fn serialize<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -34,17 +36,6 @@ where
 /// [`de::Visitor`] for deserializing an [`Option<Duration>`].
 struct Visitor;
 
-/// Forward [`de::Visitor`] functions to [`visit_u64()`](de::Visitor::visit_u64()).
-macro_rules! forward_to_u64 {
-    ($($fn:ident: $ty:ty),* $(,)?) => {
-        $(
-            fn $fn<E: de::Error>(self, v: $ty) -> Result<Self::Value, E> {
-                self.visit_u64(v.try_into().map_err(de::Error::custom)?)
-            }
-        )*
-    };
-}
-
 impl<'de> de::Visitor<'de> for Visitor {
     type Value = Option<Duration>;
 
@@ -52,7 +43,8 @@ impl<'de> de::Visitor<'de> for Visitor {
         formatter.write_str("integer representing microseconds or a duration string")
     }
 
-    forward_to_u64! {
+    forward_visitor! {
+        visit_u64,
         visit_i64: i64,
         visit_i128: i128,
         visit_u128: u128,

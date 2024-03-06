@@ -26,6 +26,19 @@ pub(crate) const fn skip_true(bool: &bool) -> bool {
     *bool
 }
 
+/// Implement [`Visitor`] functions by forwarding to `visit`.
+macro_rules! forward_visitor {
+    ($visit:ident, $($f:ident: $ty:ty,)*) => {
+        $(
+            fn $f<E: ::serde::de::Error>(self, v: $ty) -> ::std::result::Result<Self::Value, E> {
+                self.$visit(v.try_into().map_err(E::custom)?)
+            }
+        )*
+    };
+}
+
+pub(crate) use forward_visitor;
+
 #[derive(Debug)]
 pub(crate) struct ValueEnumVisitor<B = (), I = (), U = (), F = (), S = ()> {
     expecting: &'static str,

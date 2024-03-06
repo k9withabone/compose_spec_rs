@@ -10,7 +10,7 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use crate::serde::FromStrVisitor;
+use crate::serde::{forward_visitor, FromStrVisitor};
 
 use super::ports::{ParseRangeError, Protocol, Range};
 
@@ -107,17 +107,6 @@ impl<'de> Deserialize<'de> for Expose {
 /// [`de::Visitor`] for deserializing [`Expose`].
 struct Visitor;
 
-/// Implement [`de::Visitor`] functions by forwarding to [`de::Visitor::visit_u16()`].
-macro_rules! forward_to_u16 {
-    ($($f:ident: $ty:ty,)*) => {
-        $(
-            fn $f<E: de::Error>(self, v: $ty) -> Result<Self::Value, E> {
-                self.visit_u16(v.try_into().map_err(E::custom)?)
-            }
-        )*
-    };
-}
-
 impl<'de> de::Visitor<'de> for Visitor {
     type Value = Expose;
 
@@ -125,7 +114,8 @@ impl<'de> de::Visitor<'de> for Visitor {
         formatter.write_str("an integer or string representing a port or port range")
     }
 
-    forward_to_u16! {
+    forward_visitor! {
+        visit_u16,
         visit_i8: i8,
         visit_i16: i16,
         visit_i32: i32,

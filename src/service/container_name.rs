@@ -3,7 +3,7 @@
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use thiserror::Error;
 
-use crate::common::key_impls;
+use crate::{common::key_impls, Identifier};
 
 /// A custom container name.
 ///
@@ -77,6 +77,13 @@ pub enum InvalidContainerNameError {
     Character(char),
 }
 
+impl From<ContainerName> for Identifier {
+    fn from(value: ContainerName) -> Self {
+        // A `ContainerName` is always a valid `Identifier`.
+        Self::new_unchecked(value.0)
+    }
+}
+
 key_impls!(ContainerName => InvalidContainerNameError);
 
 #[cfg(test)]
@@ -93,7 +100,7 @@ mod tests {
 
         #[test]
         fn valid(name in "[a-zA-Z0-9][a-zA-Z0-9_.-]+") {
-            ContainerName::new(name).unwrap();
+            ContainerName::new(name)?;
         }
     }
 }
