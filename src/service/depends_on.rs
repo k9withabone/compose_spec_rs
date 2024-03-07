@@ -138,7 +138,7 @@ pub enum Condition {
     #[default]
     ServiceStarted,
 
-    /// Dependency is "healthy", as defined by its [`HealthCheck`](super::HealthCheck).
+    /// Dependency is "healthy", as defined by its [`Healthcheck`](super::Healthcheck).
     ServiceHealthy,
 
     /// Dependency ran to completion and exited successfully.

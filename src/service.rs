@@ -14,6 +14,7 @@ pub mod develop;
 pub mod device;
 pub mod env_file;
 mod expose;
+pub mod healthcheck;
 mod hostname;
 pub mod image;
 pub mod platform;
@@ -55,6 +56,7 @@ pub use self::{
     device::Device,
     env_file::EnvFile,
     expose::Expose,
+    healthcheck::Healthcheck,
     hostname::{Hostname, InvalidHostnameError},
     image::Image,
     platform::Platform,
@@ -329,6 +331,12 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
     pub group_add: IndexSet<UserOrGroup>,
 
+    /// A check that is run to determine whether the service container is "healthy".
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#healthcheck)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub healthcheck: Option<Healthcheck>,
+
     /// Specifies a build's container isolation technology.
     ///
     /// Supported values are platform specific.
@@ -406,7 +414,7 @@ pub enum Command {
     /// Command run with `/bin/sh -c`.
     String(String),
 
-    /// Arguments to the entrypoint.
+    /// The command and its arguments.
     List(Vec<String>),
 }
 

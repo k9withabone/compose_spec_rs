@@ -177,8 +177,8 @@ pub enum ParseDurationError {
 }
 
 #[cfg(test)]
-mod tests {
-    use proptest::{prop_assert_eq, proptest};
+pub(crate) mod tests {
+    use proptest::{prop_assert_eq, prop_compose, proptest};
 
     use super::*;
 
@@ -293,10 +293,15 @@ mod tests {
 
         /// Test round tripping [`to_string()`] and [`parse()`] works.
         #[test]
-        fn round_trip(secs: u64, micros in ..=(u32::MAX / 1000)) {
-            let test = Duration::new(secs, micros * 1000);
-            let test2 = parse(&to_string(test))?;
-            prop_assert_eq!(test, test2);
+        fn round_trip(duration in duration_truncated()) {
+            prop_assert_eq!(duration, parse(&to_string(duration))?);
+        }
+    }
+
+    prop_compose! {
+        /// [`Duration`]s truncated to whole microseconds.
+        pub(crate) fn duration_truncated()(secs: u64, micros in ..=(u32::MAX / 1000)) -> Duration {
+            Duration::new(secs, micros * 1000)
         }
     }
 }
