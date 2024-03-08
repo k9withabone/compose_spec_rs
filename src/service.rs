@@ -38,7 +38,8 @@ use thiserror::Error;
 
 use crate::{
     serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
-    Extensions, Identifier, ItemOrList, ListOrMap, ShortOrLong, Value,
+    Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, MapKey, ShortOrLong,
+    Value,
 };
 
 use self::build::Context;
@@ -314,7 +315,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#external_links)
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
-    pub external_links: IndexSet<ExternalLink>,
+    pub external_links: IndexSet<Link>,
 
     /// Add hostname mappings to the container network interface configuration
     /// (`/etc/hosts` for Linux).
@@ -372,6 +373,26 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#isolation)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub isolation: Option<String>,
+
+    /// Add metadata to containers.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#labels)
+    #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
+    pub labels: ListOrMap,
+
+    /// Network links to containers in another service.
+    ///
+    /// Note: Availability of the `links` field is implementation specific.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#links)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub links: IndexSet<Link>,
+
+    /// Logging configuration for the service.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#logging)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logging: Option<Logging>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
@@ -489,85 +510,89 @@ pub struct Extends {
     pub file: Option<PathBuf>,
 }
 
-/// Link from a [`Service`] container to a container managed externally.
+/// Network link from a [`Service`] container to a container in another service in this
+/// [`Compose`](crate::Compose) file (for `links`), or an externally managed container (for
+/// `external_links`).
 ///
-/// (De)serializes from/to a string in the format `{container}[:{alias}]`.
+/// (De)serializes from/to a string in the format `{service}[:{alias}]`.
 ///
-/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#external_link)
+/// [`external_links` compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#external_links)
+///
+/// [`links` compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#links)
 #[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ExternalLink {
+pub struct Link {
     /// Externally managed container.
-    pub container: ContainerName,
+    pub service: Identifier,
 
     /// Optional alias.
     pub alias: Option<String>,
 }
 
-impl From<ContainerName> for ExternalLink {
-    fn from(container: ContainerName) -> Self {
+impl From<Identifier> for Link {
+    fn from(service: Identifier) -> Self {
         Self {
-            container,
+            service,
             alias: None,
         }
     }
 }
 
-impl FromStr for ExternalLink {
-    type Err = InvalidContainerNameError;
+impl FromStr for Link {
+    type Err = InvalidIdentifierError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Format is "{container}[:{alias}]".
-        let (container, alias) = s.split_once(':').map_or((s, None), |(container, alias)| {
-            (container, Some(alias.to_owned()))
+        // Format is "{service}[:{alias}]".
+        let (service, alias) = s.split_once(':').map_or((s, None), |(service, alias)| {
+            (service, Some(alias.to_owned()))
         });
 
         Ok(Self {
-            container: container.parse()?,
+            service: service.parse()?,
             alias,
         })
     }
 }
 
-impl TryFrom<&str> for ExternalLink {
-    type Error = InvalidContainerNameError;
+impl TryFrom<&str> for Link {
+    type Error = InvalidIdentifierError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         value.parse()
     }
 }
 
-impl TryFrom<Box<str>> for ExternalLink {
-    type Error = InvalidContainerNameError;
+impl TryFrom<Box<str>> for Link {
+    type Error = InvalidIdentifierError;
 
     fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
-        // Format is "{container}[:{alias}]".
-        if let Some((container, alias)) = value.split_once(':') {
+        // Format is "{service}[:{alias}]".
+        if let Some((service, alias)) = value.split_once(':') {
             Ok(Self {
-                container: container.parse()?,
+                service: service.parse()?,
                 alias: Some(alias.to_owned()),
             })
         } else {
             // Reuse string allocation.
-            ContainerName::try_from(value).map(Into::into)
+            Identifier::try_from(value).map(Into::into)
         }
     }
 }
 
-impl TryFrom<String> for ExternalLink {
-    type Error = InvalidContainerNameError;
+impl TryFrom<String> for Link {
+    type Error = InvalidIdentifierError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         value.into_boxed_str().try_into()
     }
 }
 
-impl Display for ExternalLink {
+impl Display for Link {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let Self { container, alias } = self;
+        let Self { service, alias } = self;
 
-        // Format is "{container}[:{alias}]".
+        // Format is "{service}[:{alias}]".
 
-        Display::fmt(container, f)?;
+        Display::fmt(service, f)?;
 
         if let Some(alias) = alias {
             write!(f, ":{alias}")?;
@@ -577,11 +602,11 @@ impl Display for ExternalLink {
     }
 }
 
-impl From<ExternalLink> for String {
-    fn from(value: ExternalLink) -> Self {
+impl From<Link> for String {
+    fn from(value: Link) -> Self {
         if value.alias.is_none() {
-            // Reuse `container`'s string allocation if there is no `alias`.
-            value.container.into()
+            // Reuse `service`'s string allocation if there is no `alias`.
+            value.service.into()
         } else {
             value.to_string()
         }
@@ -622,10 +647,33 @@ where
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#uts)
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum Uts {
     /// Use the same UTS namespace as the host.
     #[default]
     Host,
+}
+
+/// Logging configuration for a [`Service`].
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#logging)
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct Logging {
+    /// Logging driver for the [`Service`] container.
+    ///
+    /// The default and available values are platform specific.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub driver: Option<String>,
+
+    /// Driver specific options.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub options: IndexMap<MapKey, Option<Value>>,
+
+    /// Extension values, which are (de)serialized via flattening.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
+    #[serde(flatten)]
+    pub extensions: Extensions,
 }
 
 #[cfg(test)]
