@@ -25,12 +25,13 @@ pub mod user_or_group;
 use std::{
     fmt::{self, Display, Formatter},
     net::IpAddr,
+    ops::Not,
     path::PathBuf,
     str::FromStr,
     time::Duration,
 };
 
-use compose_spec_macros::{Default, DeserializeTryFromString, SerializeDisplay};
+use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use indexmap::{IndexMap, IndexSet};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
@@ -68,7 +69,7 @@ pub use self::{
 /// scaled or replaced independently from other components.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md)
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, compose_spec_macros::Default, Clone, PartialEq)]
 pub struct Service {
     /// When defined and set to `false` Compose does not collect service logs, until you explicitly
     /// request it to.
@@ -338,6 +339,32 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub healthcheck: Option<Healthcheck>,
 
+    /// A custom hostname to use for the service container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#hostname)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hostname: Option<Hostname>,
+
+    /// Image to start the container from.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#image)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<Image>,
+
+    /// Run an init process (PID 1) inside the container that forwards signals and reaps processes.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#init)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub init: bool,
+
+    /// UTS namespace mode for the service container.
+    ///
+    /// The default is the decision of the container runtime, if supported.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#uts)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uts: Option<Uts>,
+
     /// Specifies a build's container isolation technology.
     ///
     /// Supported values are platform specific.
@@ -589,6 +616,16 @@ where
             ))
         })
         .collect()
+}
+
+/// UTS namespace modes for [`Service`] containers.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#uts)
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Uts {
+    /// Use the same UTS namespace as the host.
+    #[default]
+    Host,
 }
 
 #[cfg(test)]
