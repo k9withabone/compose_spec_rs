@@ -22,6 +22,7 @@ use proc_macro::TokenStream;
 use syn::{parse_macro_input, Error};
 
 mod as_short;
+mod default;
 mod platforms;
 mod serde;
 
@@ -414,6 +415,46 @@ pub fn deserialize_try_from_string(input: TokenStream) -> TokenStream {
             Error::into_compile_error,
             serde::Input::impl_deserialize_try_from_string,
         )
+        .into()
+}
+
+/// Derive macro for [`Default`] which allows setting custom values via `#[default = ...]`
+/// attributes.
+///
+/// # Examples
+///
+/// ```
+/// use compose_spec_macros::Default;
+///
+/// #[derive(Default)]
+/// struct Example {
+///     #[default = true]
+///     bool: bool,
+///     string: String,
+/// }
+///
+/// let default = Example::default();
+/// assert_eq!(default.bool, true);
+/// assert_eq!(default.string, "");
+/// ```
+///
+/// The macro generates code like:
+///
+/// ```
+/// # struct Example { bool: bool, string: String }
+/// impl Default for Example {
+///     fn default() -> Self {
+///         Self {
+///             bool: true,
+///             string: Default::default(),
+///         }
+///     }
+/// }
+/// ```
+#[proc_macro_derive(Default, attributes(default))]
+pub fn default(input: TokenStream) -> TokenStream {
+    default::Input::from_syn(&parse_macro_input!(input))
+        .map_or_else(Error::into_compile_error, default::Input::expand)
         .into()
 }
 

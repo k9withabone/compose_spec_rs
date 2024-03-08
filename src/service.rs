@@ -30,7 +30,7 @@ use std::{
     time::Duration,
 };
 
-use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
+use compose_spec_macros::{Default, DeserializeTryFromString, SerializeDisplay};
 use indexmap::{IndexMap, IndexSet};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
@@ -68,15 +68,16 @@ pub use self::{
 /// scaled or replaced independently from other components.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Service {
     /// When defined and set to `false` Compose does not collect service logs, until you explicitly
     /// request it to.
     ///
-    /// The default service configuration is `attach: true`.
+    /// The default is `true`.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#attach)
     #[serde(default = "default_true", skip_serializing_if = "skip_true")]
+    #[default = true]
     pub attach: bool,
 
     /// Build configuration for creating a container image from source.
