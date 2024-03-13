@@ -98,7 +98,7 @@ fn parse_int_err(value: &str) -> impl FnOnce(ParseIntError) -> ParseCpuSetError 
 }
 
 /// Error returned when parsing a [`CpuSet`] from a string.
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[error("could not parse `{value}` as an integer")]
 pub struct ParseCpuSetError {
     /// Value attempted to parse.

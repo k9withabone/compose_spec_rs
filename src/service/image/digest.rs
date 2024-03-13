@@ -112,7 +112,7 @@ impl<'a> Digest<'a> {
 }
 
 /// Error returned when validating an [`Image`](super::Image) [`Digest`].
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum InvalidDigestError {
     /// Digest was missing its algorithm part.

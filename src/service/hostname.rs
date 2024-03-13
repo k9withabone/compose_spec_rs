@@ -48,7 +48,7 @@ impl Hostname {
 }
 
 /// Error returned when creating a [`Hostname`].
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum InvalidHostnameError {
     /// One of the hostname's labels was empty.
     #[error("hostname label was empty")]

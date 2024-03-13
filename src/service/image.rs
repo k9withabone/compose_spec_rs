@@ -443,7 +443,7 @@ impl Image {
 }
 
 /// Error returned when parsing an [`Image`] from a string.
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum InvalidImageError {
     /// Given digest was invalid.
     #[error("invalid image digest")]

@@ -198,7 +198,7 @@ fn validate_part(part: &str) -> Result<(), InvalidNamePartError> {
 }
 
 /// Error returned when validating a part of an [`Image`](super::Image) [`Name`].
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum InvalidNamePartError {
     /// Part had more than one separator (., _, __, any number of -) in a row.

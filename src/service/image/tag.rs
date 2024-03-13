@@ -73,7 +73,7 @@ impl<'a> Tag<'a> {
 }
 
 /// Error returned when validating an [`Image`](super::Image) [`Tag`].
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum InvalidTagError {
     /// Tags must only contain ASCII letters (a-z, A-Z), digits (0-9), dots (.), underscores (_),

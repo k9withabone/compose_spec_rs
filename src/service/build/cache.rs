@@ -108,7 +108,7 @@ impl Cache {
 }
 
 /// Error returned when creating a [`Cache`].
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     /// [`Registry`](Kind::Registry) cache type given without a corresponding "ref" option.
     #[error("caches with type \"registry\" must have a \"ref\" option")]
@@ -160,7 +160,7 @@ impl Display for Cache {
 }
 
 /// Error returned when parsing a [`Cache`] from a string.
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum ParseCacheError {
     /// Error while creating [`Cache`].
     #[error(transparent)]

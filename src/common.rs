@@ -497,7 +497,7 @@ impl TryFrom<Value> for bool {
 }
 
 /// Error returned when failing to convert [`Value`] into another type.
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum TryFromValueError {
     /// [`Value`] is not the correct type for conversion.
     #[error("value is not the correct type for conversion")]

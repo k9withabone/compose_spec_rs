@@ -48,7 +48,7 @@ impl Identifier {
 }
 
 /// Error returned when attempting to create a [`Identifier`].
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum InvalidIdentifierError {
     /// Empty identifier
     #[error("identifier cannot be empty")]
@@ -99,7 +99,7 @@ impl MapKey {
 }
 
 /// Error returned when attempting to create a [`MapKey`].
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum InvalidMapKeyError {
     /// Empty map key
     #[error("map key cannot be empty")]
@@ -154,7 +154,7 @@ impl ExtensionKey {
 }
 
 /// Error returned when attempting to create a [`ExtensionKey`].
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum InvalidExtensionKeyError {
     /// The "x-" prefix was missing from the extension key.
     #[error("extension key `{0}` does not start with \"x-\"")]

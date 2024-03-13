@@ -22,7 +22,7 @@ pub enum UserOrGroup {
 }
 
 impl UserOrGroup {
-    /// Parse a [`UserOrGroup`] from a stirng.
+    /// Parse a [`UserOrGroup`] from a string.
     ///
     /// If an unsigned integer, the string is parsed into an [`Id`](Self::Id), otherwise it is converted into
     /// a [`Name`].
