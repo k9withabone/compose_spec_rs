@@ -1,12 +1,13 @@
 //! Provides [`EndpointMode`] for the `endpoint_mode` field of [`Deploy`](super::Deploy).
 
 use std::{
-    convert::Infallible,
+    borrow::Cow,
     fmt::{self, Display, Formatter},
-    str::FromStr,
 };
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
+
+use crate::impl_from_str;
 
 /// [`Service`](crate::Service) discovery method for external clients connecting to a service.
 ///
@@ -38,6 +39,18 @@ impl EndpointMode {
     /// [`Self::DnsRR`] string value.
     const DNS_RR: &'static str = "dnsrr";
 
+    /// Parse an [`EndpointMode`] from a string.
+    pub fn parse<T>(endpoint_mode: T) -> Self
+    where
+        T: AsRef<str> + Into<String>,
+    {
+        match endpoint_mode.as_ref() {
+            Self::VIP => Self::VIp,
+            Self::DNS_RR => Self::DnsRR,
+            _ => Self::Other(endpoint_mode.into()),
+        }
+    }
+
     /// Returns `true` if the endpoint mode is [`VIp`].
     ///
     /// [`VIp`]: EndpointMode::VIp
@@ -67,6 +80,8 @@ impl EndpointMode {
     }
 }
 
+impl_from_str!(EndpointMode);
+
 impl AsRef<str> for EndpointMode {
     fn as_ref(&self) -> &str {
         self.as_str()
@@ -88,30 +103,12 @@ impl From<EndpointMode> for String {
     }
 }
 
-impl From<&str> for EndpointMode {
-    fn from(value: &str) -> Self {
+impl From<EndpointMode> for Cow<'static, str> {
+    fn from(value: EndpointMode) -> Self {
         match value {
-            Self::VIP => Self::VIp,
-            Self::DNS_RR => Self::DnsRR,
-            other => Self::Other(other.to_owned()),
-        }
-    }
-}
-
-impl FromStr for EndpointMode {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(s.into())
-    }
-}
-
-impl From<String> for EndpointMode {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            Self::VIP => Self::VIp,
-            Self::DNS_RR => Self::DnsRR,
-            _ => Self::Other(value),
+            EndpointMode::VIp => Self::Borrowed(EndpointMode::VIP),
+            EndpointMode::DnsRR => Self::Borrowed(EndpointMode::DNS_RR),
+            EndpointMode::Other(other) => Self::Owned(other),
         }
     }
 }

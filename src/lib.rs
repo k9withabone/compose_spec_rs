@@ -68,3 +68,81 @@ pub struct Compose {
     #[serde(flatten)]
     pub extensions: Extensions,
 }
+
+/// Implement string conversion traits for types which have a `parse` method.
+///
+/// For types with an error, the macro creates implementations of:
+///
+/// - [`FromStr`]
+/// - [`TryFrom<&str>`]
+/// - [`TryFrom<String>`]
+/// - [`TryFrom<Box<str>>`]
+/// - [`TryFrom<Cow<str>>`]
+///
+/// For types without an error, the macro creates implementations of:
+///
+/// - [`FromStr`], where `Err` is [`Infallible`](std::convert::Infallible)
+/// - [`From<&str>`]
+/// - [`From<String>`]
+/// - [`From<Box<str>>`]
+/// - [`From<Cow<str>>`]
+macro_rules! impl_from_str {
+    ($($Ty:ty => $Error:ty),* $(,)?) => {
+        $(
+            impl std::str::FromStr for $Ty {
+                type Err = $Error;
+
+                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                    Self::parse(s)
+                }
+            }
+
+            impl_from_str! {
+                impl TryFrom<&str> for $Ty => $Error,
+                impl TryFrom<String> for $Ty => $Error,
+                impl TryFrom<Box<str>> for $Ty => $Error,
+                impl<'a> TryFrom<std::borrow::Cow<'a, str>> for $Ty => $Error,
+            }
+        )*
+    };
+    ($(impl$(<$lifetime:lifetime>)? TryFrom<$From:ty> for $Ty:ty => $Error:ty,)*) => {
+        $(
+            impl$(<$lifetime>)? TryFrom<$From> for $Ty {
+                type Error = $Error;
+
+                fn try_from(value: $From) -> Result<Self, Self::Error> {
+                    Self::parse(value)
+                }
+            }
+        )*
+    };
+    ($($Ty:ty),* $(,)?) => {
+        $(
+            impl std::str::FromStr for $Ty {
+                type Err = std::convert::Infallible;
+
+                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                    Ok(Self::parse(s))
+                }
+            }
+
+            impl_from_str! {
+                impl From<&str> for $Ty,
+                impl From<String> for $Ty,
+                impl From<Box<str>> for $Ty,
+                impl<'a> From<std::borrow::Cow<'a, str>> for $Ty,
+            }
+        )*
+    };
+    ($(impl$(<$lifetime:lifetime>)? From<$From:ty> for $Ty:ty,)*) => {
+        $(
+            impl$(<$lifetime>)? From<$From> for $Ty {
+                fn from(value: $From) -> Self {
+                    Self::parse(value)
+                }
+            }
+        )*
+    };
+}
+
+use impl_from_str;

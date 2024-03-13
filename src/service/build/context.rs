@@ -167,6 +167,12 @@ impl<'a> From<Cow<'a, str>> for Context {
     }
 }
 
+impl From<&Path> for Context {
+    fn from(value: &Path) -> Self {
+        Self::Path(value.to_owned())
+    }
+}
+
 impl<'a> From<Cow<'a, Path>> for Context {
     fn from(value: Cow<'a, Path>) -> Self {
         Self::Path(value.into_owned())

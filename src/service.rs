@@ -37,6 +37,7 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 use crate::{
+    impl_from_str,
     serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
     Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, MapKey, ShortOrLong,
     Value,
@@ -528,6 +529,30 @@ pub struct Link {
     pub alias: Option<String>,
 }
 
+impl Link {
+    /// Parse a [`Link`] from string in the format `{service}[:{alias}]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the service is not a valid [`Identifier`].
+    pub fn parse<T>(link: T) -> Result<Self, InvalidIdentifierError>
+    where
+        T: AsRef<str> + TryInto<Identifier>,
+        T::Error: Into<InvalidIdentifierError>,
+    {
+        // Format is "{service}[:{alias}]".
+        if let Some((service, alias)) = link.as_ref().split_once(':') {
+            Ok(Self {
+                service: service.parse()?,
+                alias: Some(alias.to_owned()),
+            })
+        } else {
+            // Reuse potential string allocation.
+            link.try_into().map(Into::into).map_err(Into::into)
+        }
+    }
+}
+
 impl From<Identifier> for Link {
     fn from(service: Identifier) -> Self {
         Self {
@@ -537,54 +562,7 @@ impl From<Identifier> for Link {
     }
 }
 
-impl FromStr for Link {
-    type Err = InvalidIdentifierError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Format is "{service}[:{alias}]".
-        let (service, alias) = s.split_once(':').map_or((s, None), |(service, alias)| {
-            (service, Some(alias.to_owned()))
-        });
-
-        Ok(Self {
-            service: service.parse()?,
-            alias,
-        })
-    }
-}
-
-impl TryFrom<&str> for Link {
-    type Error = InvalidIdentifierError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        value.parse()
-    }
-}
-
-impl TryFrom<Box<str>> for Link {
-    type Error = InvalidIdentifierError;
-
-    fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
-        // Format is "{service}[:{alias}]".
-        if let Some((service, alias)) = value.split_once(':') {
-            Ok(Self {
-                service: service.parse()?,
-                alias: Some(alias.to_owned()),
-            })
-        } else {
-            // Reuse string allocation.
-            Identifier::try_from(value).map(Into::into)
-        }
-    }
-}
-
-impl TryFrom<String> for Link {
-    type Error = InvalidIdentifierError;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        value.into_boxed_str().try_into()
-    }
-}
+impl_from_str!(Link => InvalidIdentifierError);
 
 impl Display for Link {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {

@@ -1,6 +1,6 @@
 use std::{
+    borrow::Cow,
     cmp::Ordering,
-    convert::Infallible,
     fmt::{self, Display, Formatter},
     num::ParseIntError,
     ops::RangeInclusive,
@@ -9,6 +9,8 @@ use std::{
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use thiserror::Error;
+
+use crate::impl_from_str;
 
 /// A single or range of network ports.
 ///
@@ -227,6 +229,18 @@ impl Protocol {
     /// [`Self::Udp`] string value.
     const UDP: &'static str = "udp";
 
+    /// Parse [`Protocol`] from a string.
+    pub fn parse<T>(protocol: T) -> Self
+    where
+        T: AsRef<str> + Into<String>,
+    {
+        match protocol.as_ref() {
+            Self::TCP => Self::Tcp,
+            Self::UDP => Self::Udp,
+            _ => Self::Other(protocol.into()),
+        }
+    }
+
     /// Returns `true` if the protocol is [`Tcp`].
     ///
     /// [`Tcp`]: Protocol::Tcp
@@ -256,6 +270,8 @@ impl Protocol {
     }
 }
 
+impl_from_str!(Protocol);
+
 impl AsRef<str> for Protocol {
     fn as_ref(&self) -> &str {
         self.as_str()
@@ -277,30 +293,12 @@ impl From<Protocol> for String {
     }
 }
 
-impl From<&str> for Protocol {
-    fn from(value: &str) -> Self {
+impl From<Protocol> for Cow<'static, str> {
+    fn from(value: Protocol) -> Self {
         match value {
-            Self::TCP => Self::Tcp,
-            Self::UDP => Self::Udp,
-            other => Self::Other(other.to_owned()),
-        }
-    }
-}
-
-impl FromStr for Protocol {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(s.into())
-    }
-}
-
-impl From<String> for Protocol {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            Self::TCP => Self::Tcp,
-            Self::UDP => Self::Udp,
-            _ => Self::Other(value),
+            Protocol::Tcp => Self::Borrowed(Protocol::TCP),
+            Protocol::Udp => Self::Borrowed(Protocol::UDP),
+            Protocol::Other(other) => Self::Owned(other),
         }
     }
 }

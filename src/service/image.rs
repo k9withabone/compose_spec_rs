@@ -11,11 +11,12 @@ use std::{
     fmt::{self, Display, Formatter},
     hash::{Hash, Hasher},
     ops::{AddAssign, SubAssign},
-    str::FromStr,
 };
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use thiserror::Error;
+
+use crate::impl_from_str;
 
 pub use self::{
     digest::{Digest, InvalidDigestError},
@@ -499,29 +500,7 @@ impl Hash for Image {
     }
 }
 
-impl TryFrom<String> for Image {
-    type Error = InvalidImageError;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::parse(value)
-    }
-}
-
-impl TryFrom<&str> for Image {
-    type Error = InvalidImageError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::parse(value)
-    }
-}
-
-impl FromStr for Image {
-    type Err = InvalidImageError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s)
-    }
-}
+impl_from_str!(Image => InvalidImageError);
 
 impl<'a> From<&'a Image> for (Name<'a>, Option<TagOrDigest<'a>>) {
     fn from(value: &'a Image) -> Self {

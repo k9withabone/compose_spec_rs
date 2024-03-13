@@ -1,7 +1,7 @@
 //! Provides [`Resources`] for the `resources` field of [`Deploy`](super::Deploy).
 
 use std::{
-    convert::Infallible,
+    borrow::Cow,
     fmt::{self, Display, Formatter},
     num::ParseIntError,
     str::FromStr,
@@ -14,7 +14,7 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use crate::{service::ByteValue, Extensions, ListOrMap};
+use crate::{impl_from_str, service::ByteValue, Extensions, ListOrMap};
 
 /// Physical resource constraints for the service container to run on the platform.
 ///
@@ -185,6 +185,18 @@ impl Capability {
     /// [`Self::Tpu`] string value.
     const TPU: &'static str = "tpu";
 
+    /// Parse a [`Capability`] from a string.
+    pub fn parse<T>(capability: T) -> Self
+    where
+        T: AsRef<str> + Into<String>,
+    {
+        match capability.as_ref() {
+            Self::GPU => Self::Gpu,
+            Self::TPU => Self::Tpu,
+            _ => Self::Other(capability.into()),
+        }
+    }
+
     /// Returns `true` if the capability is [`Gpu`].
     ///
     /// [`Gpu`]: Capability::Gpu
@@ -214,6 +226,8 @@ impl Capability {
     }
 }
 
+impl_from_str!(Capability);
+
 impl AsRef<str> for Capability {
     fn as_ref(&self) -> &str {
         self.as_str()
@@ -235,30 +249,12 @@ impl From<Capability> for String {
     }
 }
 
-impl From<&str> for Capability {
-    fn from(value: &str) -> Self {
+impl From<Capability> for Cow<'static, str> {
+    fn from(value: Capability) -> Self {
         match value {
-            Self::GPU => Self::Gpu,
-            Self::TPU => Self::Tpu,
-            other => Self::Other(other.to_owned()),
-        }
-    }
-}
-
-impl FromStr for Capability {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(s.into())
-    }
-}
-
-impl From<String> for Capability {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            Self::GPU => Self::Gpu,
-            Self::TPU => Self::Tpu,
-            _ => Self::Other(value),
+            Capability::Gpu => Self::Borrowed(Capability::GPU),
+            Capability::Tpu => Self::Borrowed(Capability::TPU),
+            Capability::Other(other) => Self::Owned(other),
         }
     }
 }
@@ -274,6 +270,11 @@ pub enum Count {
 
     /// Reserve a specific number of devices.
     Integer(u64),
+}
+
+impl Count {
+    /// [`Self::All`] string value.
+    const ALL: &'static str = "all";
 }
 
 impl From<u64> for Count {
@@ -295,7 +296,7 @@ impl FromStr for Count {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "all" {
+        if s == Self::ALL {
             Ok(Self::All)
         } else {
             s.parse().map(Self::Integer)
@@ -306,7 +307,7 @@ impl FromStr for Count {
 impl Serialize for Count {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::All => serializer.serialize_str("all"),
+            Self::All => serializer.serialize_str(Self::ALL),
             Self::Integer(count) => serializer.serialize_u64(*count),
         }
     }

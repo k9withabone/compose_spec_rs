@@ -1,15 +1,14 @@
 //! Provides [`UserOrGroup`] for the `user` and `group_add` fields of [`Service`](super::Service).
 
-use std::{
-    fmt::{self, Display, Formatter},
-    str::FromStr,
-};
+use std::fmt::{self, Display, Formatter};
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 use crate::{common::key_impls, serde::forward_visitor};
+
+use crate::impl_from_str;
 
 /// User or group inside a [`Service`](super::Service) container.
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -23,6 +22,25 @@ pub enum UserOrGroup {
 }
 
 impl UserOrGroup {
+    /// Parse a [`UserOrGroup`] from a stirng.
+    ///
+    /// If an unsigned integer, the string is parsed into an [`Id`](Self::Id), otherwise it is converted into
+    /// a [`Name`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if not an unsigned integer and the conversion into a [`Name`] fails.
+    pub fn parse<T>(user_or_group: T) -> Result<Self, T::Error>
+    where
+        T: AsRef<str> + TryInto<Name>,
+    {
+        if let Ok(id) = user_or_group.as_ref().parse() {
+            Ok(Self::Id(id))
+        } else {
+            user_or_group.try_into().map(Self::Name)
+        }
+    }
+
     /// Returns `true` if the user or group is an [`Id`](Self::Id).
     #[must_use]
     pub fn is_id(&self) -> bool {
@@ -68,45 +86,7 @@ impl From<Name> for UserOrGroup {
     }
 }
 
-impl FromStr for UserOrGroup {
-    type Err = InvalidNameError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(id) = s.parse() {
-            Ok(Self::Id(id))
-        } else {
-            s.parse().map(Self::Name)
-        }
-    }
-}
-
-impl TryFrom<&str> for UserOrGroup {
-    type Error = InvalidNameError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        value.parse()
-    }
-}
-
-impl TryFrom<Box<str>> for UserOrGroup {
-    type Error = InvalidNameError;
-
-    fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
-        if let Ok(id) = value.parse() {
-            Ok(Self::Id(id))
-        } else {
-            value.try_into().map(Self::Name)
-        }
-    }
-}
-
-impl TryFrom<String> for UserOrGroup {
-    type Error = InvalidNameError;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        value.into_boxed_str().try_into()
-    }
-}
+impl_from_str!(UserOrGroup => InvalidNameError);
 
 impl Display for UserOrGroup {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
