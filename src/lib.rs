@@ -23,7 +23,7 @@ use indexmap::IndexMap;
 
 pub use self::{
     common::{
-        AsShort, ExtensionKey, Extensions, Identifier, InvalidExtensionKeyError,
+        AsShort, AsShortIter, ExtensionKey, Extensions, Identifier, InvalidExtensionKeyError,
         InvalidIdentifierError, InvalidMapKeyError, ItemOrList, ListOrMap, MapKey, ShortOrLong,
         Value, YamlValue,
     },

@@ -24,7 +24,7 @@ pub use self::{
         ExtensionKey, Identifier, InvalidExtensionKeyError, InvalidIdentifierError,
         InvalidMapKeyError, MapKey,
     },
-    short_or_long::{AsShort, ShortOrLong},
+    short_or_long::{AsShort, AsShortIter, ShortOrLong},
 };
 
 /// Extensions can be used to enable experimental features or make a [`Compose`](super::Compose)

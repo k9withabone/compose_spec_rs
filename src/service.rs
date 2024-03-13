@@ -8,7 +8,6 @@ mod config_or_secret;
 mod container_name;
 mod cpuset;
 mod credential_spec;
-pub mod depends_on;
 pub mod deploy;
 pub mod develop;
 pub mod device;
@@ -27,20 +26,19 @@ use std::{
     net::IpAddr,
     ops::Not,
     path::PathBuf,
-    str::FromStr,
     time::Duration,
 };
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::{map::Keys, IndexMap, IndexSet};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 use crate::{
     impl_from_str,
     serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
-    Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, MapKey, ShortOrLong,
-    Value,
+    AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, MapKey,
+    ShortOrLong, Value,
 };
 
 use self::build::Context;
@@ -53,7 +51,6 @@ pub use self::{
     container_name::{ContainerName, InvalidContainerNameError},
     cpuset::{CpuSet, ParseCpuSetError},
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
-    depends_on::DependsOn,
     deploy::Deploy,
     develop::Develop,
     device::Device,
@@ -221,7 +218,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#depends_on)
     #[serde(default, skip_serializing_if = "depends_on_is_empty")]
-    pub depends_on: ShortOrLong<IndexSet<Identifier>, DependsOn>,
+    pub depends_on: DependsOn,
 
     /// Configuration for the deployment and lifecycle of services.
     ///
@@ -486,12 +483,66 @@ impl<'de> Deserialize<'de> for Command {
     }
 }
 
-/// Returns `true` if `depends_on` is in short syntax form and the [`IndexSet`] is empty.
-fn depends_on_is_empty(depends_on: &ShortOrLong<IndexSet<Identifier>, DependsOn>) -> bool {
-    if let ShortOrLong::Short(set) = depends_on {
-        set.is_empty()
-    } else {
-        false
+/// Short or long [`depends_on`](Service#structfield.depends_on) syntax which expresses startup and
+/// shutdown dependencies between services.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#depends_on)
+pub type DependsOn = ShortOrLong<IndexSet<Identifier>, IndexMap<Identifier, Dependency>>;
+
+/// Configuration of a [`Service`] dependency.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#long-syntax-1)
+#[derive(Serialize, Deserialize, Debug, compose_spec_macros::Default, Clone, PartialEq, Eq)]
+pub struct Dependency {
+    /// Condition under which the dependency is considered satisfied.
+    pub condition: Condition,
+
+    /// When `true`, Compose restarts this service after it updates the dependency service.
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub restart: bool,
+
+    /// When `false`, Compose only warns you when the dependency service isn't started or available.
+    ///
+    /// Default is `true`.
+    #[serde(default = "default_true", skip_serializing_if = "skip_true")]
+    #[default = true]
+    pub required: bool,
+}
+
+/// Condition under which a [`Service`] [`Dependency`] is considered satisfied.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#long-syntax-1)
+#[allow(clippy::enum_variant_names)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Condition {
+    /// Dependency has started.
+    #[default]
+    ServiceStarted,
+
+    /// Dependency is "healthy", as defined by its [`Healthcheck`].
+    ServiceHealthy,
+
+    /// Dependency ran to completion and exited successfully.
+    ServiceCompletedSuccessfully,
+}
+
+impl<'a> AsShortIter<'a> for IndexMap<Identifier, Dependency> {
+    type Iter = Keys<'a, Identifier, Dependency>;
+
+    fn as_short_iter(&'a self) -> Option<Self::Iter> {
+        let default_options = Dependency::default();
+        self.values()
+            .all(|options| *options == default_options)
+            .then(|| self.keys())
+    }
+}
+
+/// Returns `true` if `depends_on` is empty.
+fn depends_on_is_empty(depends_on: &DependsOn) -> bool {
+    match depends_on {
+        ShortOrLong::Short(short) => short.is_empty(),
+        ShortOrLong::Long(long) => long.is_empty(),
     }
 }
 

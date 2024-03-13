@@ -1,11 +1,12 @@
 use std::{
     ffi::{OsStr, OsString},
     fmt::{self, Formatter},
+    hash::Hash,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use serde::{
     de::{
         self,
@@ -19,7 +20,7 @@ use serde::{
 };
 
 use crate::{
-    service::{build::Context, env_file, Build, ConfigOrSecret, DependsOn, Ulimit},
+    service::{build::Context, env_file, Build, ConfigOrSecret, Ulimit},
     Identifier, Include,
 };
 
@@ -84,15 +85,12 @@ impl<S, L> ShortOrLong<S, L> {
 
 impl<S, L> ShortOrLong<S, L>
 where
-    S: Into<L>,
+    Self: Into<L>,
 {
     /// Convert into [`Long`](Self::Long) syntax.
     #[must_use]
     pub fn into_long(self) -> L {
-        match self {
-            Self::Short(short) => short.into(),
-            Self::Long(long) => long,
-        }
+        self.into()
     }
 }
 
@@ -127,6 +125,58 @@ where
         match self {
             Self::Short(short) => Some(short),
             Self::Long(long) => long.as_short(),
+        }
+    }
+}
+
+/// Trait similar to [`AsShort`] except it returns an [`Iterator`] instead of a reference.
+pub trait AsShortIter<'a> {
+    /// [`Iterator`] returned from [`as_short_iter()`](AsShortIter::as_short_iter()).
+    type Iter: Iterator;
+
+    /// Returns an [`Iterator`] if the long syntax can be represented as the short syntax.
+    #[must_use]
+    fn as_short_iter(&'a self) -> Option<Self::Iter>;
+}
+
+impl<'a, T> AsShortIter<'a> for &T
+where
+    T: AsShortIter<'a>,
+{
+    type Iter = T::Iter;
+
+    fn as_short_iter(&'a self) -> Option<Self::Iter> {
+        T::as_short_iter(self)
+    }
+}
+
+impl<'a, S, L> AsShortIter<'a> for ShortOrLong<S, L>
+where
+    S: 'a,
+    &'a S: IntoIterator<Item = <L::Iter as Iterator>::Item>,
+    L: AsShortIter<'a>,
+{
+    type Iter = ShortOrLong<<&'a S as IntoIterator>::IntoIter, L::Iter>;
+
+    fn as_short_iter(&'a self) -> Option<Self::Iter> {
+        match self {
+            Self::Short(short) => Some(ShortOrLong::Short(short.into_iter())),
+            Self::Long(long) => long.as_short_iter().map(ShortOrLong::Long),
+        }
+    }
+}
+
+impl<S, L> Iterator for ShortOrLong<S, L>
+where
+    S: Iterator<Item = L::Item>,
+    L: Iterator,
+{
+    type Item = S::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Short(iter) => iter.next(),
+            Self::Long(iter) => iter.next(),
         }
     }
 }
@@ -192,7 +242,10 @@ macro_rules! impl_long_conversion {
                 S: Into<$t>,
             {
                 fn from(value: ShortOrLong<S, $t>) -> Self {
-                    value.into_long()
+                    match value {
+                        ShortOrLong::Short(short) => short.into(),
+                        ShortOrLong::Long(long) => long,
+                    }
                 }
             }
         )*
@@ -204,8 +257,30 @@ impl_long_conversion! {
     Build,
     ConfigOrSecret,
     Ulimit,
-    DependsOn,
     env_file::Config,
+}
+
+impl<S, K, V> From<IndexMap<K, V>> for ShortOrLong<S, IndexMap<K, V>> {
+    fn from(value: IndexMap<K, V>) -> Self {
+        Self::Long(value)
+    }
+}
+
+impl<S, K, V> From<ShortOrLong<S, IndexMap<K, V>>> for IndexMap<K, V>
+where
+    S: IntoIterator<Item = K>,
+    K: Hash + Eq,
+    V: Default,
+{
+    fn from(value: ShortOrLong<S, IndexMap<K, V>>) -> Self {
+        match value {
+            ShortOrLong::Short(short) => short
+                .into_iter()
+                .zip(std::iter::repeat_with(V::default))
+                .collect(),
+            ShortOrLong::Long(long) => long,
+        }
+    }
 }
 
 /// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, enums,
