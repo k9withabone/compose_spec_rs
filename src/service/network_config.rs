@@ -118,6 +118,15 @@ impl<'de> Deserialize<'de> for NetworkConfig {
     }
 }
 
+/// (De)serialize [`Option<NetworkConfig>`], for use in `#[serde(with = "option")]`.
+///
+/// For deserialization, the following is returned:
+///
+/// - `Ok(Some(NetworkConfig::NetworkMode(_)))`, if given a struct/map with a `network_mode` field.
+/// - `Ok(Some(NetworkConfig::Networks(_)))`, if given a struct/map with a `networks` field.
+/// - `Ok(None)`, if neither the `network_mode` or `networks` fields are present.
+/// - `Err(_)`, if both fields are present.
+/// - `Err(_)`, if there is an error deserializing either field value.
 pub(super) mod option {
     use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -135,6 +144,12 @@ pub(super) mod option {
         value.serialize(serializer)
     }
 
+    /// Deserialize [`Option<NetworkConfig>`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `deserializer` does, there is an error deserializing either
+    /// [`NetworkConfig`] variant, or both fields are present.
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<NetworkConfig>, D::Error>
     where
         D: Deserializer<'de>,
@@ -156,7 +171,10 @@ pub(super) mod option {
 
     /// Flattened version of [`NetworkConfig`].
     #[derive(Deserialize)]
-    #[serde(rename = "NetworkConfig")]
+    #[serde(
+        rename = "NetworkConfig",
+        expecting = "a struct with either a `network_mode` or `networks` field"
+    )]
     struct NetworkConfigFlat {
         #[serde(default)]
         network_mode: Option<NetworkMode>,
