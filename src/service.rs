@@ -442,6 +442,23 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oom_score_adj: Option<OomScoreAdj>,
 
+    /// PID mode for the container.
+    ///
+    /// Supported values are platform specific.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#pid)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pid: Option<String>,
+
+    /// Target platform for the container to run on.
+    ///
+    /// Used to determine which version of the container image is pulled and/or which platform the
+    /// image is built for.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#platform)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub platform: Option<Platform>,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
