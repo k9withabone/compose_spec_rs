@@ -16,6 +16,7 @@ mod expose;
 pub mod healthcheck;
 mod hostname;
 pub mod image;
+pub mod network_config;
 pub mod platform;
 pub mod ports;
 mod ulimit;
@@ -59,6 +60,7 @@ pub use self::{
     healthcheck::Healthcheck,
     hostname::{Hostname, InvalidHostnameError},
     image::Image,
+    network_config::{MacAddress, NetworkConfig},
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
     user_or_group::UserOrGroup,
@@ -391,6 +393,26 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#logging)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub logging: Option<Logging>,
+
+    /// Network configuration of the service container.
+    ///
+    /// Represents either the
+    /// [`network_mode`](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#network_mode)
+    /// or [`networks`](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#networks)
+    /// field of the compose service spec.
+    ///
+    /// (De)serialized via flattening.
+    #[serde(flatten, with = "network_config::option")]
+    pub network_config: Option<NetworkConfig>,
+
+    /// MAC address for the service container.
+    ///
+    /// Note: Container runtimes might reject this value. In that case you should use the
+    /// `mac_address` field of [`Network`](network_config::Network) instead.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#mac_address)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mac_address: Option<MacAddress>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
