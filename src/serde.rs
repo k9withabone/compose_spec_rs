@@ -391,7 +391,7 @@ where
 
 /// Map a type implementing [`Error`] to one implementing [`de::Error`] by using
 /// [`de::Error::custom()`] with a string of all of the error's sources.
-fn error_chain<T, E>(error: T) -> E
+pub(crate) fn error_chain<T, E>(error: T) -> E
 where
     T: Error,
     E: de::Error,

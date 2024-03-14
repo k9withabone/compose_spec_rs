@@ -16,6 +16,7 @@ mod expose;
 pub mod healthcheck;
 mod hostname;
 pub mod image;
+mod memswap_limit;
 pub mod network_config;
 pub mod platform;
 pub mod ports;
@@ -60,6 +61,7 @@ pub use self::{
     healthcheck::Healthcheck,
     hostname::{Hostname, InvalidHostnameError},
     image::Image,
+    memswap_limit::MemswapLimit,
     network_config::{MacAddress, NetworkConfig},
     platform::Platform,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
@@ -410,9 +412,35 @@ pub struct Service {
     /// Note: Container runtimes might reject this value. In that case you should use the
     /// `mac_address` field of [`Network`](network_config::Network) instead.
     ///
-    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#mac_address)
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#mac_address-1)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mac_address: Option<MacAddress>,
+
+    /// Percentage of anonymous pages the host kernel is allowed to swap.
+    ///
+    /// The default is platform specific.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#mem_swappiness)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mem_swappiness: Option<Percent>,
+
+    /// The amount of memory the container is allowed to swap to disk.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#memswap_limit)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memswap_limit: Option<MemswapLimit>,
+
+    /// Whether to disable the OOM killer for the container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#oom_kill_disable)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub oom_kill_disable: bool,
+
+    /// Preference for the container to be killed by the platform in the case of memory starvation.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#oom_score_adj)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub oom_score_adj: Option<OomScoreAdj>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
@@ -432,10 +460,14 @@ impl Percent {
     /// # Errors
     ///
     /// Returns an error if the percent is not between 0 and 100, inclusive.
-    pub fn new(percent: u8) -> Result<Self, PercentRangeError> {
+    pub fn new(percent: u8) -> Result<Self, RangeError> {
         match percent {
             0..=100 => Ok(Self(percent)),
-            percent => Err(PercentRangeError(percent)),
+            value => Err(RangeError {
+                value: value.into(),
+                start: 0,
+                end: 100,
+            }),
         }
     }
 
@@ -446,14 +478,20 @@ impl Percent {
     }
 }
 
-/// Error returned when attempting to create a [`Percent`] and the value is not between 0 and 100,
-/// inclusive.
+/// Error returned when trying to convert an integer into a type with a limited range.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
-#[error("percent `{0}` is not between 0 and 100")]
-pub struct PercentRangeError(u8);
+#[error("value `{value}` is not between {start} and {end}")]
+pub struct RangeError {
+    /// Value attempted to convert from.
+    value: i64,
+    /// Start of the valid range.
+    start: i64,
+    /// End of the valid range.
+    end: i64,
+}
 
 impl TryFrom<u8> for Percent {
-    type Error = PercentRangeError;
+    type Error = RangeError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Self::new(value)
@@ -725,6 +763,54 @@ pub struct Logging {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+/// Preference for a [`Service`] container to be killed by the platform in the case of memory
+/// starvation.
+///
+/// Must be between -1000 and 1000, inclusive.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#oom_score_adj)
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[serde(into = "i16", try_from = "i16")]
+pub struct OomScoreAdj(i16);
+
+impl OomScoreAdj {
+    /// Create a new [`OomScoreAdj`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not between -1000 and 1000, inclusive.
+    pub fn new(oom_score_adj: i16) -> Result<Self, RangeError> {
+        match oom_score_adj {
+            -1000..=1000 => Ok(Self(oom_score_adj)),
+            value => Err(RangeError {
+                value: value.into(),
+                start: -1000,
+                end: 1000,
+            }),
+        }
+    }
+}
+
+impl TryFrom<i16> for OomScoreAdj {
+    type Error = RangeError;
+
+    fn try_from(value: i16) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<OomScoreAdj> for i16 {
+    fn from(value: OomScoreAdj) -> Self {
+        value.0
+    }
+}
+
+impl PartialEq<i16> for OomScoreAdj {
+    fn eq(&self, other: &i16) -> bool {
+        self.0.eq(other)
+    }
 }
 
 #[cfg(test)]

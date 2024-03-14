@@ -10,6 +10,8 @@ use compose_spec_macros::SerializeDisplay;
 use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
 
+use crate::serde::error_chain;
+
 /// A value representing a number of bytes.
 ///
 /// [`Serialize`]s to the string "{value}{unit}", where unit is "b", "kb", "mb", or "gb".
@@ -55,6 +57,12 @@ impl ByteValue {
             Self::Megabytes(_) => "mb",
             Self::Gigabytes(_) => "gb",
         }
+    }
+}
+
+impl Default for ByteValue {
+    fn default() -> Self {
+        Self::Bytes(0)
     }
 }
 
@@ -155,7 +163,7 @@ impl<'de> de::Visitor<'de> for Visitor {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        v.parse().map_err(de::Error::custom)
+        v.parse().map_err(error_chain)
     }
 }
 
