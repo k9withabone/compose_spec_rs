@@ -1,5 +1,7 @@
 //! Provides [`MemswapLimit`] for the `memswap_limit` field of [`Service`](super::Service).
 
+use std::fmt::{self, Formatter};
+
 use serde::{
     de::{self, IntoDeserializer, Unexpected},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -50,7 +52,7 @@ struct Visitor;
 impl<'de> de::Visitor<'de> for Visitor {
     type Value = MemswapLimit;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str("a byte value (string or integer) or -1")
     }
 

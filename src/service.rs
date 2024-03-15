@@ -64,6 +64,7 @@ pub use self::{
     memswap_limit::MemswapLimit,
     network_config::{MacAddress, NetworkConfig},
     platform::Platform,
+    ports::Ports,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
     user_or_group::UserOrGroup,
 };
@@ -458,6 +459,14 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#platform)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub platform: Option<Platform>,
+
+    /// Container ports to publish to the host.
+    ///
+    /// Note: Port mapping cannot be used with [`NetworkMode::Host`](network_config::NetworkMode::Host).
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#ports)
+    #[serde(default, skip_serializing_if = "Ports::is_empty")]
+    pub ports: Ports,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

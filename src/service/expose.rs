@@ -5,12 +5,9 @@ use std::{
     str::FromStr,
 };
 
-use serde::{
-    de::{self, IntoDeserializer},
-    Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::serde::{forward_visitor, FromStrVisitor};
+use crate::serde::FromStrOrU16Visitor;
 
 use super::ports::{ParseRangeError, Protocol, Range};
 
@@ -100,43 +97,8 @@ impl Serialize for Expose {
 
 impl<'de> Deserialize<'de> for Expose {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_any(Visitor)
-    }
-}
-
-/// [`de::Visitor`] for deserializing [`Expose`].
-struct Visitor;
-
-impl<'de> de::Visitor<'de> for Visitor {
-    type Value = Expose;
-
-    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-        formatter.write_str("an integer or string representing a port or port range")
-    }
-
-    forward_visitor! {
-        visit_u16,
-        visit_i8: i8,
-        visit_i16: i16,
-        visit_i32: i32,
-        visit_i64: i64,
-        visit_i128: i128,
-        visit_u32: u32,
-        visit_u64: u64,
-        visit_u128: u128,
-    }
-
-    fn visit_u8<E: de::Error>(self, v: u8) -> Result<Self::Value, E> {
-        self.visit_u16(v.into())
-    }
-
-    fn visit_u16<E: de::Error>(self, v: u16) -> Result<Self::Value, E> {
-        Ok(v.into())
-    }
-
-    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        FromStrVisitor::new("a string representing a port or port range")
-            .deserialize(v.into_deserializer())
+        FromStrOrU16Visitor::new("an integer or string representing a port or port range")
+            .deserialize(deserializer)
     }
 }
 

@@ -393,10 +393,24 @@ impl Network {
     /// Returns `true` if the network configuration is empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        // let Self { extensions } = self;
+        let Self {
+            aliases,
+            ipv4_address,
+            ipv6_address,
+            link_local_ips,
+            mac_address,
+            priority,
+            extensions,
+        } = self;
 
-        // extensions.is_empty()
-        true
+        aliases.is_empty()
+            && ipv4_address.is_none()
+            && ipv6_address.is_none()
+            && link_local_ips.is_empty()
+            && mac_address.is_none()
+            && priority.is_none()
+            && priority.is_none()
+            && extensions.is_empty()
     }
 }
 

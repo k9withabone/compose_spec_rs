@@ -389,6 +389,80 @@ where
     }
 }
 
+/// A [`Visitor`] for deserializing via [`FromStr`] or from a [`u16`].
+pub(crate) struct FromStrOrU16Visitor<V> {
+    expecting: &'static str,
+    value: PhantomData<V>,
+}
+
+impl<V> FromStrOrU16Visitor<V> {
+    /// Create a new [`FromStrOrU16Visitor`].
+    ///
+    /// `expecting` should complete the sentence "This Visitor expects to receive ...",
+    /// the [`Default`] implementation uses "a string or integer".
+    pub fn new(expecting: &'static str) -> Self {
+        Self {
+            expecting,
+            value: PhantomData,
+        }
+    }
+}
+
+impl<V> FromStrOrU16Visitor<V>
+where
+    u16: Into<V>,
+    V: FromStr,
+    V::Err: Error,
+{
+    /// Alias for `deserializer.deserialize_any(visitor)`.
+    pub fn deserialize<'de, D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
+        deserializer.deserialize_any(self)
+    }
+}
+
+impl<V> Default for FromStrOrU16Visitor<V> {
+    fn default() -> Self {
+        Self::new("a string or integer")
+    }
+}
+
+impl<'de, V> Visitor<'de> for FromStrOrU16Visitor<V>
+where
+    u16: Into<V>,
+    V: FromStr,
+    V::Err: Error,
+{
+    type Value = V;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str(self.expecting)
+    }
+
+    forward_visitor! {
+        visit_u16,
+        visit_i8: i8,
+        visit_i16: i16,
+        visit_i32: i32,
+        visit_i64: i64,
+        visit_i128: i128,
+        visit_u32: u32,
+        visit_u64: u64,
+        visit_u128: u128,
+    }
+
+    fn visit_u8<E: de::Error>(self, v: u8) -> Result<Self::Value, E> {
+        self.visit_u16(v.into())
+    }
+
+    fn visit_u16<E: de::Error>(self, v: u16) -> Result<Self::Value, E> {
+        Ok(v.into())
+    }
+
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        v.parse().map_err(error_chain)
+    }
+}
+
 /// Map a type implementing [`Error`] to one implementing [`de::Error`] by using
 /// [`de::Error::custom()`] with a string of all of the error's sources.
 pub(crate) fn error_chain<T, E>(error: T) -> E
