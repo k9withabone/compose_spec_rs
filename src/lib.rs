@@ -101,13 +101,13 @@ macro_rules! impl_from_str {
                 impl TryFrom<&str> for $Ty => $Error,
                 impl TryFrom<String> for $Ty => $Error,
                 impl TryFrom<Box<str>> for $Ty => $Error,
-                impl<'a> TryFrom<std::borrow::Cow<'a, str>> for $Ty => $Error,
+                impl TryFrom<std::borrow::Cow<'_, str>> for $Ty => $Error,
             }
         )*
     };
-    ($(impl$(<$lifetime:lifetime>)? TryFrom<$From:ty> for $Ty:ty => $Error:ty,)*) => {
+    ($(impl TryFrom<$From:ty> for $Ty:ty => $Error:ty,)*) => {
         $(
-            impl$(<$lifetime>)? TryFrom<$From> for $Ty {
+            impl TryFrom<$From> for $Ty {
                 type Error = $Error;
 
                 fn try_from(value: $From) -> Result<Self, Self::Error> {
@@ -130,13 +130,13 @@ macro_rules! impl_from_str {
                 impl From<&str> for $Ty,
                 impl From<String> for $Ty,
                 impl From<Box<str>> for $Ty,
-                impl<'a> From<std::borrow::Cow<'a, str>> for $Ty,
+                impl From<std::borrow::Cow<'_, str>> for $Ty,
             }
         )*
     };
-    ($(impl$(<$lifetime:lifetime>)? From<$From:ty> for $Ty:ty,)*) => {
+    ($(impl From<$From:ty> for $Ty:ty,)*) => {
         $(
-            impl$(<$lifetime>)? From<$From> for $Ty {
+            impl From<$From> for $Ty {
                 fn from(value: $From) -> Self {
                     Self::parse(value)
                 }

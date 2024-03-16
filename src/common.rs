@@ -404,8 +404,8 @@ impl From<Box<str>> for Value {
     }
 }
 
-impl<'a> From<Cow<'a, str>> for Value {
-    fn from(value: Cow<'a, str>) -> Self {
+impl From<Cow<'_, str>> for Value {
+    fn from(value: Cow<str>) -> Self {
         Self::String(value.into_owned())
     }
 }

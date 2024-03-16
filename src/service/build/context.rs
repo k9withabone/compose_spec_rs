@@ -159,8 +159,8 @@ impl From<Box<str>> for Context {
     }
 }
 
-impl<'a> From<Cow<'a, str>> for Context {
-    fn from(value: Cow<'a, str>) -> Self {
+impl From<Cow<'_, str>> for Context {
+    fn from(value: Cow<str>) -> Self {
         value
             .parse()
             .map_or_else(|_| Self::Path(value.into_owned().into()), Self::Url)
@@ -173,8 +173,8 @@ impl From<&Path> for Context {
     }
 }
 
-impl<'a> From<Cow<'a, Path>> for Context {
-    fn from(value: Cow<'a, Path>) -> Self {
+impl From<Cow<'_, Path>> for Context {
+    fn from(value: Cow<Path>) -> Self {
         Self::Path(value.into_owned())
     }
 }

@@ -198,10 +198,10 @@ macro_rules! key_impls {
                 }
             }
 
-            impl<'a> TryFrom<std::borrow::Cow<'a, str>> for $Ty {
+            impl TryFrom<std::borrow::Cow<'_, str>> for $Ty {
                 type Error = $Error;
 
-                fn try_from(value: std::borrow::Cow<'a, str>) -> Result<Self, Self::Error> {
+                fn try_from(value: std::borrow::Cow<str>) -> Result<Self, Self::Error> {
                     Self::new(value)
                 }
             }
