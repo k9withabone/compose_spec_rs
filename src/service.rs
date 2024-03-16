@@ -578,6 +578,24 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
     pub sysctls: ListOrMap,
 
+    /// Mount temporary file systems inside the container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#tmpfs)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tmpfs: Option<ItemOrList<PathBuf>>,
+
+    /// Whether to run the container with a TTY.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#tty)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub tty: bool,
+
+    /// Override the default ulimits for the container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#ulimits)
+    #[serde(default, skip_serializing_if = "Ulimits::is_empty")]
+    pub ulimits: Ulimits,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
