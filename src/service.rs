@@ -40,7 +40,7 @@ use crate::{
     common::key_impls,
     impl_from_str,
     serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
-    AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, MapKey,
+    AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, Map,
     ShortOrLong, Value,
 };
 
@@ -548,7 +548,7 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Not::not")]
     pub stdin_open: bool,
 
-    /// How long to wait when attempting to stop a container before sending the SIGKILL signal.
+    /// How long to wait when attempting to stop a container before sending `SIGKILL`.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#stop_grace_period)
     #[serde(
@@ -557,6 +557,26 @@ pub struct Service {
         with = "duration_option"
     )]
     pub stop_grace_period: Option<Duration>,
+
+    /// Signal to use to stop the container.
+    ///
+    /// Default is `SIGTERM`.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#stop_signal)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_signal: Option<String>,
+
+    /// Storage driver options.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#storage_opt)
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub storage_opt: Map,
+
+    /// Kernel parameters to set in the container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#sysctls)
+    #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
+    pub sysctls: ListOrMap,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
@@ -915,8 +935,8 @@ pub struct Logging {
     pub driver: Option<String>,
 
     /// Driver specific options.
-    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
-    pub options: IndexMap<MapKey, Option<Value>>,
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub options: Map,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

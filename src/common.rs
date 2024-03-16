@@ -137,8 +137,11 @@ pub enum ListOrMap {
     List(IndexSet<String>),
 
     /// Map with optional single values.
-    Map(IndexMap<MapKey, Option<Value>>),
+    Map(Map),
 }
+
+/// Map with optional single values.
+pub type Map = IndexMap<MapKey, Option<Value>>;
 
 impl ListOrMap {
     /// Returns `true` if the list or map contain no elements.
@@ -162,7 +165,7 @@ impl ListOrMap {
 
     /// Return [`Some`] if a map.
     #[must_use]
-    pub fn as_map(&self) -> Option<&IndexMap<MapKey, Option<Value>>> {
+    pub fn as_map(&self) -> Option<&Map> {
         if let Self::Map(v) = self {
             Some(v)
         } else {
@@ -205,7 +208,7 @@ impl ListOrMap {
     /// # Errors
     ///
     /// Returns an error if a key is not a valid [`MapKey`].
-    pub fn into_map(self) -> Result<IndexMap<MapKey, Option<Value>>, InvalidMapKeyError> {
+    pub fn into_map(self) -> Result<Map, InvalidMapKeyError> {
         self.into_map_split_on(&['='])
     }
 
@@ -218,10 +221,7 @@ impl ListOrMap {
     /// # Errors
     ///
     /// Returns an error if a key is not a valid [`MapKey`].
-    pub fn into_map_split_on(
-        self,
-        delimiters: &[char],
-    ) -> Result<IndexMap<MapKey, Option<Value>>, InvalidMapKeyError> {
+    pub fn into_map_split_on(self, delimiters: &[char]) -> Result<Map, InvalidMapKeyError> {
         match self {
             ListOrMap::List(list) => list
                 .into_iter()

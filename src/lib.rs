@@ -24,8 +24,8 @@ use indexmap::IndexMap;
 pub use self::{
     common::{
         AsShort, AsShortIter, ExtensionKey, Extensions, Identifier, InvalidExtensionKeyError,
-        InvalidIdentifierError, InvalidMapKeyError, ItemOrList, ListOrMap, MapKey, ShortOrLong,
-        Value, YamlValue,
+        InvalidIdentifierError, InvalidMapKeyError, ItemOrList, ListOrMap, Map, MapKey,
+        ShortOrLong, Value, YamlValue,
     },
     include::Include,
     name::{InvalidNameError, Name},
