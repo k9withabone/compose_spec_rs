@@ -42,20 +42,7 @@ pub fn into_short_iter(ports: Ports) -> impl Iterator<Item = Result<ShortPort, P
 /// [`ShortPort`] may have a range of container ports.
 pub fn into_long_iter(ports: Ports) -> impl Iterator<Item = Port> {
     ports.into_iter().flat_map(|port| match port {
-        ShortOrLong::Short(port) => {
-            let ShortPort {
-                host_ip,
-                ranges,
-                protocol,
-            } = port;
-
-            ShortOrLong::Short(ranges.into_iter().map(move |(host, container)| Port {
-                published: host.map(Into::into),
-                host_ip,
-                protocol: protocol.clone(),
-                ..container.into()
-            }))
-        }
+        ShortOrLong::Short(port) => ShortOrLong::Short(port.into_long_iter()),
         ShortOrLong::Long(port) => ShortOrLong::Long(std::iter::once(port)),
     })
 }
@@ -84,6 +71,10 @@ pub struct Port {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protocol: Option<Protocol>,
 
+    /// Application protocol (TCP/IP level 4 / OSI level 7) the port is used for.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_protocol: Option<String>,
+
     /// Port mode.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<Mode>,
@@ -103,6 +94,7 @@ impl PartialEq for Port {
             published,
             host_ip,
             protocol,
+            app_protocol,
             mode,
             extensions,
         } = self;
@@ -112,6 +104,7 @@ impl PartialEq for Port {
             && *published == other.published
             && *host_ip == other.host_ip
             && *protocol == other.protocol
+            && *app_protocol == other.app_protocol
             && *mode == other.mode
             && extensions.as_slice() == other.extensions.as_slice()
     }
@@ -125,6 +118,7 @@ impl Hash for Port {
             published,
             host_ip,
             protocol,
+            app_protocol,
             mode,
             extensions,
         } = self;
@@ -134,6 +128,7 @@ impl Hash for Port {
         published.hash(state);
         host_ip.hash(state);
         protocol.hash(state);
+        app_protocol.hash(state);
         mode.hash(state);
         extensions.as_slice().hash(state);
     }
@@ -149,6 +144,7 @@ impl Port {
             published: None,
             host_ip: None,
             protocol: None,
+            app_protocol: None,
             mode: None,
             extensions: Extensions::default(),
         }
@@ -161,6 +157,7 @@ impl Port {
     /// Returns ownership if this long syntax cannot be represented as the short syntax.
     pub fn into_short(self) -> Result<ShortPort, Self> {
         if self.name.is_none()
+            && self.app_protocol.is_none()
             && self.mode.is_none()
             && self.extensions.is_empty()
             && self.published.map_or(true, |range| range.end.is_none())
@@ -214,13 +211,40 @@ pub struct ShortPort {
     pub protocol: Option<Protocol>,
 }
 
-impl From<ShortRanges> for ShortPort {
-    fn from(ranges: ShortRanges) -> Self {
+impl ShortPort {
+    /// Create a new [`ShortPort`].
+    #[must_use]
+    pub fn new(ranges: ShortRanges) -> Self {
         Self {
             host_ip: None,
             ranges,
             protocol: None,
         }
+    }
+
+    /// Convert short port syntax into an [`Iterator`] of long [`Port`] syntax.
+    ///
+    /// One [`ShortPort`] may represent multiple [`Port`]s as a [`Port`] may only have one target
+    /// and a [`ShortPort`] may have a range of container ports.
+    pub fn into_long_iter(self) -> impl Iterator<Item = Port> {
+        let Self {
+            host_ip,
+            ranges,
+            protocol,
+        } = self;
+
+        ranges.into_iter().map(move |(host, container)| Port {
+            published: host.map(Into::into),
+            host_ip,
+            protocol: protocol.clone(),
+            ..container.into()
+        })
+    }
+}
+
+impl From<ShortRanges> for ShortPort {
+    fn from(ranges: ShortRanges) -> Self {
+        Self::new(ranges)
     }
 }
 
