@@ -3,7 +3,10 @@
 mod endpoint_mode;
 pub mod resources;
 
-use std::time::Duration;
+use std::{
+    fmt::{self, Display, Formatter},
+    time::Duration,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -97,6 +100,29 @@ pub enum Mode {
     /// A specified number of containers.
     #[default]
     Replicated,
+}
+
+impl Mode {
+    /// Replication mode as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Global => "global",
+            Self::Replicated => "replicated",
+        }
+    }
+}
+
+impl AsRef<str> for Mode {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 /// Constraints and preferences for the platform to select a physical node to run
@@ -197,6 +223,30 @@ pub enum RestartCondition {
     Any,
 }
 
+impl RestartCondition {
+    /// Restart condition as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::OnFailure => "on-failure",
+            Self::Any => "any",
+        }
+    }
+}
+
+impl AsRef<str> for RestartCondition {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for RestartCondition {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Update or rollback configuration.
 ///
 /// # Update Config
@@ -269,6 +319,29 @@ pub enum FailureAction {
     Pause,
 }
 
+impl FailureAction {
+    /// Failure action as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Continue => "continue",
+            Self::Pause => "pause",
+        }
+    }
+}
+
+impl AsRef<str> for FailureAction {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for FailureAction {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Order of operations during [updates or rollbacks](UpdateOrRollbackConfig).
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#rollback_config)
@@ -281,4 +354,27 @@ pub enum Order {
 
     /// The new task is started first, and the running tasks briefly overlap.
     StartFirst,
+}
+
+impl Order {
+    /// Order as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::StopFirst => "stop-first",
+            Self::StartFirst => "start-first",
+        }
+    }
+}
+
+impl AsRef<str> for Order {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for Order {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
 }

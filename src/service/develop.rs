@@ -1,6 +1,9 @@
 //! Provides [`Develop`] for the `develop` field of [`Service`](super::Service).
 
-use std::path::PathBuf;
+use std::{
+    fmt::{self, Display, Formatter},
+    path::PathBuf,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -54,7 +57,7 @@ pub struct WatchRule {
     pub extensions: Extensions,
 }
 
-/// Action to take when changes are detected.
+/// Action for a [`WatchRule`] to take when changes are detected.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/develop.md#action)
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,4 +75,28 @@ pub enum Action {
     /// restart the container.
     #[serde(rename = "sync+restart")]
     SyncAndRestart,
+}
+
+impl Action {
+    /// Action as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Rebuild => "rebuild",
+            Self::Sync => "sync",
+            Self::SyncAndRestart => "sync+restart",
+        }
+    }
+}
+
+impl AsRef<str> for Action {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for Action {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
 }

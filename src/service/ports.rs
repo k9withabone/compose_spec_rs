@@ -186,6 +186,7 @@ impl From<u16> for Port {
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#long-syntax-3)
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
 pub enum Mode {
     /// Publish to the host port on each node.
     Host,
@@ -193,6 +194,29 @@ pub enum Mode {
     /// Load balance the port.
     #[default]
     Ingress,
+}
+
+impl Mode {
+    /// Port mode as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Host => "host",
+            Self::Ingress => "ingress",
+        }
+    }
+}
+
+impl AsRef<str> for Mode {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 /// Short syntax for a port in a [`Service`](super::Service)'s [`Ports`].

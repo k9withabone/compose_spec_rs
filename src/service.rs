@@ -637,6 +637,30 @@ pub enum Condition {
     ServiceCompletedSuccessfully,
 }
 
+impl Condition {
+    /// Dependency condition as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ServiceStarted => "service_started",
+            Self::ServiceHealthy => "service_healthy",
+            Self::ServiceCompletedSuccessfully => "service_completed_successfully",
+        }
+    }
+}
+
+impl AsRef<str> for Condition {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for Condition {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl<'a> AsShortIter<'a> for IndexMap<Identifier, Dependency> {
     type Iter = Keys<'a, Identifier, Dependency>;
 
@@ -793,6 +817,26 @@ pub enum Uts {
     Host,
 }
 
+impl Uts {
+    /// UTS namespace mode as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        "host"
+    }
+}
+
+impl AsRef<str> for Uts {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for Uts {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Logging configuration for a [`Service`].
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#logging)
@@ -933,6 +977,31 @@ pub enum PullPolicy {
 
     /// Build the image.
     Build,
+}
+
+impl PullPolicy {
+    /// Pull policy as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Always => "always",
+            Self::Never => "never",
+            Self::Missing => "missing",
+            Self::Build => "build",
+        }
+    }
+}
+
+impl AsRef<str> for PullPolicy {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for PullPolicy {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 #[cfg(test)]
