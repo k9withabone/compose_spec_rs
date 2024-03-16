@@ -39,7 +39,10 @@ use thiserror::Error;
 use crate::{
     common::key_impls,
     impl_from_str,
-    serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
+    serde::{
+        default_true, display_from_str_option, duration_option, duration_us_option, skip_true,
+        ItemOrListVisitor,
+    },
     AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, Map,
     ShortOrLong, Value,
 };
@@ -595,6 +598,26 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#ulimits)
     #[serde(default, skip_serializing_if = "Ulimits::is_empty")]
     pub ulimits: Ulimits,
+
+    /// Override the user used to run the container process.
+    ///
+    /// The default is set by the image or is `root`.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#user)
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "display_from_str_option::serialize"
+    )]
+    pub user: Option<UserOrGroup>,
+
+    /// User namespace mode for the container.
+    ///
+    /// Supported values are platform specific.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#userns_mode)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub userns_mode: Option<String>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
