@@ -492,6 +492,26 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pull_policy: Option<PullPolicy>,
 
+    /// Whether the service container should be created with a read-only filesystem.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#privileged)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub read_only: bool,
+
+    /// Restart policy that the platform applies on container termination.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#restart)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub restart: Option<Restart>,
+
+    /// Runtime to use for the container.
+    ///
+    /// Available values are implementation specific.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#runtime)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<String>,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
@@ -999,6 +1019,49 @@ impl AsRef<str> for PullPolicy {
 }
 
 impl Display for PullPolicy {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Restart policy that the platform applies on [`Service`] container termination.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#restart)
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum Restart {
+    /// Do not restart the container under any circumstance.
+    #[default]
+    No,
+    /// Always restart the container until its removal.
+    Always,
+    /// Restart the container if the exit code indicates an error.
+    OnFailure,
+    /// Restart the container irrespective of the exit code, but stops restarting when the service
+    /// is stopped or removed.
+    UnlessStopped,
+}
+
+impl Restart {
+    /// Restart policy as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::No => "no",
+            Self::Always => "always",
+            Self::OnFailure => "on-failure",
+            Self::UnlessStopped => "unless-stopped",
+        }
+    }
+}
+
+impl AsRef<str> for Restart {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for Restart {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str(self.as_str())
     }
