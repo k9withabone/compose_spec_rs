@@ -37,6 +37,7 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 use crate::{
+    common::key_impls,
     impl_from_str,
     serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
     AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, MapKey,
@@ -73,6 +74,7 @@ pub use self::{
 /// scaled or replaced independently from other components.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md)
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Serialize, Deserialize, Debug, compose_spec_macros::Default, Clone, PartialEq)]
 pub struct Service {
     /// When defined and set to `false` Compose does not collect service logs, until you explicitly
@@ -468,6 +470,28 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Ports::is_empty")]
     pub ports: Ports,
 
+    /// Whether to to run the container with elevated privileges.
+    ///
+    /// Support and actual impacts are platform specific.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#privileged)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub privileged: bool,
+
+    /// List of named profiles for the service to be enabled under.
+    ///
+    /// If empty, the service is always enabled.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#profiles)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub profiles: IndexSet<Profile>,
+
+    /// When the platform should pull the service's image.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#pull_policy)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pull_policy: Option<PullPolicy>,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
@@ -837,6 +861,78 @@ impl PartialEq<i16> for OomScoreAdj {
     fn eq(&self, other: &i16) -> bool {
         self.0.eq(other)
     }
+}
+
+/// Profile for [`Service`] to be enabled under.
+///
+/// Profiles must be a valid [`Identifier`] and cannot start with an underscore (_), dot (.), or
+/// dash (-).
+#[derive(
+    SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+pub struct Profile(Identifier);
+
+impl Profile {
+    /// Create a new [`Profile`] from a string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the string starts with an underscore (_), dot (.), or dash (-), or is
+    /// not a valid [`Identifier`].
+    pub fn new<T>(profile: T) -> Result<Self, InvalidProfileError>
+    where
+        T: AsRef<str> + Into<Box<str>>,
+    {
+        // Regex pattern from compose-spec: [a-zA-Z0-9][a-zA-Z0-9_.-]+
+        if profile.as_ref().starts_with(['_', '.', '-']) {
+            Err(InvalidProfileError::Start)
+        } else {
+            Ok(Self(Identifier::new(profile)?))
+        }
+    }
+}
+
+/// Error returned when creating a new [`Profile`].
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum InvalidProfileError {
+    /// Profile started with an underscore (_), dot (.), or dash (-).
+    #[error("profile cannot start with an underscore (_), dot (.), or dash (-)")]
+    Start,
+
+    /// Profile was not a valid [`Identifier`].
+    #[error("profile not a valid identifier")]
+    Identifier(#[from] InvalidIdentifierError),
+}
+
+key_impls!(Profile => InvalidProfileError);
+
+impl From<Profile> for Identifier {
+    fn from(value: Profile) -> Self {
+        value.0
+    }
+}
+
+/// When the platform should pull a [`Service`]'s [`Image`].
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#pull_policy)
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PullPolicy {
+    /// Always pull the image from the registry.
+    Always,
+
+    /// Never pull the image from the registry and rely on the platform cached image.
+    ///
+    /// If there is no cached image, a failure is reported.
+    Never,
+
+    /// Pull the image only if it's not available in the platform cache.
+    #[serde(alias = "if_not_present")]
+    #[default]
+    Missing,
+
+    /// Build the image.
+    Build,
 }
 
 #[cfg(test)]

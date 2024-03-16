@@ -177,8 +177,8 @@ macro_rules! key_impls {
                 ///
                 /// Convenience method for `as_ref()` to a `&str`.
                 #[must_use]
-                pub const fn as_str(&self) -> &str {
-                    &self.0
+                pub fn as_str(&self) -> &str {
+                    self.0.as_ref()
                 }
             }
 
@@ -242,7 +242,7 @@ macro_rules! key_impls {
 
             impl From<$Ty> for Box<str> {
                 fn from(value: $Ty) -> Self {
-                    value.0
+                    value.0.into()
                 }
             }
 
