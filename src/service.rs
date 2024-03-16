@@ -536,6 +536,28 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
     pub security_opt: IndexSet<String>,
 
+    /// Size of the shared memory (`/dev/shm` on Linux) allowed for the container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#shm_size)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shm_size: Option<ByteValue>,
+
+    /// Whether to run the container with an allocated stdin.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#stdin_open)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub stdin_open: bool,
+
+    /// How long to wait when attempting to stop a container before sending the SIGKILL signal.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#stop_grace_period)
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "duration_option"
+    )]
+    pub stop_grace_period: Option<Duration>,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
