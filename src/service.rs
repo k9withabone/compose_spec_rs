@@ -512,6 +512,30 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runtime: Option<String>,
 
+    /// Default number of containers to deploy for this service.
+    ///
+    /// Must be consistent with the `replicas` field in [`Deploy`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#scale)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scale: Option<u64>,
+
+    /// Grant access to sensitive data defined by secrets.
+    ///
+    /// Services can only access secrets when explicitly granted by the `secrets` field.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#secrets)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub secrets: Vec<ShortOrLong<Identifier, ConfigOrSecret>>,
+
+    /// Container security options.
+    ///
+    /// Available values are platform specific.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#security_opt)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub security_opt: IndexSet<String>,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
