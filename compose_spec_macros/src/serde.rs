@@ -120,6 +120,8 @@ fn parse_expecting(attributes: &[Attribute]) -> Result<Option<LitStr>> {
                         expecting = meta.value()?.parse().map(Some)?;
                         Ok(())
                     }
+                } else if meta.path.is_ident("transparent") {
+                    Ok(())
                 } else {
                     Err(meta.error("unsupported serde attribute"))
                 }

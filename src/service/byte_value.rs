@@ -22,7 +22,7 @@ use crate::serde::error_chain;
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md#specifying-byte-values)
 ///
 /// [`Serialize`]: ::serde::Serialize
-#[derive(SerializeDisplay, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(SerializeDisplay, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ByteValue {
     /// Bytes (b)
     Bytes(u64),

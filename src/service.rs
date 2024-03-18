@@ -22,6 +22,7 @@ pub mod platform;
 pub mod ports;
 mod ulimit;
 pub mod user_or_group;
+pub mod volumes;
 
 use std::{
     fmt::{self, Display, Formatter},
@@ -71,6 +72,7 @@ pub use self::{
     ports::Ports,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
     user_or_group::UserOrGroup,
+    volumes::Volumes,
 };
 
 /// A service is an abstract definition of a computing resource within an application which can be
@@ -618,6 +620,12 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#userns_mode)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub userns_mode: Option<String>,
+
+    /// Volumes to mount within the container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#volumes)
+    #[serde(default, skip_serializing_if = "Volumes::is_empty")]
+    pub volumes: Volumes,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

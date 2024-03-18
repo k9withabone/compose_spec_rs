@@ -69,6 +69,38 @@ pub struct Compose {
     pub extensions: Extensions,
 }
 
+/// Implement [`From`] for `Ty` using `f`.
+macro_rules! impl_from {
+    ($Ty:ident::$f:ident, $($From:ty),+ $(,)?) => {
+        $(
+            impl From<$From> for $Ty {
+                fn from(value: $From) -> Self {
+                    Self::$f(value)
+                }
+            }
+        )+
+    };
+}
+
+use impl_from;
+
+/// Implement [`TryFrom`] for `Ty` using `f` which returns [`Result<Ty, Error>`].
+macro_rules! impl_try_from {
+    ($Ty:ident::$f:ident -> $Error:ty, $($From:ty),+ $(,)?) => {
+        $(
+            impl TryFrom<$From> for $Ty {
+                type Error = $Error;
+
+                fn try_from(value: $From) -> Result<Self, Self::Error> {
+                    Self::$f(value)
+                }
+            }
+        )+
+    };
+}
+
+use impl_try_from;
+
 /// Implement string conversion traits for types which have a `parse` method.
 ///
 /// For types with an error, the macro creates implementations of:
@@ -87,7 +119,7 @@ pub struct Compose {
 /// - [`From<Box<str>>`]
 /// - [`From<Cow<str>>`]
 macro_rules! impl_from_str {
-    ($($Ty:ty => $Error:ty),* $(,)?) => {
+    ($($Ty:ident => $Error:ty),* $(,)?) => {
         $(
             impl std::str::FromStr for $Ty {
                 type Err = $Error;
@@ -97,26 +129,16 @@ macro_rules! impl_from_str {
                 }
             }
 
-            impl_from_str! {
-                impl TryFrom<&str> for $Ty => $Error,
-                impl TryFrom<String> for $Ty => $Error,
-                impl TryFrom<Box<str>> for $Ty => $Error,
-                impl TryFrom<std::borrow::Cow<'_, str>> for $Ty => $Error,
+            crate::impl_try_from! {
+                $Ty::parse -> $Error,
+                &str,
+                String,
+                Box<str>,
+                std::borrow::Cow<'_, str>,
             }
         )*
     };
-    ($(impl TryFrom<$From:ty> for $Ty:ty => $Error:ty,)*) => {
-        $(
-            impl TryFrom<$From> for $Ty {
-                type Error = $Error;
-
-                fn try_from(value: $From) -> Result<Self, Self::Error> {
-                    Self::parse(value)
-                }
-            }
-        )*
-    };
-    ($($Ty:ty),* $(,)?) => {
+    ($($Ty:ident),* $(,)?) => {
         $(
             impl std::str::FromStr for $Ty {
                 type Err = std::convert::Infallible;
@@ -126,21 +148,7 @@ macro_rules! impl_from_str {
                 }
             }
 
-            impl_from_str! {
-                impl From<&str> for $Ty,
-                impl From<String> for $Ty,
-                impl From<Box<str>> for $Ty,
-                impl From<std::borrow::Cow<'_, str>> for $Ty,
-            }
-        )*
-    };
-    ($(impl From<$From:ty> for $Ty:ty,)*) => {
-        $(
-            impl From<$From> for $Ty {
-                fn from(value: $From) -> Self {
-                    Self::parse(value)
-                }
-            }
+            crate::impl_from!($Ty::parse, &str, String, Box<str>, std::borrow::Cow<'_, str>);
         )*
     };
 }

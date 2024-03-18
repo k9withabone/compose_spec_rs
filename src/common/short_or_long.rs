@@ -20,7 +20,13 @@ use serde::{
 };
 
 use crate::{
-    service::{build::Context, env_file, Build, ConfigOrSecret, Ulimit},
+    service::{
+        build::Context,
+        env_file,
+        ports::{Port, ShortPort},
+        volumes::{Mount, ShortVolume},
+        Build, ConfigOrSecret, Ulimit,
+    },
     Identifier, Include,
 };
 
@@ -219,6 +225,8 @@ impl_from_short! {
     Identifier,
     IndexSet<Identifier>,
     Context,
+    ShortPort,
+    ShortVolume,
 }
 
 impl<L> From<String> for ShortOrLong<PathBuf, L> {
@@ -258,6 +266,8 @@ impl_long_conversion! {
     ConfigOrSecret,
     Ulimit,
     env_file::Config,
+    Port,
+    Mount,
 }
 
 impl<S, K, V> From<IndexMap<K, V>> for ShortOrLong<S, IndexMap<K, V>> {

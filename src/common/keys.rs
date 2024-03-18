@@ -170,7 +170,7 @@ pub enum InvalidExtensionKeyError {
 ///
 /// The type must have a `new()` function which returns a [`Result<Self, Error>`].
 macro_rules! key_impls {
-    ($($Ty:ty => $Error:ty),* $(,)?) => {
+    ($($Ty:ident => $Error:ty),* $(,)?) => {
         $(
             impl $Ty {
                 /// A string slice of the inner value.
@@ -182,36 +182,12 @@ macro_rules! key_impls {
                 }
             }
 
-            impl TryFrom<String> for $Ty {
-                type Error = $Error;
-
-                fn try_from(value: String) -> Result<Self, Self::Error> {
-                    Self::new(value)
-                }
-            }
-
-            impl TryFrom<Box<str>> for $Ty {
-                type Error = $Error;
-
-                fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
-                    Self::new(value)
-                }
-            }
-
-            impl TryFrom<std::borrow::Cow<'_, str>> for $Ty {
-                type Error = $Error;
-
-                fn try_from(value: std::borrow::Cow<str>) -> Result<Self, Self::Error> {
-                    Self::new(value)
-                }
-            }
-
-            impl TryFrom<&str> for $Ty {
-                type Error = $Error;
-
-                fn try_from(value: &str) -> Result<Self, Self::Error> {
-                    Self::new(value)
-                }
+            crate::impl_try_from! {
+                $Ty::new -> $Error,
+                String,
+                Box<str>,
+                &str,
+                std::borrow::Cow<'_, str>,
             }
 
             impl std::str::FromStr for $Ty {
