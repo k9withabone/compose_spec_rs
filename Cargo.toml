@@ -41,9 +41,9 @@ itoa = "1"
 serde = { workspace = true, features = ["derive"] }
 serde-untagged = "0.1"
 serde_yaml.workspace = true
-thiserror = "1.0.7"
+thiserror = "1.0.28"
 url = { version = "2.3", features = ["serde"] }
 
 [dev-dependencies]
 pomsky-macro = "0.11"
-proptest = "1"
+proptest = "1.3.1"
