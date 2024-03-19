@@ -5,7 +5,6 @@ pub mod build;
 mod byte_value;
 mod cgroup;
 mod config_or_secret;
-mod container_name;
 mod cpuset;
 mod credential_spec;
 pub mod deploy;
@@ -38,7 +37,6 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 use crate::{
-    common::key_impls,
     impl_from_str,
     serde::{
         default_true, display_from_str_option, duration_option, duration_us_option, skip_true,
@@ -55,7 +53,6 @@ pub use self::{
     byte_value::{ByteValue, ParseByteValueError},
     cgroup::{Cgroup, ParseCgroupError},
     config_or_secret::ConfigOrSecret,
-    container_name::{ContainerName, InvalidContainerNameError},
     cpuset::{CpuSet, ParseCpuSetError},
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
     deploy::Deploy,
@@ -218,7 +215,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#container_name)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub container_name: Option<ContainerName>,
+    pub container_name: Option<Identifier>,
 
     /// Credential spec for a managed service account.
     ///
@@ -489,7 +486,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#profiles)
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
-    pub profiles: IndexSet<Profile>,
+    pub profiles: IndexSet<Identifier>,
 
     /// When the platform should pull the service's image.
     ///
@@ -626,6 +623,18 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#volumes)
     #[serde(default, skip_serializing_if = "Volumes::is_empty")]
     pub volumes: Volumes,
+
+    /// Mount all of the volumes from other services or externally managed containers.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#volumes_from)
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    pub volumes_from: IndexSet<VolumesFrom>,
+
+    /// Override the container's working directory set by the image.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#working_dir)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub working_dir: Option<PathBuf>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
@@ -1042,55 +1051,6 @@ impl PartialEq<i16> for OomScoreAdj {
     }
 }
 
-/// Profile for [`Service`] to be enabled under.
-///
-/// Profiles must be a valid [`Identifier`] and cannot start with an underscore (_), dot (.), or
-/// dash (-).
-#[derive(
-    SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
-)]
-pub struct Profile(Identifier);
-
-impl Profile {
-    /// Create a new [`Profile`] from a string.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the string starts with an underscore (_), dot (.), or dash (-), or is
-    /// not a valid [`Identifier`].
-    pub fn new<T>(profile: T) -> Result<Self, InvalidProfileError>
-    where
-        T: AsRef<str> + Into<Box<str>>,
-    {
-        // Regex pattern from compose-spec: [a-zA-Z0-9][a-zA-Z0-9_.-]+
-        if profile.as_ref().starts_with(['_', '.', '-']) {
-            Err(InvalidProfileError::Start)
-        } else {
-            Ok(Self(Identifier::new(profile)?))
-        }
-    }
-}
-
-/// Error returned when creating a new [`Profile`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum InvalidProfileError {
-    /// Profile started with an underscore (_), dot (.), or dash (-).
-    #[error("profile cannot start with an underscore (_), dot (.), or dash (-)")]
-    Start,
-
-    /// Profile was not a valid [`Identifier`].
-    #[error("profile not a valid identifier")]
-    Identifier(#[from] InvalidIdentifierError),
-}
-
-key_impls!(Profile => InvalidProfileError);
-
-impl From<Profile> for Identifier {
-    fn from(value: Profile) -> Self {
-        value.0
-    }
-}
-
 /// When the platform should pull a [`Service`]'s [`Image`].
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#pull_policy)
@@ -1182,14 +1142,181 @@ impl Display for Restart {
     }
 }
 
+/// [`Service`] or external container to mount all volumes from to another [`Service`] container.
+///
+/// (De)serializes from/to a string in the format `[container:]{identifier}[:ro|rw]`.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#volumes_from)
+#[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct VolumesFrom {
+    /// Source of the volumes to mount, either another service or an externally managed container.
+    pub source: VolumesFromSource,
+    /// Whether to mount the volumes as read-only.
+    pub read_only: bool,
+}
+
+impl VolumesFrom {
+    /// Suffix which marks the source volumes as read-only.
+    const READ_ONLY_SUFFIX: &'static str = ":ro";
+
+    /// Parse a [`VolumesFrom`] from a string in the format `[container:]{identifier}[:ro|rw]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the service or container is not a valid [`Identifier`].
+    pub fn parse<T>(volumes_from: T) -> Result<Self, InvalidIdentifierError>
+    where
+        T: AsRef<str> + TryInto<Identifier>,
+        T::Error: Into<InvalidIdentifierError>,
+    {
+        if let Some(volumes_from) = volumes_from.as_ref().strip_suffix(Self::READ_ONLY_SUFFIX) {
+            volumes_from.parse().map(|source| Self {
+                source,
+                read_only: true,
+            })
+        } else if let Some(volumes_from) = volumes_from.as_ref().strip_suffix(":rw") {
+            volumes_from.parse().map(VolumesFromSource::into)
+        } else {
+            VolumesFromSource::parse(volumes_from).map(Into::into)
+        }
+    }
+}
+
+impl_from_str!(VolumesFrom => InvalidIdentifierError);
+
+impl Display for VolumesFrom {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let Self { source, read_only } = self;
+
+        source.fmt(f)?;
+
+        if *read_only {
+            f.write_str(Self::READ_ONLY_SUFFIX)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl From<VolumesFromSource> for VolumesFrom {
+    fn from(source: VolumesFromSource) -> Self {
+        Self {
+            source,
+            read_only: false,
+        }
+    }
+}
+
+impl From<VolumesFrom> for String {
+    fn from(value: VolumesFrom) -> Self {
+        if value.read_only {
+            value.to_string()
+        } else {
+            value.source.into()
+        }
+    }
+}
+
+/// Source of volumes to mount to a [`Service`] container via [`VolumesFrom`].
+///
+/// (De)serializes from/to a string in the format `[container:]{identifier}`.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#volumes_from)
+#[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum VolumesFromSource {
+    /// [`Service`] to mount volumes from.
+    Service(Identifier),
+    /// Externally managed container to mount volumes from.
+    Container(Identifier),
+}
+
+impl VolumesFromSource {
+    /// String prefix for [`Self::Container`].
+    const CONTAINER_PREFIX: &'static str = "container:";
+
+    /// Parse a [`VolumesFromSource`] from a string in the format `[container:]{identifier}`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the service or container is not a valid [`Identifier`].
+    pub fn parse<T>(source: T) -> Result<Self, InvalidIdentifierError>
+    where
+        T: AsRef<str> + TryInto<Identifier>,
+        T::Error: Into<InvalidIdentifierError>,
+    {
+        if let Some(container) = source.as_ref().strip_prefix(Self::CONTAINER_PREFIX) {
+            container.parse().map(Self::Container)
+        } else {
+            source.try_into().map(Self::Service).map_err(Into::into)
+        }
+    }
+}
+
+impl_from_str!(VolumesFromSource => InvalidIdentifierError);
+
+impl Display for VolumesFromSource {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Service(service) => service.fmt(f),
+            Self::Container(container) => write!(f, "{}{container}", Self::CONTAINER_PREFIX),
+        }
+    }
+}
+
+impl From<VolumesFromSource> for String {
+    fn from(value: VolumesFromSource) -> Self {
+        match value {
+            VolumesFromSource::Service(service) => service.into(),
+            VolumesFromSource::Container(_) => value.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
-    use proptest::{arbitrary::Arbitrary, path::PathParams, strategy::Strategy};
+    use proptest::{
+        arbitrary::{any, Arbitrary},
+        path::PathParams,
+        prop_assert_eq, prop_oneof, proptest,
+        strategy::{Just, Strategy},
+    };
+
+    use super::*;
 
     /// [`Strategy`] for generating [`PathBuf`]s that do not contain colons.
     pub(super) fn path_no_colon() -> impl Strategy<Value = PathBuf> {
         PathBuf::arbitrary_with(PathParams::default().with_component_regex("[^:]*"))
+    }
+
+    mod volumes_from {
+        use super::*;
+
+        proptest! {
+            #[test]
+            fn parse_no_panic(string: String) {
+                let _ = string.parse::<VolumesFrom>();
+            }
+
+            #[test]
+            fn round_trip(volumes_from in volumes_from()) {
+                prop_assert_eq!(&volumes_from, &volumes_from.to_string().parse()?);
+            }
+        }
+    }
+
+    fn volumes_from() -> impl Strategy<Value = VolumesFrom> {
+        any::<(Identifier, bool)>()
+            .prop_flat_map(|(ident, read_only)| {
+                (
+                    prop_oneof![
+                        Just(VolumesFromSource::Service(ident.clone())),
+                        Just(VolumesFromSource::Container(ident))
+                    ],
+                    Just(read_only),
+                )
+            })
+            .prop_map(|(source, read_only)| VolumesFrom { source, read_only })
     }
 }

@@ -701,6 +701,7 @@ impl<'de> Deserialize<'de> for SELinux {
 #[cfg(test)]
 mod tests {
     use proptest::{
+        arbitrary::any,
         option, prop_assert_eq, prop_compose, prop_oneof, proptest,
         strategy::{Just, Strategy},
     };
@@ -754,9 +755,7 @@ mod tests {
     fn source() -> impl Strategy<Value = Source> {
         prop_oneof![
             host_path().prop_map_into(),
-            "[a-zA-Z0-9_-][a-zA-Z0-9._-]*"
-                .prop_map(Identifier::new_unchecked)
-                .prop_map_into(),
+            any::<Identifier>().prop_map_into(),
         ]
     }
 

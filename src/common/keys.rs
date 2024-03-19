@@ -7,8 +7,8 @@ use thiserror::Error;
 ///
 /// Used to identify top-level items like `services`, `networks`, and `volumes`.
 ///
-/// Identifiers cannot be empty and all characters must be an ASCII letter (a-z, A-Z),
-/// a digit (0-9), a period (.), an underscore (_), or a dash (-).
+/// Identifiers must not be empty, start with an ASCII letter (a-z, A-Z) or digit (0-9), and only
+/// contain ASCII letters (a-z, A-Z), digits (0-9), dots (.), underscores (_), or dashes (-).
 #[derive(
     SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
@@ -19,31 +19,28 @@ impl Identifier {
     ///
     /// # Errors
     ///
-    /// Returns an error if the given string is not a valid [`Identifier`].
-    /// Identifiers cannot be empty and all characters must be an ASCII letter (a-z, A-Z),
-    /// a digit (0-9), a period (.), an underscore (_), or a dash (-).
+    /// Returns an error if the given string is not a valid [`Identifier`]. Identifiers must not be
+    /// empty, start with an ASCII letter (a-z, A-Z) or digit (0-9), and only contain ASCII letters
+    /// (a-z, A-Z), digits (0-9), dots (.), underscores (_), or dashes (-).
     pub fn new<T>(identifier: T) -> Result<Self, InvalidIdentifierError>
     where
         T: AsRef<str> + Into<Box<str>>,
     {
-        let ident_str = identifier.as_ref();
+        // Valid identifier pattern: "[a-zA-Z0-9][a-zA-Z0-9._-]*"
+        let mut chars = identifier.as_ref().chars();
 
-        // pattern from schema: "^[a-zA-Z0-9._-]+$"
-        if ident_str.is_empty() {
-            return Err(InvalidIdentifierError::Empty);
+        let first = chars.next().ok_or(InvalidIdentifierError::Empty)?;
+        if !first.is_ascii_alphanumeric() {
+            return Err(InvalidIdentifierError::Start(first));
         }
-        for char in ident_str.chars() {
+
+        for char in chars {
             if !(char.is_ascii_alphanumeric() || matches!(char, '.' | '_' | '-')) {
                 return Err(InvalidIdentifierError::Character(char));
             }
         }
 
         Ok(Self(identifier.into()))
-    }
-
-    /// Create a new [`Identifier`] without checking its constraints.
-    pub(crate) fn new_unchecked(identifier: impl Into<Box<str>>) -> Self {
-        Self(identifier.into())
     }
 }
 
@@ -53,10 +50,23 @@ pub enum InvalidIdentifierError {
     /// Empty identifier
     #[error("identifier cannot be empty")]
     Empty,
-    /// Invalid character
+
+    /// Invalid start character.
+    ///
+    /// Identifiers must start with an ASCII letter (a-z, A-Z) or digit (0-9).
     #[error(
-        "invalid character `{0}`, characters in an identifier must be an ASCII letter (a-z, A-Z), 
-            a digit (0-9), a period (.), an underscore (_), or a dash (-)"
+        "invalid start character `{0}`, identifiers must start with an ASCII letter (a-z, A-Z) \
+            or digit (0-9)"
+    )]
+    Start(char),
+
+    /// Invalid character.
+    ///
+    /// Identifiers must contain only ASCII letters (a-z, A-Z), digits (0-9),
+    /// dots (.), underscores (_), or dashes (-).
+    #[error(
+        "invalid character `{0}`, identifiers must contain only ASCII letters (a-z, A-Z), \
+            digits (0-9), dots (.), underscores (_), or dashes (-)"
     )]
     Character(char),
 }
@@ -237,4 +247,26 @@ key_impls! {
     Identifier => InvalidIdentifierError,
     MapKey => InvalidMapKeyError,
     ExtensionKey => InvalidExtensionKeyError,
+}
+
+#[cfg(test)]
+mod tests {
+    use proptest::{
+        arbitrary::Arbitrary,
+        strategy::{BoxedStrategy, Strategy},
+    };
+
+    use super::*;
+
+    impl Arbitrary for Identifier {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary_with((): Self::Parameters) -> Self::Strategy {
+            "[a-zA-Z0-9][a-zA-Z0-9._-]*"
+                .prop_map_into()
+                .prop_map(Self)
+                .boxed()
+        }
+    }
 }
