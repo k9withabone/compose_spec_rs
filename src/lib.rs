@@ -118,6 +118,8 @@ use impl_try_from;
 /// - [`From<String>`]
 /// - [`From<Box<str>>`]
 /// - [`From<Cow<str>>`]
+///
+/// [`FromStr`]: std::str::FromStr
 macro_rules! impl_from_str {
     ($($Ty:ident => $Error:ty),* $(,)?) => {
         $(
