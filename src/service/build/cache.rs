@@ -2,7 +2,7 @@
 //! [`Build`](super::Build) syntax.
 
 use std::{
-    convert::Infallible,
+    borrow::Cow,
     fmt::{self, Display, Formatter},
     str::FromStr,
 };
@@ -11,7 +11,7 @@ use compose_spec_macros::{DeserializeFromStr, SerializeDisplay};
 use indexmap::{indexmap, IndexMap};
 use thiserror::Error;
 
-use crate::{InvalidMapKeyError, MapKey};
+use crate::{impl_from_str, InvalidMapKeyError, MapKey};
 
 /// Cache options for the `cache_from` and `cache_to` fields of the long [`Build`](super::Build)
 /// syntax.
@@ -108,7 +108,7 @@ impl Cache {
 }
 
 /// Error returned when creating a [`Cache`].
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     /// [`Registry`](Kind::Registry) cache type given without a corresponding "ref" option.
     #[error("caches with type \"registry\" must have a \"ref\" option")]
@@ -160,11 +160,12 @@ impl Display for Cache {
 }
 
 /// Error returned when parsing a [`Cache`] from a string.
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum ParseCacheError {
     /// Error while creating [`Cache`].
     #[error(transparent)]
     Cache(#[from] Error),
+
     /// An option was missing a value.
     #[error("cache options must have a value")]
     OptionValueMissing,
@@ -185,6 +186,20 @@ pub enum Kind {
 }
 
 impl Kind {
+    /// [`Self::Registry`] string value.
+    const REGISTRY: &'static str = "registry";
+
+    /// Parse [`CacheType`](Self) from a string.
+    pub fn parse<T>(cache_kind: T) -> Self
+    where
+        T: AsRef<str> + Into<String>,
+    {
+        match cache_kind.as_ref() {
+            Self::REGISTRY => Kind::Registry,
+            _ => Kind::Other(cache_kind.into()),
+        }
+    }
+
     /// Returns `true` if the cache type is [`Registry`].
     ///
     /// [`Registry`]: Kind::Registry
@@ -197,37 +212,13 @@ impl Kind {
     #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
-            Self::Registry => "registry",
+            Self::Registry => Self::REGISTRY,
             Self::Other(kind) => kind,
         }
     }
 }
 
-impl From<&str> for Kind {
-    fn from(value: &str) -> Self {
-        match value {
-            "registry" => Kind::Registry,
-            value => Kind::Other(value.to_owned()),
-        }
-    }
-}
-
-impl FromStr for Kind {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(s.into())
-    }
-}
-
-impl From<String> for Kind {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "registry" => Kind::Registry,
-            _ => Kind::Other(value),
-        }
-    }
-}
+impl_from_str!(Kind);
 
 impl AsRef<str> for Kind {
     fn as_ref(&self) -> &str {
@@ -240,6 +231,15 @@ impl From<Kind> for String {
         match value {
             Kind::Registry => value.as_str().to_owned(),
             Kind::Other(value) => value,
+        }
+    }
+}
+
+impl From<Kind> for Cow<'static, str> {
+    fn from(value: Kind) -> Self {
+        match value {
+            Kind::Registry => Self::Borrowed(Kind::REGISTRY),
+            Kind::Other(other) => Self::Owned(other),
         }
     }
 }

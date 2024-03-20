@@ -1,10 +1,12 @@
 use std::{
     ffi::{OsStr, OsString},
     fmt::{self, Formatter},
+    hash::Hash,
     marker::PhantomData,
     path::{Path, PathBuf},
 };
 
+use indexmap::{IndexMap, IndexSet};
 use serde::{
     de::{
         self,
@@ -18,7 +20,13 @@ use serde::{
 };
 
 use crate::{
-    service::{build::Context, Build, ConfigOrSecret},
+    service::{
+        build::Context,
+        env_file,
+        ports::{Port, ShortPort},
+        volumes::{Mount, ShortVolume},
+        Build, ConfigOrSecret, Ulimit,
+    },
     Identifier, Include,
 };
 
@@ -26,9 +34,9 @@ use crate::{
 ///
 /// The [`Serialize`] implementation forwards to the wrapped types.
 ///
-/// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, and
-/// enums are [`Deserialize`]d into the [`Short`] syntax. Sequences and maps are [`Deserialize`]d
-/// into the [`Long`] syntax.
+/// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, enums,
+/// and sequences are [`Deserialize`]d into the [`Short`] syntax. Maps are [`Deserialize`]d into the
+/// [`Long`] syntax.
 ///
 /// [`Short`]: Self::Short
 /// [`Long`]: Self::Long
@@ -83,15 +91,12 @@ impl<S, L> ShortOrLong<S, L> {
 
 impl<S, L> ShortOrLong<S, L>
 where
-    S: Into<L>,
+    Self: Into<L>,
 {
     /// Convert into [`Long`](Self::Long) syntax.
     #[must_use]
     pub fn into_long(self) -> L {
-        match self {
-            Self::Short(short) => short.into(),
-            Self::Long(long) => long,
-        }
+        self.into()
     }
 }
 
@@ -126,6 +131,58 @@ where
         match self {
             Self::Short(short) => Some(short),
             Self::Long(long) => long.as_short(),
+        }
+    }
+}
+
+/// Trait similar to [`AsShort`] except it returns an [`Iterator`] instead of a reference.
+pub trait AsShortIter<'a> {
+    /// [`Iterator`] returned from [`as_short_iter()`](AsShortIter::as_short_iter()).
+    type Iter: Iterator;
+
+    /// Returns an [`Iterator`] if the long syntax can be represented as the short syntax.
+    #[must_use]
+    fn as_short_iter(&'a self) -> Option<Self::Iter>;
+}
+
+impl<'a, T> AsShortIter<'a> for &T
+where
+    T: AsShortIter<'a>,
+{
+    type Iter = T::Iter;
+
+    fn as_short_iter(&'a self) -> Option<Self::Iter> {
+        T::as_short_iter(self)
+    }
+}
+
+impl<'a, S, L> AsShortIter<'a> for ShortOrLong<S, L>
+where
+    S: 'a,
+    &'a S: IntoIterator<Item = <L::Iter as Iterator>::Item>,
+    L: AsShortIter<'a>,
+{
+    type Iter = ShortOrLong<<&'a S as IntoIterator>::IntoIter, L::Iter>;
+
+    fn as_short_iter(&'a self) -> Option<Self::Iter> {
+        match self {
+            Self::Short(short) => Some(ShortOrLong::Short(short.into_iter())),
+            Self::Long(long) => long.as_short_iter().map(ShortOrLong::Long),
+        }
+    }
+}
+
+impl<S, L> Iterator for ShortOrLong<S, L>
+where
+    S: Iterator<Item = L::Item>,
+    L: Iterator,
+{
+    type Item = S::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Short(iter) => iter.next(),
+            Self::Long(iter) => iter.next(),
         }
     }
 }
@@ -166,7 +223,16 @@ impl_from_short! {
     OsString,
     Box<OsStr>,
     Identifier,
+    IndexSet<Identifier>,
     Context,
+    ShortPort,
+    ShortVolume,
+}
+
+impl<L> From<String> for ShortOrLong<PathBuf, L> {
+    fn from(value: String) -> Self {
+        Self::Short(value.into())
+    }
 }
 
 /// `impl<S> From<Type> for ShortOrLong<S, Type>` and `impl<S> From<ShortOrLong<S, Type>> for Type`
@@ -184,7 +250,10 @@ macro_rules! impl_long_conversion {
                 S: Into<$t>,
             {
                 fn from(value: ShortOrLong<S, $t>) -> Self {
-                    value.into_long()
+                    match value {
+                        ShortOrLong::Short(short) => short.into(),
+                        ShortOrLong::Long(long) => long,
+                    }
                 }
             }
         )*
@@ -195,10 +264,37 @@ impl_long_conversion! {
     Include,
     Build,
     ConfigOrSecret,
+    Ulimit,
+    env_file::Config,
+    Port,
+    Mount,
 }
 
-/// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, and
-/// enums are deserialized into the [`Short`] syntax. Sequences and maps are deserialized into the
+impl<S, K, V> From<IndexMap<K, V>> for ShortOrLong<S, IndexMap<K, V>> {
+    fn from(value: IndexMap<K, V>) -> Self {
+        Self::Long(value)
+    }
+}
+
+impl<S, K, V> From<ShortOrLong<S, IndexMap<K, V>>> for IndexMap<K, V>
+where
+    S: IntoIterator<Item = K>,
+    K: Hash + Eq,
+    V: Default,
+{
+    fn from(value: ShortOrLong<S, IndexMap<K, V>>) -> Self {
+        match value {
+            ShortOrLong::Short(short) => short
+                .into_iter()
+                .zip(std::iter::repeat_with(V::default))
+                .collect(),
+            ShortOrLong::Long(long) => long,
+        }
+    }
+}
+
+/// Single values ([`bool`], [`u8`], [`&str`], etc.), options, bytes, unit, newtype structs, enums,
+/// and sequences are deserialized into the [`Short`] syntax. Maps are deserialized into the
 /// [`Long`] syntax.
 ///
 /// [`Short`]: Self::Short
@@ -330,8 +426,8 @@ where
     where
         A: SeqAccess<'de>,
     {
-        let value = L::deserialize(SeqAccessDeserializer::new(seq))?;
-        Ok(ShortOrLong::Long(value))
+        let value = S::deserialize(SeqAccessDeserializer::new(seq))?;
+        Ok(ShortOrLong::Short(value))
     }
 
     fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>

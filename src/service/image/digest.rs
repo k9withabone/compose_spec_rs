@@ -112,7 +112,7 @@ impl<'a> Digest<'a> {
 }
 
 /// Error returned when validating an [`Image`](super::Image) [`Digest`].
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum InvalidDigestError {
     /// Digest was missing its algorithm part.
@@ -195,9 +195,20 @@ impl<'a> Display for Digest<'a> {
 
 #[cfg(test)]
 mod tests {
-    use proptest::{prop_assert, proptest};
+    use pomsky_macro::pomsky;
+    use proptest::proptest;
 
     use super::*;
+
+    const DIGEST: &str = pomsky! {
+        let component = [ascii_lower ascii_digit]+;
+        let separator = ['+' '.' '_' '-'];
+        let algorithm = component (separator component)*;
+
+        let encoded = [ascii_alnum '=' '_' '-']+;
+
+        algorithm ":" encoded
+    };
 
     proptest! {
         #[test]
@@ -210,8 +221,8 @@ mod tests {
         /// Regex is from the
         /// [OCI image spec](https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests).
         #[test]
-        fn new(digest in "[a-z0-9]+([+._-][a-z0-9]+)*:[a-zA-Z0-9=_-]+") {
-            prop_assert!(Digest::new(&digest).is_ok());
+        fn new(digest in DIGEST) {
+            Digest::new(&digest)?;
         }
     }
 }

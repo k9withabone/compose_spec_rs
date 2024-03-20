@@ -1,4 +1,6 @@
 pub(crate) mod display_from_str_option;
+pub(crate) mod duration_option;
+pub(crate) mod duration_us_option;
 
 use std::{
     error::Error,
@@ -8,8 +10,11 @@ use std::{
 };
 
 use serde::{
-    de::{self, Expected, Unexpected, Visitor},
-    Deserializer,
+    de::{
+        self, value::SeqAccessDeserializer, Expected, IntoDeserializer, SeqAccess, Unexpected,
+        Visitor,
+    },
+    Deserialize, Deserializer,
 };
 
 pub(crate) const fn default_true() -> bool {
@@ -20,6 +25,19 @@ pub(crate) const fn default_true() -> bool {
 pub(crate) const fn skip_true(bool: &bool) -> bool {
     *bool
 }
+
+/// Implement [`Visitor`] functions by forwarding to `visit`.
+macro_rules! forward_visitor {
+    ($visit:ident, $($f:ident: $ty:ty,)*) => {
+        $(
+            fn $f<E: ::serde::de::Error>(self, v: $ty) -> ::std::result::Result<Self::Value, E> {
+                self.$visit(v.try_into().map_err(E::custom)?)
+            }
+        )*
+    };
+}
+
+pub(crate) use forward_visitor;
 
 #[derive(Debug)]
 pub(crate) struct ValueEnumVisitor<B = (), I = (), U = (), F = (), S = ()> {
@@ -165,6 +183,97 @@ where
     }
 }
 
+/// A [`Visitor`] for deserializing a single item or a list.
+#[derive(Debug)]
+pub(crate) struct ItemOrListVisitor<V, I, L = Vec<I>> {
+    expecting: &'static str,
+    value: PhantomData<V>,
+    item: PhantomData<I>,
+    list: PhantomData<L>,
+}
+
+impl<V, I, L> ItemOrListVisitor<V, I, L> {
+    /// Create a new [`ItemOrListVisitor`].
+    ///
+    /// `expecting` should complete the sentence "This Visitor expects to receive ...",
+    /// the [`Default`] implementation uses "a single value or sequence".
+    pub fn new(expecting: &'static str) -> Self {
+        Self {
+            expecting,
+            value: PhantomData,
+            item: PhantomData,
+            list: PhantomData,
+        }
+    }
+}
+
+impl<V, I, L> Default for ItemOrListVisitor<V, I, L> {
+    fn default() -> Self {
+        Self::new("a single value or sequence")
+    }
+}
+
+impl<'de, V, I, L> ItemOrListVisitor<V, I, L>
+where
+    I: Into<V> + Deserialize<'de>,
+    L: Into<V> + Deserialize<'de>,
+{
+    /// Alias for `deserializer.deserialize_any(visitor)`.
+    pub fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
+        deserializer.deserialize_any(self)
+    }
+}
+
+/// Implement [`Visitor`] by using [`IntoDeserializer`] on the input, deserializing into `t`, and
+/// then turning it [`Into`] the [`Value`](Visitor::Value).
+macro_rules! visit_item {
+    (item: $t:ty, $($f:ident: $ty:ty,)*) => {
+        $(
+            fn $f<E: de::Error>(self, v: $ty) -> Result<Self::Value, E> {
+                <$t>::deserialize(v.into_deserializer()).map(Into::into)
+            }
+        )*
+    };
+}
+
+impl<'de, V, I, L> Visitor<'de> for ItemOrListVisitor<V, I, L>
+where
+    I: Into<V> + Deserialize<'de>,
+    L: Into<V> + Deserialize<'de>,
+{
+    type Value = V;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str(self.expecting)
+    }
+
+    visit_item! {
+        item: I,
+        visit_bool: bool,
+        visit_i8: i8,
+        visit_i16: i16,
+        visit_i32: i32,
+        visit_i64: i64,
+        visit_i128: i128,
+        visit_u8: u8,
+        visit_u16: u16,
+        visit_u32: u32,
+        visit_u64: u64,
+        visit_u128: u128,
+        visit_f32: f32,
+        visit_f64: f64,
+        visit_char: char,
+        visit_str: &str,
+        visit_string: String,
+        visit_bytes: &[u8],
+        visit_byte_buf: Vec<u8>,
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> Result<Self::Value, A::Error> {
+        L::deserialize(SeqAccessDeserializer::new(seq)).map(Into::into)
+    }
+}
+
 /// A [`Visitor`] which deserializes a type using its [`FromStr`] implementation.
 #[derive(Debug)]
 pub(crate) struct FromStrVisitor<V> {
@@ -280,9 +389,83 @@ where
     }
 }
 
+/// A [`Visitor`] for deserializing via [`FromStr`] or from a [`u16`].
+pub(crate) struct FromStrOrU16Visitor<V> {
+    expecting: &'static str,
+    value: PhantomData<V>,
+}
+
+impl<V> FromStrOrU16Visitor<V> {
+    /// Create a new [`FromStrOrU16Visitor`].
+    ///
+    /// `expecting` should complete the sentence "This Visitor expects to receive ...",
+    /// the [`Default`] implementation uses "a string or integer".
+    pub fn new(expecting: &'static str) -> Self {
+        Self {
+            expecting,
+            value: PhantomData,
+        }
+    }
+}
+
+impl<V> FromStrOrU16Visitor<V>
+where
+    u16: Into<V>,
+    V: FromStr,
+    V::Err: Error,
+{
+    /// Alias for `deserializer.deserialize_any(visitor)`.
+    pub fn deserialize<'de, D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
+        deserializer.deserialize_any(self)
+    }
+}
+
+impl<V> Default for FromStrOrU16Visitor<V> {
+    fn default() -> Self {
+        Self::new("a string or integer")
+    }
+}
+
+impl<'de, V> Visitor<'de> for FromStrOrU16Visitor<V>
+where
+    u16: Into<V>,
+    V: FromStr,
+    V::Err: Error,
+{
+    type Value = V;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str(self.expecting)
+    }
+
+    forward_visitor! {
+        visit_u16,
+        visit_i8: i8,
+        visit_i16: i16,
+        visit_i32: i32,
+        visit_i64: i64,
+        visit_i128: i128,
+        visit_u32: u32,
+        visit_u64: u64,
+        visit_u128: u128,
+    }
+
+    fn visit_u8<E: de::Error>(self, v: u8) -> Result<Self::Value, E> {
+        self.visit_u16(v.into())
+    }
+
+    fn visit_u16<E: de::Error>(self, v: u16) -> Result<Self::Value, E> {
+        Ok(v.into())
+    }
+
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        v.parse().map_err(error_chain)
+    }
+}
+
 /// Map a type implementing [`Error`] to one implementing [`de::Error`] by using
 /// [`de::Error::custom()`] with a string of all of the error's sources.
-fn error_chain<T, E>(error: T) -> E
+pub(crate) fn error_chain<T, E>(error: T) -> E
 where
     T: Error,
     E: de::Error,

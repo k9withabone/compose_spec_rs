@@ -47,6 +47,8 @@ version = "0.1.0"
 dependencies = [
  "compose_spec_macros",
  "indexmap",
+ "itoa",
+ "pomsky-macro",
  "proptest",
  "serde",
  "serde-untagged",
@@ -195,6 +197,30 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
+
+[[package]]
+name = "pomsky"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddec9a830740eacb682ea0690f27e4a1c0dcba391aa40dfc03e47fb0ddbf0578"
+dependencies = [
+ "pomsky-syntax",
+]
+
+[[package]]
+name = "pomsky-macro"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5041df9017eb4b3a5c32654076943684f848a238b6d9ee172b6c6e045f426cf"
+dependencies = [
+ "pomsky",
+]
+
+[[package]]
+name = "pomsky-syntax"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01c3ed2ebe30f78d20b329173899c7758d55202ab3186fe5b43e02ce9a979cfb"
 
 [[package]]
 name = "ppv-lite86"

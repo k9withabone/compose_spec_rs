@@ -51,7 +51,7 @@ impl Resource {
 }
 
 /// Error returned when creating a [`Resource`].
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum InvalidResourceError {
     /// Resource was empty.
     #[error("ulimit resources cannot be empty")]

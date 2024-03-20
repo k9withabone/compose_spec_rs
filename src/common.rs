@@ -11,12 +11,12 @@ use std::{
 };
 
 use indexmap::{indexset, IndexMap, IndexSet};
-use serde::{de::IntoDeserializer, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_untagged::UntaggedEnumVisitor;
 pub use serde_yaml::Value as YamlValue;
 use thiserror::Error;
 
-use crate::serde::ValueEnumVisitor;
+use crate::serde::{ItemOrListVisitor, ValueEnumVisitor};
 
 pub(crate) use self::keys::key_impls;
 pub use self::{
@@ -24,7 +24,7 @@ pub use self::{
         ExtensionKey, Identifier, InvalidExtensionKeyError, InvalidIdentifierError,
         InvalidMapKeyError, MapKey,
     },
-    short_or_long::{AsShort, ShortOrLong},
+    short_or_long::{AsShort, AsShortIter, ShortOrLong},
 };
 
 /// Extensions can be used to enable experimental features or make a [`Compose`](super::Compose)
@@ -35,8 +35,6 @@ pub use self::{
 pub type Extensions = IndexMap<ExtensionKey, YamlValue>;
 
 /// A single item or a list of unique items.
-///
-/// `T` must be able to deserialize from a string.
 #[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ItemOrList<T> {
@@ -106,10 +104,7 @@ where
     T: Deserialize<'de> + Eq + Hash,
 {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        UntaggedEnumVisitor::new()
-            .string(|string| T::deserialize(string.into_deserializer()).map(Self::Item))
-            .seq(|seq| seq.deserialize().map(Self::List))
-            .deserialize(deserializer)
+        ItemOrListVisitor::<_, T, IndexSet<T>>::default().deserialize(deserializer)
     }
 }
 
@@ -142,8 +137,11 @@ pub enum ListOrMap {
     List(IndexSet<String>),
 
     /// Map with optional single values.
-    Map(IndexMap<MapKey, Option<Value>>),
+    Map(Map),
 }
+
+/// Map with optional single values.
+pub type Map = IndexMap<MapKey, Option<Value>>;
 
 impl ListOrMap {
     /// Returns `true` if the list or map contain no elements.
@@ -167,7 +165,7 @@ impl ListOrMap {
 
     /// Return [`Some`] if a map.
     #[must_use]
-    pub fn as_map(&self) -> Option<&IndexMap<MapKey, Option<Value>>> {
+    pub fn as_map(&self) -> Option<&Map> {
         if let Self::Map(v) = self {
             Some(v)
         } else {
@@ -210,7 +208,7 @@ impl ListOrMap {
     /// # Errors
     ///
     /// Returns an error if a key is not a valid [`MapKey`].
-    pub fn into_map(self) -> Result<IndexMap<MapKey, Option<Value>>, InvalidMapKeyError> {
+    pub fn into_map(self) -> Result<Map, InvalidMapKeyError> {
         self.into_map_split_on(&['='])
     }
 
@@ -223,10 +221,7 @@ impl ListOrMap {
     /// # Errors
     ///
     /// Returns an error if a key is not a valid [`MapKey`].
-    pub fn into_map_split_on(
-        self,
-        delimiters: &[char],
-    ) -> Result<IndexMap<MapKey, Option<Value>>, InvalidMapKeyError> {
+    pub fn into_map_split_on(self, delimiters: &[char]) -> Result<Map, InvalidMapKeyError> {
         match self {
             ListOrMap::List(list) => list
                 .into_iter()
@@ -409,8 +404,8 @@ impl From<Box<str>> for Value {
     }
 }
 
-impl<'a> From<Cow<'a, str>> for Value {
-    fn from(value: Cow<'a, str>) -> Self {
+impl From<Cow<'_, str>> for Value {
+    fn from(value: Cow<str>) -> Self {
         Self::String(value.into_owned())
     }
 }
@@ -502,7 +497,7 @@ impl TryFrom<Value> for bool {
 }
 
 /// Error returned when failing to convert [`Value`] into another type.
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum TryFromValueError {
     /// [`Value`] is not the correct type for conversion.
     #[error("value is not the correct type for conversion")]

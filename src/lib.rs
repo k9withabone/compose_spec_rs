@@ -10,6 +10,7 @@
 //! [`Vec`]s.
 
 mod common;
+pub mod duration;
 mod include;
 mod name;
 mod serde;
@@ -22,9 +23,9 @@ use indexmap::IndexMap;
 
 pub use self::{
     common::{
-        AsShort, ExtensionKey, Extensions, Identifier, InvalidExtensionKeyError,
-        InvalidIdentifierError, InvalidMapKeyError, ItemOrList, ListOrMap, MapKey, ShortOrLong,
-        Value, YamlValue,
+        AsShort, AsShortIter, ExtensionKey, Extensions, Identifier, InvalidExtensionKeyError,
+        InvalidIdentifierError, InvalidMapKeyError, ItemOrList, ListOrMap, Map, MapKey,
+        ShortOrLong, Value, YamlValue,
     },
     include::Include,
     name::{InvalidNameError, Name},
@@ -67,3 +68,91 @@ pub struct Compose {
     #[serde(flatten)]
     pub extensions: Extensions,
 }
+
+/// Implement [`From`] for `Ty` using `f`.
+macro_rules! impl_from {
+    ($Ty:ident::$f:ident, $($From:ty),+ $(,)?) => {
+        $(
+            impl From<$From> for $Ty {
+                fn from(value: $From) -> Self {
+                    Self::$f(value)
+                }
+            }
+        )+
+    };
+}
+
+use impl_from;
+
+/// Implement [`TryFrom`] for `Ty` using `f` which returns [`Result<Ty, Error>`].
+macro_rules! impl_try_from {
+    ($Ty:ident::$f:ident -> $Error:ty, $($From:ty),+ $(,)?) => {
+        $(
+            impl TryFrom<$From> for $Ty {
+                type Error = $Error;
+
+                fn try_from(value: $From) -> Result<Self, Self::Error> {
+                    Self::$f(value)
+                }
+            }
+        )+
+    };
+}
+
+use impl_try_from;
+
+/// Implement string conversion traits for types which have a `parse` method.
+///
+/// For types with an error, the macro creates implementations of:
+///
+/// - [`FromStr`]
+/// - [`TryFrom<&str>`]
+/// - [`TryFrom<String>`]
+/// - [`TryFrom<Box<str>>`]
+/// - [`TryFrom<Cow<str>>`]
+///
+/// For types without an error, the macro creates implementations of:
+///
+/// - [`FromStr`], where `Err` is [`Infallible`](std::convert::Infallible)
+/// - [`From<&str>`]
+/// - [`From<String>`]
+/// - [`From<Box<str>>`]
+/// - [`From<Cow<str>>`]
+///
+/// [`FromStr`]: std::str::FromStr
+macro_rules! impl_from_str {
+    ($($Ty:ident => $Error:ty),* $(,)?) => {
+        $(
+            impl std::str::FromStr for $Ty {
+                type Err = $Error;
+
+                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                    Self::parse(s)
+                }
+            }
+
+            crate::impl_try_from! {
+                $Ty::parse -> $Error,
+                &str,
+                String,
+                Box<str>,
+                std::borrow::Cow<'_, str>,
+            }
+        )*
+    };
+    ($($Ty:ident),* $(,)?) => {
+        $(
+            impl std::str::FromStr for $Ty {
+                type Err = std::convert::Infallible;
+
+                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                    Ok(Self::parse(s))
+                }
+            }
+
+            crate::impl_from!($Ty::parse, &str, String, Box<str>, std::borrow::Cow<'_, str>);
+        )*
+    };
+}
+
+use impl_from_str;

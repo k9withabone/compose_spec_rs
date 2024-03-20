@@ -56,7 +56,7 @@ impl Name {
 }
 
 /// Error returned when attempting to create a [`Name`].
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum InvalidNameError {
     /// Empty name
     #[error("name cannot be empty")]

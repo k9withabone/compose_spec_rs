@@ -10,6 +10,8 @@ use compose_spec_macros::SerializeDisplay;
 use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
 
+use crate::serde::error_chain;
+
 /// A value representing a number of bytes.
 ///
 /// [`Serialize`]s to the string "{value}{unit}", where unit is "b", "kb", "mb", or "gb".
@@ -20,7 +22,7 @@ use thiserror::Error;
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md#specifying-byte-values)
 ///
 /// [`Serialize`]: ::serde::Serialize
-#[derive(SerializeDisplay, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(SerializeDisplay, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ByteValue {
     /// Bytes (b)
     Bytes(u64),
@@ -58,6 +60,12 @@ impl ByteValue {
     }
 }
 
+impl Default for ByteValue {
+    fn default() -> Self {
+        Self::Bytes(0)
+    }
+}
+
 impl FromStr for ByteValue {
     type Err = ParseByteValueError;
 
@@ -66,13 +74,16 @@ impl FromStr for ByteValue {
             Err(ParseByteValueError::Empty)
         } else if let Ok(bytes) = s.parse() {
             Ok(Self::Bytes(bytes))
-        } else if let Some(gigabytes) = s.strip_suffix("gb").or_else(|| s.strip_suffix('g')) {
+        } else if let Some(gigabytes) = s.strip_suffix("gb").or_else(|| s.strip_suffix(['g', 'G']))
+        {
             parse_u64(gigabytes, Self::Gigabytes)
-        } else if let Some(megabytes) = s.strip_suffix("mb").or_else(|| s.strip_suffix('m')) {
+        } else if let Some(megabytes) = s.strip_suffix("mb").or_else(|| s.strip_suffix(['m', 'M']))
+        {
             parse_u64(megabytes, Self::Megabytes)
-        } else if let Some(kilobytes) = s.strip_suffix("kb").or_else(|| s.strip_suffix('k')) {
+        } else if let Some(kilobytes) = s.strip_suffix("kb").or_else(|| s.strip_suffix(['k', 'K']))
+        {
             parse_u64(kilobytes, Self::Kilobytes)
-        } else if let Some(bytes) = s.strip_suffix('b') {
+        } else if let Some(bytes) = s.strip_suffix(['b', 'B']) {
             parse_u64(bytes, Self::Bytes)
         } else {
             Err(ParseByteValueError::UnknownUnit(s.to_owned()))
@@ -152,7 +163,7 @@ impl<'de> de::Visitor<'de> for Visitor {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        v.parse().map_err(de::Error::custom)
+        v.parse().map_err(error_chain)
     }
 }
 

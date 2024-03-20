@@ -143,7 +143,7 @@ impl Display for Id {
 }
 
 /// Error returned when creating an [`Id`].
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum IdError {
     /// Given `id` was empty
     #[error("ssh auth ID cannot be empty")]

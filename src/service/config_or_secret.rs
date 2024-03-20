@@ -11,14 +11,14 @@ use crate::{serde::display_from_str_option, Extensions, Identifier};
 ///
 /// Configs allow services to adapt their behavior without the need to rebuild a container image.
 /// Services can only access configs when explicitly granted by the
-/// [`configs`](super::Service#structfield.configs) attribute.
+/// [`configs`](super::Service#structfield.configs) field.
+///
+/// [service config compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#configs)
 ///
 /// # Secret
 ///
 /// Secrets grant access to sensitive data defined by
 /// [`secrets`](crate::Compose#structfield.secrets) on a per-service basis.
-///
-/// [service config compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#configs)
 ///
 /// [service secrets compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#configs)
 ///
@@ -71,24 +71,12 @@ pub struct ConfigOrSecret {
     /// Note that, when deserializing with [`serde_yaml`], octal numbers must start with `0o`, e.g.
     /// `0o555`, otherwise, they are interpreted as decimal numbers. Unfortunately, for
     /// serialization, there is no way to specify that a number should be serialized in octal form.
-    #[serde(default = "default_mode", skip_serializing_if = "is_default_mode")]
-    #[as_short(default = default_mode, if_fn = is_default_mode)]
-    pub mode: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<u32>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
-}
-
-/// Default for `mode` field of [`ConfigOrSecret`].
-const fn default_mode() -> u32 {
-    0o444
-}
-
-/// Returns `true` if given `value` is the default `mode`.
-#[allow(clippy::trivially_copy_pass_by_ref)]
-const fn is_default_mode(value: &u32) -> bool {
-    *value == default_mode()
 }

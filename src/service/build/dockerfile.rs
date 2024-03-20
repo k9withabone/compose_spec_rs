@@ -8,11 +8,7 @@ use std::{
     path::PathBuf,
 };
 
-use serde::{
-    de::{self, MapAccess},
-    ser::SerializeStruct,
-    Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 
 /// Represents either the `dockerfile` or `dockerfile_inline` fields of the long [`Build`] syntax.
 ///
@@ -31,6 +27,7 @@ pub enum Dockerfile {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#dockerfile)
     File(PathBuf),
+
     /// Define the Dockerfile/Containerfile content as an inlined string.
     ///
     /// Represents the `dockerfile_inline` field.
@@ -40,71 +37,8 @@ pub enum Dockerfile {
 }
 
 impl Dockerfile {
-    /// Struct name for (de)serializing
+    /// Struct name for (de)serializing.
     const NAME: &'static str = "Dockerfile";
-
-    /// Possible fields
-    const FIELDS: [&'static str; 2] =
-        [Field::Dockerfile.as_str(), Field::DockerfileInline.as_str()];
-}
-
-impl Serialize for Dockerfile {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct(Self::NAME, 1)?;
-
-        let key = Field::from(self).as_str();
-        match self {
-            Self::File(path) => state.serialize_field(key, path)?,
-            Self::Inline(string) => state.serialize_field(key, string)?,
-        }
-
-        state.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for Dockerfile {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_struct(Self::NAME, &Self::FIELDS, Visitor)
-    }
-}
-
-/// (De)serialize `Option<Dockerfile>`, for use in `#[serde(with = "option")]`.
-///
-/// For deserialization, the following is returned:
-/// - `Ok(Dockerfile::File(_))`, if given struct/map with `dockerfile` field.
-/// - `Ok(Dockerfile::Inline(_))`, if given struct/map with `dockerfile_inline` field.
-/// - `Ok(None)`, if neither the `dockerfile` or `dockerfile_inline` fields are present.
-/// - `Err(_)`, if both fields are present, or a field is repeated multiple times, with custom error message.
-/// - `Err(_)`, if there is an error deserializing either field value, or the `deserializer` returns an error.
-pub(super) mod option {
-    use serde::{Deserializer, Serialize, Serializer};
-
-    use super::{Dockerfile, OptionVisitor};
-
-    /// Serialize `Option<Dockerfile>`
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the `serializer` does while serializing.
-    pub fn serialize<S>(value: &Option<Dockerfile>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        value.serialize(serializer)
-    }
-
-    /// Deserialize `Option<Dockerfile>`
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the `deserializer` does, if there is an error deserializing either
-    /// [`Dockerfile`] variant, if both fields are present, or if either field is repeated.
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Dockerfile>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_struct(Dockerfile::NAME, &Dockerfile::FIELDS, OptionVisitor)
-    }
 }
 
 /// Possible [`Dockerfile`] fields.
@@ -147,60 +81,91 @@ macro_rules! format_fields {
     };
 }
 
-/// [`de::Visitor`] for deserializing [`Dockerfile`].
-struct Visitor;
+impl Serialize for Dockerfile {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer.serialize_struct(Self::NAME, 1)?;
 
-impl<'de> de::Visitor<'de> for Visitor {
-    type Value = Dockerfile;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        OptionVisitor.expecting(formatter)
-    }
-
-    fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
-        OptionVisitor
-            .visit_map(map)?
-            .ok_or_else(|| de::Error::custom(format_fields!("missing field `{}` or `{}`")))
-    }
-}
-
-/// [`de::Visitor`] for deserializing [`Option<Dockerfile>`].
-struct OptionVisitor;
-
-impl<'de> de::Visitor<'de> for OptionVisitor {
-    type Value = Option<Dockerfile>;
-
-    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-        formatter.write_fmt(format_fields!("`{}` or `{}`"))
-    }
-
-    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-        let mut field = None;
-        while let Some(key) = map.next_key()? {
-            match key {
-                Field::Dockerfile => {
-                    check_multiple(&field)?;
-                    field = Some(Dockerfile::File(map.next_value()?));
-                }
-                Field::DockerfileInline => {
-                    check_multiple(&field)?;
-                    field = Some(Dockerfile::Inline(map.next_value()?));
-                }
-            }
+        let key = Field::from(self).as_str();
+        match self {
+            Self::File(path) => state.serialize_field(key, path)?,
+            Self::Inline(string) => state.serialize_field(key, string)?,
         }
 
-        Ok(field)
+        state.end()
     }
 }
 
-/// Check if `field` is occupied and return [`Err`] if so.
-fn check_multiple<T, E: de::Error>(field: &Option<T>) -> Result<(), E> {
-    if field.is_some() {
-        Err(E::custom(format_fields!(
-            "only one of `{}` or `{}` can be specified"
-        )))
-    } else {
-        Ok(())
+impl<'de> Deserialize<'de> for Dockerfile {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        option::deserialize(deserializer)?
+            .ok_or_else(|| de::Error::custom(format_fields!("missing required field `{}` or `{}`")))
+    }
+}
+
+/// (De)serialize [`Option<Dockerfile>`], for use in `#[serde(with = "option")]`.
+///
+/// For deserialization, the following is returned:
+///
+/// - `Ok(Some(Dockerfile::File(_)))`, if given a struct/map with a `dockerfile` field.
+/// - `Ok(Some(Dockerfile::Inline(_)))`, if given a struct/map with a `dockerfile_inline` field.
+/// - `Ok(None)`, if neither the `dockerfile` or `dockerfile_inline` fields are present.
+/// - `Err(_)`, if both fields are present.
+/// - `Err(_)`, if there is an error deserializing either field value.
+pub(super) mod option {
+    use std::path::PathBuf;
+
+    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+
+    use super::{Dockerfile, Field};
+
+    /// Serialize `Option<Dockerfile>`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `serializer` does while serializing.
+    pub fn serialize<S>(value: &Option<Dockerfile>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        value.serialize(serializer)
+    }
+
+    /// Deserialize `Option<Dockerfile>`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `deserializer` does, there is an error deserializing either
+    /// [`Dockerfile`] variant, or both fields are present.
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Dockerfile>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let DockerfileFlat {
+            dockerfile,
+            dockerfile_inline,
+        } = DockerfileFlat::deserialize(deserializer)?;
+
+        match (dockerfile, dockerfile_inline) {
+            (Some(dockerfile), None) => Ok(Some(Dockerfile::File(dockerfile))),
+            (None, Some(dockerfile_inline)) => Ok(Some(Dockerfile::Inline(dockerfile_inline))),
+            (None, None) => Ok(None),
+            (Some(_), Some(_)) => Err(de::Error::custom(format_fields!(
+                "cannot set both `{}` and `{}`"
+            ))),
+        }
+    }
+
+    /// Flattened version of [`Dockerfile`].
+    #[derive(Deserialize)]
+    #[serde(
+        rename = "Dockerfile",
+        expecting = "a struct with either a `dockerfile` or `dockerfile_inline` field"
+    )]
+    struct DockerfileFlat {
+        #[serde(default)]
+        dockerfile: Option<PathBuf>,
+        #[serde(default)]
+        dockerfile_inline: Option<String>,
     }
 }
 
@@ -208,52 +173,58 @@ fn check_multiple<T, E: de::Error>(field: &Option<T>) -> Result<(), E> {
 mod tests {
     use super::*;
 
-    fn deserialize(source: &str) -> serde_yaml::Result<Dockerfile> {
-        serde_yaml::from_str(source)
-    }
-
     #[test]
     fn file() {
-        assert_eq!(
-            deserialize(r#"{"dockerfile": "file"}"#).unwrap(),
-            Dockerfile::File("file".into()),
-        );
+        let dockerfile = Dockerfile::File("file".into());
+        let string = "dockerfile: file\n";
+        assert_eq!(dockerfile, serde_yaml::from_str(string).unwrap());
+        assert_eq!(serde_yaml::to_string(&dockerfile).unwrap(), string);
     }
 
     #[test]
     fn inline() {
-        assert_eq!(
-            deserialize(r#"{"dockerfile_inline": "inline"}"#).unwrap(),
-            Dockerfile::Inline("inline".into()),
-        );
+        let dockerfile = Dockerfile::Inline("inline".into());
+        let string = "dockerfile_inline: inline\n";
+        assert_eq!(dockerfile, serde_yaml::from_str(string).unwrap());
+        assert_eq!(serde_yaml::to_string(&dockerfile).unwrap(), string);
     }
 
     #[test]
-    fn empty_err() {
-        assert!(deserialize("{}").is_err());
+    fn missing_err() {
+        assert!(serde_yaml::from_str::<Dockerfile>("{}")
+            .unwrap_err()
+            .to_string()
+            .contains("missing"));
     }
 
     #[test]
-    fn multiple_err() {
-        assert!(deserialize(r#"{"dockerfile": "file", "dockerfile_inline": "inline"}"#).is_err());
+    fn both_err() {
+        assert!(serde_yaml::from_str::<Dockerfile>(
+            "{ dockerfile: file, dockerfile_inline: inline }"
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("both"));
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Debug)]
     struct Test {
         #[serde(flatten, with = "option")]
-        test: Option<Dockerfile>,
+        dockerfile: Option<Dockerfile>,
     }
 
     #[test]
-    fn flatten_option_empty() {
-        assert!(serde_yaml::from_str::<Test>("{}").unwrap().test.is_none());
+    fn flatten_option_none() {
+        assert_eq!(serde_yaml::from_str::<Test>("{}").unwrap().dockerfile, None);
     }
 
     #[test]
-    fn flatten_option_multiple_err() {
-        assert!(serde_yaml::from_str::<Test>(
-            r#"{"dockerfile": "file", "dockerfile_inline": "inline"}"#
-        )
-        .is_err());
+    fn flatten_option_both_err() {
+        assert!(
+            serde_yaml::from_str::<Test>("{ dockerfile: file, dockerfile_inline: inline }")
+                .unwrap_err()
+                .to_string()
+                .contains("both")
+        );
     }
 }

@@ -7,6 +7,8 @@ use std::{
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 
+use crate::impl_from_str;
+
 /// Network containers connect to during [`Build`](super::Build) for `RUN` instructions.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#network)
@@ -16,11 +18,15 @@ pub enum Network {
     ///
     /// A compose implementation may have more specific network kinds such as "host".
     String(String),
+
     /// Disable networking during build.
     None,
 }
 
 impl Network {
+    /// [`Self::None`] string value.
+    const NONE: &'static str = "none";
+
     /// Parse [`Network`] from a string.
     ///
     /// "none" converts to [`Network::None`].
@@ -28,7 +34,7 @@ impl Network {
     where
         T: AsRef<str> + Into<String>,
     {
-        if network.as_ref() == "none" {
+        if network.as_ref() == Self::NONE {
             Self::None
         } else {
             Self::String(network.into())
@@ -42,7 +48,7 @@ impl Network {
     pub fn as_str(&self) -> &str {
         match self {
             Self::String(string) => string,
-            Self::None => "none",
+            Self::None => Self::NONE,
         }
     }
 
@@ -66,29 +72,7 @@ impl Network {
     }
 }
 
-impl From<String> for Network {
-    fn from(value: String) -> Self {
-        Self::parse(value)
-    }
-}
-
-impl From<&str> for Network {
-    fn from(value: &str) -> Self {
-        Self::parse(value)
-    }
-}
-
-impl From<Box<str>> for Network {
-    fn from(value: Box<str>) -> Self {
-        Self::parse(value)
-    }
-}
-
-impl<'a> From<Cow<'a, str>> for Network {
-    fn from(value: Cow<'a, str>) -> Self {
-        Self::parse(value)
-    }
-}
+impl_from_str!(Network);
 
 impl AsRef<str> for Network {
     fn as_ref(&self) -> &str {
@@ -106,7 +90,7 @@ impl From<Network> for Cow<'static, str> {
     fn from(value: Network) -> Self {
         match value {
             Network::String(string) => string.into(),
-            Network::None => Self::Borrowed("none"),
+            Network::None => Self::Borrowed(Network::NONE),
         }
     }
 }

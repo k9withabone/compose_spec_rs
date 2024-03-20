@@ -1,3 +1,5 @@
+//! Provides long [`Build`] syntax for the `build` field of [`Service`](super::Service).
+
 mod cache;
 mod context;
 mod dockerfile;
@@ -20,7 +22,7 @@ pub use self::{
     ssh_auth::{Id as SshAuthId, IdError as SshAuthIdError, SshAuth},
 };
 
-use super::{extra_hosts, ByteValue, ConfigOrSecret, Image, Platform, Ulimits};
+use super::{extra_hosts, ByteValue, ConfigOrSecret, Hostname, Image, Platform, Ulimits};
 
 /// Long syntax build configuration for creating a container image from source.
 ///
@@ -30,9 +32,9 @@ pub struct Build {
     /// Path to a directory containing a Dockerfile/Containerfile, or a URL to a git repository.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#context)
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[as_short(short)]
-    pub context: Context,
+    pub context: Option<Context>,
 
     /// Set an alternate Dockerfile/Containerfile or define its content inline.
     /// A relative path is resolved from the build context.
@@ -90,7 +92,7 @@ pub struct Build {
         skip_serializing_if = "IndexMap::is_empty",
         deserialize_with = "extra_hosts"
     )]
-    pub extra_hosts: IndexMap<MapKey, IpAddr>,
+    pub extra_hosts: IndexMap<Hostname, IpAddr>,
 
     /// Specifies a build’s container isolation technology.
     ///
