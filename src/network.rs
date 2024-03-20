@@ -3,6 +3,7 @@
 use std::{
     borrow::Cow,
     fmt::{self, Display, Formatter},
+    ops::Not,
 };
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
@@ -27,6 +28,19 @@ pub struct Network {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#driver_opts)
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
     pub driver_opts: IndexMap<MapKey, StringOrNumber>,
+
+    /// Whether externally managed containers may attach to this network, in addition to
+    /// [`Service`]s.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#attachable)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub attachable: bool,
+
+    /// Whether to enable IPv6 networking.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#enable_ipv6)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub enable_ipv6: bool,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
