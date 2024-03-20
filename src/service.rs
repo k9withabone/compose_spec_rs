@@ -75,6 +75,10 @@ pub use self::{
 /// A service is an abstract definition of a computing resource within an application which can be
 /// scaled or replaced independently from other components.
 ///
+/// Services are backed by a set of containers, run by the platform according to replication
+/// requirements and placement constraints. They are defined by a container image and set of runtime
+/// arguments. All containers within a service are identically created with these arguments.
+///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md)
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Serialize, Deserialize, Debug, compose_spec_macros::Default, Clone, PartialEq)]

@@ -32,7 +32,7 @@ pub use self::{
     service::Service,
 };
 
-/// The Compose file is a YAML file defining a multi-containers based application.
+/// The Compose file is a YAML file defining a containers based application.
 ///
 /// Note that the [`Deserialize`] implementations of many types within `Compose` make use of
 /// [`Deserializer::deserialize_any()`](::serde::de::Deserializer::deserialize_any). This means that
@@ -59,6 +59,8 @@ pub struct Compose {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub include: Vec<ShortOrLong<PathBuf, Include>>,
 
+    /// The [`Service`]s (containerized computing components) of the application.
+    ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md)
     pub services: IndexMap<Identifier, Service>,
 
