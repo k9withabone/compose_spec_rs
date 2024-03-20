@@ -47,6 +47,7 @@ version = "0.1.0"
 dependencies = [
  "compose_spec_macros",
  "indexmap",
+ "ipnet",
  "itoa",
  "pomsky-macro",
  "proptest",
@@ -149,6 +150,15 @@ checksum = "233cf39063f058ea2caae4091bf4a3ef70a653afbc026f5c4a4135d114e3c177"
 dependencies = [
  "equivalent",
  "hashbrown",
+ "serde",
+]
+
+[[package]]
+name = "ipnet"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
+dependencies = [
  "serde",
 ]
 

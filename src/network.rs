@@ -4,18 +4,20 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     fmt::{self, Display, Formatter},
+    net::IpAddr,
     ops::Not,
 };
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use indexmap::IndexMap;
+use ipnet::IpNet;
 use serde::{
     de::{self, IntoDeserializer},
     ser::SerializeStruct,
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use crate::{impl_from_str, Extensions, MapKey, StringOrNumber};
+use crate::{impl_from_str, service::Hostname, Extensions, MapKey, StringOrNumber};
 
 /// A named network which allows for [`Service`](super::Service)s to communicate with each other.
 ///
@@ -133,6 +135,12 @@ pub struct Config {
     #[serde(default, skip_serializing_if = "Not::not")]
     pub enable_ipv6: bool,
 
+    /// Custom IPAM configuration.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#ipam)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ipam: Option<Ipam>,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
@@ -211,4 +219,57 @@ impl From<Driver> for String {
     fn from(value: Driver) -> Self {
         Cow::from(value).into_owned()
     }
+}
+
+/// IP address management (IPAM) options for a [`Network`] [`Config`].
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#ipam)
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+pub struct Ipam {
+    /// Custom IPAM driver.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub driver: Option<String>,
+
+    /// IPAM configuration.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config: Option<IpamConfig>,
+
+    /// Driver-specific options.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub options: IndexMap<MapKey, String>,
+
+    /// Extension values, which are (de)serialized via flattening.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
+    #[serde(flatten)]
+    pub extensions: Extensions,
+}
+
+/// [`Ipam`] configuration.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#ipam)
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+pub struct IpamConfig {
+    /// Network subnet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subnet: Option<IpNet>,
+
+    /// Range of IPs from which to allocate container IPs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ip_range: Option<IpNet>,
+
+    /// IPv4 or IPv6 gateway for the subnet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gateway: Option<IpAddr>,
+
+    /// Auxiliary IPv4 or IPv6 addresses used by [`Network`] driver, as a mapping from hostnames to
+    /// IP addresses.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub aux_addresses: IndexMap<Hostname, IpAddr>,
+
+    /// Extension values, which are (de)serialized via flattening.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
+    #[serde(flatten)]
+    pub extensions: Extensions,
 }
