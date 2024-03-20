@@ -17,7 +17,7 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use crate::{impl_from_str, service::Hostname, Extensions, MapKey, StringOrNumber};
+use crate::{impl_from_str, service::Hostname, Extensions, ListOrMap, MapKey, StringOrNumber};
 
 /// A named network which allows for [`Service`](super::Service)s to communicate with each other.
 ///
@@ -140,6 +140,18 @@ pub struct Config {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#ipam)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ipam: Option<Ipam>,
+
+    /// Whether to isolate this network from external connectivity.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#internal)
+    #[serde(default, skip_serializing_if = "Not::not")]
+    pub internal: bool,
+
+    /// Add metadata to the network.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#labels)
+    #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
+    pub labels: ListOrMap,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
