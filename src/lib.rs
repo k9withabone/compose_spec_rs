@@ -13,6 +13,7 @@ mod common;
 pub mod duration;
 mod include;
 mod name;
+pub mod network;
 mod serde;
 pub mod service;
 
@@ -29,6 +30,7 @@ pub use self::{
     },
     include::Include,
     name::{InvalidNameError, Name},
+    network::Network,
     service::Service,
 };
 
@@ -63,6 +65,12 @@ pub struct Compose {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md)
     pub services: IndexMap<Identifier, Service>,
+
+    /// Named networks for [`Service`]s to communicate with each other.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md)
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub networks: IndexMap<Identifier, Option<Network>>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
