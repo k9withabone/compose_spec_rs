@@ -43,7 +43,7 @@ use crate::{
         ItemOrListVisitor,
     },
     AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, Map,
-    ShortOrLong, Value,
+    MapKey, ShortOrLong, StringOrNumber, Value,
 };
 
 use self::build::Context;
@@ -997,8 +997,8 @@ pub struct Logging {
     pub driver: Option<String>,
 
     /// Driver specific options.
-    #[serde(default, skip_serializing_if = "Map::is_empty")]
-    pub options: Map,
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub options: IndexMap<MapKey, Option<StringOrNumber>>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

@@ -6,9 +6,10 @@ use std::{
 };
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use crate::{impl_from_str, Extensions, Map};
+use crate::{impl_from_str, Extensions, MapKey, StringOrNumber};
 
 /// A named network which allows for [`Service`](super::Service)s to communicate with each other.
 ///
@@ -24,8 +25,8 @@ pub struct Network {
     /// Driver-dependent options.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#driver_opts)
-    #[serde(default, skip_serializing_if = "Map::is_empty")]
-    pub driver_opts: Map,
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub driver_opts: IndexMap<MapKey, StringOrNumber>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
