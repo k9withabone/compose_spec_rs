@@ -17,7 +17,9 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use crate::{impl_from_str, service::Hostname, Extensions, ListOrMap, MapKey, StringOrNumber};
+use crate::{
+    impl_from_str, service::Hostname, Extensions, Identifier, ListOrMap, MapKey, StringOrNumber,
+};
 
 /// A named network which allows for [`Service`](super::Service)s to communicate with each other.
 ///
@@ -29,7 +31,13 @@ pub enum Network {
     /// (De)serializes from/to the mapping `external: true`.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#external)
-    External,
+    External {
+        /// A custom name for the network.
+        ///
+        /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#name)
+        // #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<Identifier>,
+    },
 
     /// Network configuration.
     Config(Config),
@@ -39,12 +47,15 @@ impl Network {
     /// [`Self::External`] field name.
     const EXTERNAL: &'static str = "external";
 
+    /// `Self::External.name` field.
+    const NAME: &'static str = "name";
+
     /// Returns `true` if the network is [`External`].
     ///
     /// [`External`]: Network::External
     #[must_use]
     pub fn is_external(&self) -> bool {
-        matches!(self, Self::External)
+        matches!(self, Self::External { .. })
     }
 
     /// Returns [`Some`] if the network is [`Config`].
@@ -58,6 +69,17 @@ impl Network {
             None
         }
     }
+
+    /// Custom network name, if set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#name)
+    #[must_use]
+    pub fn name(&self) -> Option<&Identifier> {
+        match self {
+            Self::External { name } => name.as_ref(),
+            Self::Config(config) => config.name.as_ref(),
+        }
+    }
 }
 
 impl From<Config> for Network {
@@ -69,9 +91,13 @@ impl From<Config> for Network {
 impl Serialize for Network {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
-            Network::External => {
-                let mut state = serializer.serialize_struct("Network", 1)?;
+            Network::External { name } => {
+                let mut state =
+                    serializer.serialize_struct("Network", 1 + usize::from(name.is_some()))?;
                 state.serialize_field(Self::EXTERNAL, &true)?;
+                if let Some(name) = name {
+                    state.serialize_field(Self::NAME, name)?;
+                }
                 state.end()
             }
             Network::Config(config) => config.serialize(serializer),
@@ -91,10 +117,18 @@ impl<'de> Deserialize<'de> for Network {
             .unwrap_or_default();
 
         if external {
+            let name = map
+                .remove(Self::NAME)
+                .map(Identifier::deserialize)
+                .transpose()
+                .map_err(de::Error::custom)?;
+
             if map.is_empty() {
-                Ok(Self::External)
+                Ok(Self::External { name })
             } else {
-                Err(de::Error::custom("cannot set `external` and other fields"))
+                Err(de::Error::custom(
+                    "cannot set `external` and fields other than `name`",
+                ))
             }
         } else {
             Config::deserialize(map.into_deserializer())
@@ -152,6 +186,12 @@ pub struct Config {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#labels)
     #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
     pub labels: ListOrMap,
+
+    /// Custom name for the network.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#name)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<Identifier>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
