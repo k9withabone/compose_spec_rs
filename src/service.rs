@@ -483,6 +483,14 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pid: Option<String>,
 
+    /// Tune the container's PIDs limit.
+    ///
+    /// Must be consistent with `pids` in [`deploy::resources::Limits`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#pids_limit)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pids_limit: Option<u32>,
+
     /// Target platform for the container to run on.
     ///
     /// Used to determine which version of the container image is pulled and/or which platform the
