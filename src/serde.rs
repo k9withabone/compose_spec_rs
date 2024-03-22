@@ -10,10 +10,7 @@ use std::{
 };
 
 use serde::{
-    de::{
-        self, value::SeqAccessDeserializer, Expected, IntoDeserializer, SeqAccess, Unexpected,
-        Visitor,
-    },
+    de::{self, value::SeqAccessDeserializer, IntoDeserializer, SeqAccess, Visitor},
     Deserialize, Deserializer,
 };
 
@@ -40,73 +37,236 @@ macro_rules! forward_visitor {
 pub(crate) use forward_visitor;
 
 #[derive(Debug)]
-pub(crate) struct ValueEnumVisitor<B = (), I = (), U = (), F = (), S = ()> {
+pub(crate) struct ValueEnumVisitor<U = (), I = (), F = (), B = (), S = ()> {
     expecting: &'static str,
-    visit_bool: Option<B>,
-    visit_i64: Option<I>,
-    visit_u64: Option<U>,
-    visit_f64: Option<F>,
-    visit_string: Option<S>,
+    visit_u64: U,
+    visit_i64: I,
+    visit_f64: F,
+    visit_bool: B,
+    visit_string: S,
 }
 
-impl<B, I, U, F, S> ValueEnumVisitor<B, I, U, F, S> {
+impl ValueEnumVisitor {
     pub fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
-            visit_bool: None,
-            visit_i64: None,
-            visit_u64: None,
-            visit_f64: None,
-            visit_string: None,
+            visit_u64: (),
+            visit_i64: (),
+            visit_f64: (),
+            visit_bool: (),
+            visit_string: (),
         }
     }
+}
 
-    pub fn bool(mut self, visit: B) -> Self {
-        self.visit_bool = Some(visit);
-        self
+impl<I, F, B, S> ValueEnumVisitor<(), I, F, B, S> {
+    pub fn u64<U: FnOnce(u64) -> V, V>(self, visit_u64: U) -> ValueEnumVisitor<U, I, F, B, S> {
+        let Self {
+            expecting,
+            visit_u64: (),
+            visit_i64,
+            visit_f64,
+            visit_bool,
+            visit_string,
+        } = self;
+
+        ValueEnumVisitor {
+            expecting,
+            visit_u64,
+            visit_i64,
+            visit_f64,
+            visit_bool,
+            visit_string,
+        }
     }
+}
 
-    pub fn i64(mut self, visit: I) -> Self {
-        self.visit_i64 = Some(visit);
-        self
+impl<U, F, B, S> ValueEnumVisitor<U, (), F, B, S> {
+    pub fn i64<I, V>(self, visit_i64: I) -> ValueEnumVisitor<U, I, F, B, S>
+    where
+        I: FnOnce(i64) -> V,
+    {
+        let Self {
+            expecting,
+            visit_u64,
+            visit_i64: (),
+            visit_f64,
+            visit_bool,
+            visit_string,
+        } = self;
+
+        ValueEnumVisitor {
+            expecting,
+            visit_u64,
+            visit_i64,
+            visit_f64,
+            visit_bool,
+            visit_string,
+        }
     }
+}
 
-    pub fn u64(mut self, visit: U) -> Self {
-        self.visit_u64 = Some(visit);
-        self
+impl<U, I, B, S> ValueEnumVisitor<U, I, (), B, S> {
+    pub fn f64<F, V>(self, visit_f64: F) -> ValueEnumVisitor<U, I, F, B, S>
+    where
+        F: FnOnce(f64) -> V,
+    {
+        let Self {
+            expecting,
+            visit_u64,
+            visit_i64,
+            visit_f64: (),
+            visit_bool,
+            visit_string,
+        } = self;
+
+        ValueEnumVisitor {
+            expecting,
+            visit_u64,
+            visit_i64,
+            visit_f64,
+            visit_bool,
+            visit_string,
+        }
     }
+}
 
-    pub fn f64(mut self, visit: F) -> Self {
-        self.visit_f64 = Some(visit);
-        self
+impl<U, I, F, S> ValueEnumVisitor<U, I, F, (), S> {
+    pub fn bool<B, V>(self, visit_bool: B) -> ValueEnumVisitor<U, I, F, B, S>
+    where
+        B: FnOnce(bool) -> V,
+    {
+        let Self {
+            expecting,
+            visit_u64,
+            visit_i64,
+            visit_f64,
+            visit_bool: (),
+            visit_string,
+        } = self;
+
+        ValueEnumVisitor {
+            expecting,
+            visit_u64,
+            visit_i64,
+            visit_f64,
+            visit_bool,
+            visit_string,
+        }
     }
+}
 
-    pub fn string(mut self, visit: S) -> Self {
-        self.visit_string = Some(visit);
-        self
+impl<U, I, F, B> ValueEnumVisitor<U, I, F, B, ()> {
+    pub fn string<S, V>(self, visit_string: S) -> ValueEnumVisitor<U, I, F, B, S>
+    where
+        S: FnOnce(String) -> V,
+    {
+        let Self {
+            expecting,
+            visit_u64,
+            visit_i64,
+            visit_f64,
+            visit_bool,
+            visit_string: (),
+        } = self;
+
+        ValueEnumVisitor {
+            expecting,
+            visit_u64,
+            visit_i64,
+            visit_f64,
+            visit_bool,
+            visit_string,
+        }
     }
+}
 
-    pub fn deserialize<'de, D, V>(self, deserializer: D) -> Result<V, D::Error>
+impl<U, I, F, B, S> ValueEnumVisitor<U, I, F, B, S> {
+    pub fn deserialize<'de, V, D>(self, deserializer: D) -> Result<V, D::Error>
     where
         D: Deserializer<'de>,
         Self: Visitor<'de, Value = V>,
     {
         deserializer.deserialize_any(self)
     }
+}
 
-    fn invalid_type<E: de::Error>(&self, unexpected: Unexpected) -> E
-    where
-        Self: Expected,
-    {
-        de::Error::invalid_type(unexpected, self)
+impl<'de, U, I, F, B, S, V> Visitor<'de> for ValueEnumVisitor<U, I, F, B, S>
+where
+    U: FnOnce(u64) -> V,
+    I: FnOnce(i64) -> V,
+    F: FnOnce(f64) -> V,
+    B: FnOnce(bool) -> V,
+    S: FnOnce(String) -> V,
+{
+    type Value = V;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str(self.expecting)
+    }
+
+    fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
+        let Self { visit_bool, .. } = self;
+        Ok(visit_bool(v))
+    }
+
+    fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+        let Self { visit_i64, .. } = self;
+        Ok(visit_i64(v))
+    }
+
+    fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+        let Self { visit_u64, .. } = self;
+        Ok(visit_u64(v))
+    }
+
+    fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+        let Self { visit_f64, .. } = self;
+        Ok(visit_f64(v))
+    }
+
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        self.visit_string(v.to_owned())
+    }
+
+    fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+        let Self { visit_string, .. } = self;
+        Ok(visit_string(v))
     }
 }
 
-impl<'de, B, I, U, F, S, V> Visitor<'de> for ValueEnumVisitor<B, I, U, F, S>
+impl<'de, U, I, F, V> Visitor<'de> for ValueEnumVisitor<U, I, F>
 where
-    B: FnOnce(bool) -> V,
-    I: FnOnce(i64) -> V,
     U: FnOnce(u64) -> V,
+    I: FnOnce(i64) -> V,
+    F: FnOnce(f64) -> V,
+{
+    type Value = V;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str(self.expecting)
+    }
+
+    fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+        let Self { visit_i64, .. } = self;
+        Ok(visit_i64(v))
+    }
+
+    fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+        let Self { visit_u64, .. } = self;
+        Ok(visit_u64(v))
+    }
+
+    fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+        let Self { visit_f64, .. } = self;
+        Ok(visit_f64(v))
+    }
+}
+
+impl<'de, U, I, F, S, V> Visitor<'de> for ValueEnumVisitor<U, I, F, (), S>
+where
+    U: FnOnce(u64) -> V,
+    I: FnOnce(i64) -> V,
     F: FnOnce(f64) -> V,
     S: FnOnce(String) -> V,
 {
@@ -116,70 +276,28 @@ where
         formatter.write_str(self.expecting)
     }
 
-    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if let Some(visit_bool) = self.visit_bool {
-            Ok(visit_bool(v))
-        } else {
-            Err(self.invalid_type(Unexpected::Bool(v)))
-        }
+    fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+        let Self { visit_i64, .. } = self;
+        Ok(visit_i64(v))
     }
 
-    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if let Some(visit_i64) = self.visit_i64 {
-            Ok(visit_i64(v))
-        } else {
-            Err(self.invalid_type(Unexpected::Signed(v)))
-        }
+    fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+        let Self { visit_u64, .. } = self;
+        Ok(visit_u64(v))
     }
 
-    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if let Some(visit_u64) = self.visit_u64 {
-            Ok(visit_u64(v))
-        } else {
-            Err(self.invalid_type(Unexpected::Unsigned(v)))
-        }
+    fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+        let Self { visit_f64, .. } = self;
+        Ok(visit_f64(v))
     }
 
-    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if let Some(visit_f64) = self.visit_f64 {
-            Ok(visit_f64(v))
-        } else {
-            Err(self.invalid_type(Unexpected::Float(v)))
-        }
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        self.visit_string(v.to_owned())
     }
 
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if let Some(visit_string) = self.visit_string {
-            Ok(visit_string(v.to_owned()))
-        } else {
-            Err(self.invalid_type(Unexpected::Str(v)))
-        }
-    }
-
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if let Some(visit_string) = self.visit_string {
-            Ok(visit_string(v))
-        } else {
-            Err(self.invalid_type(Unexpected::Str(&v)))
-        }
+    fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+        let Self { visit_string, .. } = self;
+        Ok(visit_string(v))
     }
 }
 

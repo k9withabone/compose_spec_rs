@@ -7,7 +7,7 @@ use std::{
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 
-use crate::impl_from_str;
+use crate::{impl_from_str, Identifier, InvalidIdentifierError};
 
 /// Network containers connect to during [`Build`](super::Build) for `RUN` instructions.
 ///
@@ -15,9 +15,7 @@ use crate::impl_from_str;
 #[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq)]
 pub enum Network {
     /// Network to connect to during build.
-    ///
-    /// A compose implementation may have more specific network kinds such as "host".
-    String(String),
+    Identifier(Identifier),
 
     /// Disable networking during build.
     None,
@@ -30,14 +28,18 @@ impl Network {
     /// Parse [`Network`] from a string.
     ///
     /// "none" converts to [`Network::None`].
-    pub fn parse<T>(network: T) -> Self
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the network is not a valid [`Identifier`]
+    pub fn parse<T>(network: T) -> Result<Self, T::Error>
     where
-        T: AsRef<str> + Into<String>,
+        T: AsRef<str> + TryInto<Identifier>,
     {
         if network.as_ref() == Self::NONE {
-            Self::None
+            Ok(Self::None)
         } else {
-            Self::String(network.into())
+            network.try_into().map(Self::Identifier)
         }
     }
 
@@ -47,7 +49,7 @@ impl Network {
     #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
-            Self::String(string) => string,
+            Self::Identifier(network) => network.as_str(),
             Self::None => Self::NONE,
         }
     }
@@ -62,17 +64,18 @@ impl Network {
 
     /// Convert into [`Option<String>`].
     ///
-    /// [`Network::String`] converts to [`Option::Some`] and [`Network::None`] to [`Option::None`].
+    /// [`Network::Identifier`] converts into [`Option::Some`] and [`Network::None`] into
+    /// [`Option::None`].
     #[must_use]
-    pub fn into_option(self) -> Option<String> {
+    pub fn into_option(self) -> Option<Identifier> {
         match self {
-            Self::String(string) => Some(string),
+            Self::Identifier(network) => Some(network),
             Self::None => None,
         }
     }
 }
 
-impl_from_str!(Network);
+impl_from_str!(Network => InvalidIdentifierError);
 
 impl AsRef<str> for Network {
     fn as_ref(&self) -> &str {
@@ -89,7 +92,7 @@ impl Display for Network {
 impl From<Network> for Cow<'static, str> {
     fn from(value: Network) -> Self {
         match value {
-            Network::String(string) => string.into(),
+            Network::Identifier(network) => Self::Owned(network.into()),
             Network::None => Self::Borrowed(Network::NONE),
         }
     }
@@ -98,11 +101,5 @@ impl From<Network> for Cow<'static, str> {
 impl From<Network> for String {
     fn from(value: Network) -> Self {
         Cow::from(value).into_owned()
-    }
-}
-
-impl From<Network> for Option<String> {
-    fn from(value: Network) -> Self {
-        value.into_option()
     }
 }

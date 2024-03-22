@@ -5,9 +5,10 @@ mod short_or_long;
 
 use std::{
     borrow::Cow,
-    fmt::{self, Display, Formatter},
+    fmt::{self, Display, Formatter, LowerExp, UpperExp},
     hash::Hash,
     num::{ParseFloatError, ParseIntError, TryFromIntError},
+    str::FromStr,
 };
 
 use indexmap::{indexset, IndexMap, IndexSet};
@@ -255,27 +256,15 @@ impl Default for ListOrMap {
     }
 }
 
-/// A single string, integer, float, or boolean value.
-///
-/// The maximum range of integer values deserialized is `i64::MIN..=u64::MAX`.
+/// A single string, number, or boolean value.
 #[derive(Serialize, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
     /// A [`String`] value.
     String(String),
 
-    /// A [`u64`] (unsigned integer) value.
-    ///
-    /// Positive integers will parse/deserialize into this.
-    UnsignedInt(u64),
-
-    /// A [`i64`] (signed integer) value.
-    ///
-    /// Negative integers will parse/deserialize into this.
-    SignedInt(i64),
-
-    /// A [`f64`] (floating point) value.
-    Float(f64),
+    /// A [`Number`] value.
+    Number(Number),
 
     /// A [`bool`]ean value.
     Bool(bool),
@@ -296,13 +285,17 @@ impl Value {
         let s = string.as_ref();
         s.parse()
             .map(Self::Bool)
-            .or_else(|_| s.parse().map(Self::UnsignedInt))
-            .or_else(|_| s.parse().map(Self::SignedInt))
-            .or_else(|_| s.parse().map(Self::Float))
+            .or_else(|_| s.parse().map(Self::Number))
             .unwrap_or_else(|_| Self::String(string.into()))
     }
 
-    /// Returns [`Some`] if a [`Value::String`].
+    /// Returns `true` if the value is a [`String`].
+    #[must_use]
+    pub fn is_string(&self) -> bool {
+        matches!(self, Self::String(..))
+    }
+
+    /// Returns [`Some`] if the value is a [`String`].
     #[must_use]
     pub fn as_string(&self) -> Option<&String> {
         if let Self::String(v) = self {
@@ -312,43 +305,29 @@ impl Value {
         }
     }
 
-    /// Returns [`Some`] if a [`Value::UnsignedInt`].
-    ///
-    /// Use `u64::try_from()` if conversion from other value types is wanted.
+    /// Returns `true` if the value is a [`Number`].
     #[must_use]
-    pub fn as_unsigned_int(&self) -> Option<u64> {
-        if let Self::UnsignedInt(v) = self {
-            Some(*v)
+    pub fn is_number(&self) -> bool {
+        matches!(self, Self::Number(..))
+    }
+
+    /// Returns [`Some`] if the value is a [`Number`].
+    #[must_use]
+    pub fn as_number(&self) -> Option<&Number> {
+        if let Self::Number(v) = self {
+            Some(v)
         } else {
             None
         }
     }
 
-    /// Returns [`Some`] if a [`Value::SignedInt`].
-    ///
-    /// Use `i64::try_from()` if conversion from other value types is wanted.
+    /// Returns `true` if the value is a [`bool`].
     #[must_use]
-    pub fn as_signed_int(&self) -> Option<i64> {
-        if let Self::SignedInt(v) = self {
-            Some(*v)
-        } else {
-            None
-        }
+    pub fn is_bool(&self) -> bool {
+        matches!(self, Self::Bool(..))
     }
 
-    /// Returns [`Some`] if a [`Value::Float`].
-    ///
-    /// Use `f64::try_from()` if conversion from other value types is wanted.
-    #[must_use]
-    pub fn as_float(&self) -> Option<f64> {
-        if let Self::Float(v) = self {
-            Some(*v)
-        } else {
-            None
-        }
-    }
-
-    /// Returns [`Some`] if a [`Value::Bool`].
+    /// Returns [`Some`] if the value is a [`bool`].
     #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
         if let Self::Bool(v) = self {
@@ -360,15 +339,12 @@ impl Value {
 }
 
 impl<'de> Deserialize<'de> for Value {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         ValueEnumVisitor::new("a string, integer, float, or boolean")
             .string(Self::String)
-            .u64(Self::UnsignedInt)
-            .i64(Self::SignedInt)
-            .f64(Self::Float)
+            .u64(Into::into)
+            .i64(Into::into)
+            .f64(Into::into)
             .bool(Self::Bool)
             .deserialize(deserializer)
     }
@@ -378,9 +354,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::String(value) => Display::fmt(value, f),
-            Self::UnsignedInt(value) => Display::fmt(value, f),
-            Self::SignedInt(value) => Display::fmt(value, f),
-            Self::Float(value) => Display::fmt(value, f),
+            Self::Number(value) => Display::fmt(value, f),
             Self::Bool(value) => Display::fmt(value, f),
         }
     }
@@ -410,21 +384,27 @@ impl From<Cow<'_, str>> for Value {
     }
 }
 
+impl From<Number> for Value {
+    fn from(value: Number) -> Self {
+        Self::Number(value)
+    }
+}
+
 impl From<u64> for Value {
     fn from(value: u64) -> Self {
-        Self::UnsignedInt(value)
+        Number::from(value).into()
     }
 }
 
 impl From<i64> for Value {
     fn from(value: i64) -> Self {
-        Self::SignedInt(value)
+        Number::from(value).into()
     }
 }
 
 impl From<f64> for Value {
     fn from(value: f64) -> Self {
-        Self::Float(value)
+        Number::from(value).into()
     }
 }
 
@@ -444,17 +424,23 @@ impl From<Value> for String {
     }
 }
 
+impl TryFrom<Value> for Number {
+    type Error = ParseNumberError;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::String(value) => value.parse(),
+            Value::Number(value) => Ok(value),
+            Value::Bool(value) => Ok(u64::from(value).into()),
+        }
+    }
+}
+
 impl TryFrom<Value> for u64 {
     type Error = TryFromValueError;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::String(value) => Ok(value.parse()?),
-            Value::UnsignedInt(value) => Ok(value),
-            Value::SignedInt(value) => Ok(value.try_into()?),
-            Value::Bool(value) => Ok(value.into()),
-            Value::Float(_) => Err(TryFromValueError::WrongType),
-        }
+        Number::try_from(value)?.try_into().map_err(Into::into)
     }
 }
 
@@ -462,13 +448,7 @@ impl TryFrom<Value> for i64 {
     type Error = TryFromValueError;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::String(value) => Ok(value.parse()?),
-            Value::UnsignedInt(value) => Ok(value.try_into()?),
-            Value::SignedInt(value) => Ok(value),
-            Value::Bool(value) => Ok(value.into()),
-            Value::Float(_) => Err(TryFromValueError::WrongType),
-        }
+        Number::try_from(value)?.try_into().map_err(Into::into)
     }
 }
 
@@ -476,12 +456,7 @@ impl TryFrom<Value> for f64 {
     type Error = TryFromValueError;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::String(value) => Ok(value.parse()?),
-            Value::Float(value) => Ok(value),
-            Value::Bool(value) => Ok(value.into()),
-            Value::UnsignedInt(_) | Value::SignedInt(_) => Err(TryFromValueError::WrongType),
-        }
+        Number::try_from(value)?.try_into().map_err(Into::into)
     }
 }
 
@@ -491,31 +466,402 @@ impl TryFrom<Value> for bool {
     fn try_from(value: Value) -> Result<Self, Self::Error> {
         match value {
             Value::Bool(value) => Ok(value),
-            _ => Err(TryFromValueError::WrongType),
+            _ => Err(TryFromValueError::IntoBool),
         }
     }
 }
 
-/// Error returned when failing to convert [`Value`] into another type.
+/// Error returned when attempting to convert [`Value`] into another type.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum TryFromValueError {
-    /// [`Value`] is not the correct type for conversion.
-    #[error("value is not the correct type for conversion")]
-    WrongType,
+    /// Error parsing [`Value::String`] into a [`Number`].
+    #[error("error parsing string value into a number")]
+    ParseNumber(#[from] ParseNumberError),
+
+    /// Error converting [`Number`] into the type.
+    #[error("error converting number")]
+    TryFromNumber(#[from] TryFromNumberError),
+
+    /// Error converting integer type.
+    #[error("error converting integer type")]
+    TryFromInt(#[from] TryFromIntError),
+
+    /// Can only convert [`Value::Bool`] into a [`bool`].
+    #[error("cannot convert a non-bool value into a bool")]
+    IntoBool,
+}
+
+/// A numerical [`Value`].
+#[derive(Serialize, Debug, Clone, Copy, PartialEq)]
+#[serde(untagged)]
+pub enum Number {
+    /// A [`u64`] (unsigned integer) value.
+    ///
+    /// Positive integers will parse/deserialize into this.
+    UnsignedInt(u64),
+
+    /// A [`i64`] (signed integer) value.
+    ///
+    /// Negative integers will parse/deserialize into this.
+    SignedInt(i64),
+
+    /// A [`f64`] (floating point) value.
+    Float(f64),
+}
+
+impl Number {
+    /// Returns `true` if the number is an [`UnsignedInt`].
+    ///
+    /// [`UnsignedInt`]: Number::UnsignedInt
+    #[must_use]
+    pub fn is_unsigned_int(&self) -> bool {
+        matches!(self, Self::UnsignedInt(..))
+    }
+
+    /// Returns [`Some`] if the number is an [`UnsignedInt`].
+    ///
+    /// [`UnsignedInt`]: Number::UnsignedInt
+    #[must_use]
+    pub fn as_unsigned_int(&self) -> Option<u64> {
+        if let Self::UnsignedInt(v) = *self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if the number is a [`SignedInt`].
+    ///
+    /// [`SignedInt`]: Number::SignedInt
+    #[must_use]
+    pub fn is_signed_int(&self) -> bool {
+        matches!(self, Self::SignedInt(..))
+    }
+
+    /// Returns [`Some`] if the number is a [`SignedInt`].
+    ///
+    /// [`SignedInt`]: Number::SignedInt
+    #[must_use]
+    pub fn as_signed_int(&self) -> Option<i64> {
+        if let Self::SignedInt(v) = *self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if the number is a [`Float`].
+    ///
+    /// [`Float`]: Number::Float
+    #[must_use]
+    pub fn is_float(&self) -> bool {
+        matches!(self, Self::Float(..))
+    }
+
+    /// Returns [`Some`] if the number is a [`Float`].
+    ///
+    /// [`Float`]: Number::Float
+    #[must_use]
+    pub fn as_float(&self) -> Option<f64> {
+        if let Self::Float(v) = *self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Number {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        ValueEnumVisitor::new("an integer or float")
+            .u64(Self::UnsignedInt)
+            .i64(Self::SignedInt)
+            .f64(Self::Float)
+            .deserialize(deserializer)
+    }
+}
+
+impl From<u64> for Number {
+    fn from(value: u64) -> Self {
+        Self::UnsignedInt(value)
+    }
+}
+
+impl From<i64> for Number {
+    fn from(value: i64) -> Self {
+        Self::SignedInt(value)
+    }
+}
+
+impl From<f64> for Number {
+    fn from(value: f64) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl FromStr for Number {
+    type Err = ParseNumberError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.strip_prefix(['+', '-'])
+            .unwrap_or(s)
+            .contains(|char: char| !char.is_ascii_digit())
+        {
+            // Parse as float if `s` contains non-digits, e.g. "5." or "inf".
+            Ok(Self::Float(s.parse()?))
+        } else if s.starts_with('-') {
+            Ok(Self::SignedInt(s.parse()?))
+        } else {
+            Ok(Self::UnsignedInt(s.parse()?))
+        }
+    }
+}
+
+impl TryFrom<&str> for Number {
+    type Error = ParseNumberError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+/// Error returned when parsing a [`Number`] from a string.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum ParseNumberError {
+    /// Error parsing [`u64`] or [`i64`].
+    #[error("error parsing number as an integer")]
+    Int(#[from] ParseIntError),
+
+    /// Error parsing [`f64`].
+    #[error("error parsing number as a float")]
+    Float(#[from] ParseFloatError),
+}
+
+impl Display for Number {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::UnsignedInt(number) => Display::fmt(number, f),
+            Self::SignedInt(number) => Display::fmt(number, f),
+            Self::Float(number) => Display::fmt(number, f),
+        }
+    }
+}
+
+impl LowerExp for Number {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::UnsignedInt(number) => LowerExp::fmt(number, f),
+            Self::SignedInt(number) => LowerExp::fmt(number, f),
+            Self::Float(number) => LowerExp::fmt(number, f),
+        }
+    }
+}
+
+impl UpperExp for Number {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::UnsignedInt(number) => UpperExp::fmt(number, f),
+            Self::SignedInt(number) => UpperExp::fmt(number, f),
+            Self::Float(number) => UpperExp::fmt(number, f),
+        }
+    }
+}
+
+impl TryFrom<Number> for u64 {
+    type Error = TryFromNumberError;
+
+    fn try_from(value: Number) -> Result<Self, Self::Error> {
+        match value {
+            Number::UnsignedInt(value) => Ok(value),
+            Number::SignedInt(value) => value.try_into().map_err(Into::into),
+            Number::Float(_) => Err(TryFromNumberError::FloatToInt),
+        }
+    }
+}
+
+impl TryFrom<Number> for i64 {
+    type Error = TryFromNumberError;
+
+    fn try_from(value: Number) -> Result<Self, Self::Error> {
+        match value {
+            Number::UnsignedInt(value) => value.try_into().map_err(Into::into),
+            Number::SignedInt(value) => Ok(value),
+            Number::Float(_) => Err(TryFromNumberError::FloatToInt),
+        }
+    }
+}
+
+impl TryFrom<Number> for f64 {
+    type Error = TryFromIntError;
+
+    fn try_from(value: Number) -> Result<Self, Self::Error> {
+        match value {
+            Number::UnsignedInt(value) => u32::try_from(value).map(Into::into),
+            Number::SignedInt(value) => i32::try_from(value).map(Into::into),
+            Number::Float(value) => Ok(value),
+        }
+    }
+}
+
+/// Error returned when failing to convert a [`Number`] into another type.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum TryFromNumberError {
+    /// Cannot convert from a [`Float`](Number::Float) to an integer.
+    #[error("cannot convert a float to an integer")]
+    FloatToInt,
 
     /// Error converting integer type.
     ///
-    /// For example, converting from [`Value::SignedInt`] to [`u64`] can fail.
+    /// For example, converting from [`Number::SignedInt`] to [`u64`] can fail.
     #[error("error converting integer type")]
-    InvalidInt(#[from] TryFromIntError),
+    TryFromInt(#[from] TryFromIntError),
+}
 
-    /// Error parsing [`Value::String`] into an integer.
-    #[error("error parsing string value into an integer")]
-    ParseInt(#[from] ParseIntError),
+/// A string or number value.
+#[derive(Serialize, Debug, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum StringOrNumber {
+    /// A [`String`] value.
+    String(String),
 
-    /// Error parsing [`Value::String`] into a float.
-    #[error("error parsing string value into a float")]
-    ParseFloat(#[from] ParseFloatError),
+    /// A [`Number`] value.
+    Number(Number),
+}
+
+impl StringOrNumber {
+    /// Parse a string into a [`StringOrNumber`].
+    ///
+    /// It is first attempted to parse the string into a [`Number`].
+    /// If that fails a [`StringOrNumber::String`] is returned.
+    pub fn parse<T>(value: T) -> Self
+    where
+        T: AsRef<str> + Into<String>,
+    {
+        value
+            .as_ref()
+            .parse()
+            .map_or_else(|_| Self::String(value.into()), Self::Number)
+    }
+
+    /// Returns `true` if the value is a [`String`].
+    #[must_use]
+    pub fn is_string(&self) -> bool {
+        matches!(self, Self::String(..))
+    }
+
+    /// Returns [`Some`] if the value is a [`String`].
+    #[must_use]
+    pub fn as_string(&self) -> Option<&String> {
+        if let Self::String(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if the value is a [`Number`].
+    #[must_use]
+    pub fn is_number(&self) -> bool {
+        matches!(self, Self::Number(..))
+    }
+
+    /// Returns [`Some`] if the value is a [`Number`].
+    #[must_use]
+    pub fn as_number(&self) -> Option<Number> {
+        if let Self::Number(v) = *self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for StringOrNumber {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        ValueEnumVisitor::new("a string, integer, float, or boolean")
+            .string(Self::String)
+            .u64(Into::into)
+            .i64(Into::into)
+            .f64(Into::into)
+            .deserialize(deserializer)
+    }
+}
+
+impl From<String> for StringOrNumber {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<Box<str>> for StringOrNumber {
+    fn from(value: Box<str>) -> Self {
+        value.into_string().into()
+    }
+}
+
+impl From<&str> for StringOrNumber {
+    fn from(value: &str) -> Self {
+        value.to_owned().into()
+    }
+}
+
+impl From<Cow<'_, str>> for StringOrNumber {
+    fn from(value: Cow<'_, str>) -> Self {
+        value.into_owned().into()
+    }
+}
+
+impl From<Number> for StringOrNumber {
+    fn from(value: Number) -> Self {
+        Self::Number(value)
+    }
+}
+
+impl From<u64> for StringOrNumber {
+    fn from(value: u64) -> Self {
+        Number::from(value).into()
+    }
+}
+
+impl From<i64> for StringOrNumber {
+    fn from(value: i64) -> Self {
+        Number::from(value).into()
+    }
+}
+
+impl From<f64> for StringOrNumber {
+    fn from(value: f64) -> Self {
+        Number::from(value).into()
+    }
+}
+
+impl Display for StringOrNumber {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::String(value) => f.write_str(value),
+            Self::Number(value) => Display::fmt(value, f),
+        }
+    }
+}
+
+impl From<StringOrNumber> for String {
+    fn from(value: StringOrNumber) -> Self {
+        match value {
+            StringOrNumber::String(value) => value,
+            StringOrNumber::Number(value) => value.to_string(),
+        }
+    }
+}
+
+impl TryFrom<StringOrNumber> for Number {
+    type Error = ParseNumberError;
+
+    fn try_from(value: StringOrNumber) -> Result<Self, Self::Error> {
+        match value {
+            StringOrNumber::String(value) => value.parse(),
+            StringOrNumber::Number(value) => Ok(value),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -525,9 +871,9 @@ mod tests {
     #[test]
     fn value_parse() {
         assert_eq!(Value::parse("true"), Value::Bool(true));
-        assert_eq!(Value::parse("1"), Value::UnsignedInt(1));
-        assert_eq!(Value::parse("-1"), Value::SignedInt(-1));
-        assert_eq!(Value::parse("1.23"), Value::Float(1.23));
+        assert_eq!(Value::parse("1"), Value::Number(1_u64.into()));
+        assert_eq!(Value::parse("-1"), Value::Number((-1_i64).into()));
+        assert_eq!(Value::parse("1.23"), Value::Number(1.23.into()));
         assert_eq!(
             Value::parse("string"),
             Value::String(String::from("string")),

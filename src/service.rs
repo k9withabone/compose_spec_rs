@@ -43,7 +43,7 @@ use crate::{
         ItemOrListVisitor,
     },
     AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, Map,
-    ShortOrLong, Value,
+    MapKey, ShortOrLong, StringOrNumber, Value,
 };
 
 use self::build::Context;
@@ -74,6 +74,10 @@ pub use self::{
 
 /// A service is an abstract definition of a computing resource within an application which can be
 /// scaled or replaced independently from other components.
+///
+/// Services are backed by a set of containers, run by the platform according to replication
+/// requirements and placement constraints. They are defined by a container image and set of runtime
+/// arguments. All containers within a service are identically created with these arguments.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md)
 #[allow(clippy::struct_excessive_bools)]
@@ -993,8 +997,8 @@ pub struct Logging {
     pub driver: Option<String>,
 
     /// Driver specific options.
-    #[serde(default, skip_serializing_if = "Map::is_empty")]
-    pub options: Map,
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub options: IndexMap<MapKey, Option<StringOrNumber>>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

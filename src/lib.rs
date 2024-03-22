@@ -13,6 +13,7 @@ mod common;
 pub mod duration;
 mod include;
 mod name;
+pub mod network;
 mod serde;
 pub mod service;
 
@@ -24,15 +25,17 @@ use indexmap::IndexMap;
 pub use self::{
     common::{
         AsShort, AsShortIter, ExtensionKey, Extensions, Identifier, InvalidExtensionKeyError,
-        InvalidIdentifierError, InvalidMapKeyError, ItemOrList, ListOrMap, Map, MapKey,
-        ShortOrLong, Value, YamlValue,
+        InvalidIdentifierError, InvalidMapKeyError, ItemOrList, ListOrMap, Map, MapKey, Number,
+        ParseNumberError, ShortOrLong, StringOrNumber, TryFromNumberError, TryFromValueError,
+        Value, YamlValue,
     },
     include::Include,
     name::{InvalidNameError, Name},
+    network::Network,
     service::Service,
 };
 
-/// The Compose file is a YAML file defining a multi-containers based application.
+/// The Compose file is a YAML file defining a containers based application.
 ///
 /// Note that the [`Deserialize`] implementations of many types within `Compose` make use of
 /// [`Deserializer::deserialize_any()`](::serde::de::Deserializer::deserialize_any). This means that
@@ -59,8 +62,16 @@ pub struct Compose {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub include: Vec<ShortOrLong<PathBuf, Include>>,
 
+    /// The [`Service`]s (containerized computing components) of the application.
+    ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md)
     pub services: IndexMap<Identifier, Service>,
+
+    /// Named networks for [`Service`]s to communicate with each other.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md)
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub networks: IndexMap<Identifier, Option<Network>>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
