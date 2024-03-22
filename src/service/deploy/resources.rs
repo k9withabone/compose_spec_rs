@@ -2,6 +2,7 @@
 
 use std::{
     borrow::Cow,
+    cmp::Ordering,
     fmt::{self, Display, Formatter},
     num::ParseIntError,
     str::FromStr,
@@ -13,8 +14,11 @@ use serde::{
     de::{self, Unexpected, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
+use thiserror::Error;
 
-use crate::{impl_from_str, service::ByteValue, Extensions, ListOrMap};
+use crate::{
+    impl_from_str, impl_try_from, serde::forward_visitor, service::ByteValue, Extensions, ListOrMap,
+};
 
 /// Physical resource constraints for the service container to run on the platform.
 ///
@@ -45,7 +49,7 @@ pub struct Limits {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#cpus)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cpus: Option<f64>,
+    pub cpus: Option<Cpus>,
 
     /// The amount of memory a container can allocate.
     ///
@@ -75,7 +79,7 @@ pub struct Reservations {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#cpus)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cpus: Option<f64>,
+    pub cpus: Option<Cpus>,
 
     /// The amount of memory a container reserves for use.
     ///
@@ -98,6 +102,133 @@ pub struct Reservations {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+/// How much of the available CPU resources, as number of cores, a container reserves for use.
+///
+/// Must be a positive and finite number.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#cpus)
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[serde(into = "f64")]
+pub struct Cpus(f64);
+
+impl Cpus {
+    /// Create a new [`Cpus`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not positive or finite.
+    pub fn new<T: Into<f64>>(cpus: T) -> Result<Self, InvalidCpusError> {
+        let cpus = cpus.into();
+        if !cpus.is_sign_positive() {
+            Err(InvalidCpusError::Negative)
+        } else if !cpus.is_finite() {
+            Err(InvalidCpusError::Infinite)
+        } else {
+            Ok(Self(cpus))
+        }
+    }
+
+    /// Return the inner value.
+    #[must_use]
+    pub fn into_inner(self) -> f64 {
+        self.0
+    }
+}
+
+/// Error returned when creating [`Cpus`] fails.
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidCpusError {
+    /// Number was negative.
+    #[error("cpus cannot be negative")]
+    Negative,
+
+    /// Number was infinite or NaN.
+    #[error("cpus must be a finite number")]
+    Infinite,
+}
+
+impl_try_from!(Cpus::new -> InvalidCpusError, f32, f64, i8, i16, i32);
+
+impl From<u32> for Cpus {
+    fn from(value: u32) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<u16> for Cpus {
+    fn from(value: u16) -> Self {
+        u32::from(value).into()
+    }
+}
+
+impl From<u8> for Cpus {
+    fn from(value: u8) -> Self {
+        u32::from(value).into()
+    }
+}
+
+impl From<Cpus> for f64 {
+    fn from(value: Cpus) -> Self {
+        value.into_inner()
+    }
+}
+
+impl PartialEq<f64> for Cpus {
+    fn eq(&self, other: &f64) -> bool {
+        self.0.eq(other)
+    }
+}
+
+impl PartialOrd<f64> for Cpus {
+    fn partial_cmp(&self, other: &f64) -> Option<Ordering> {
+        self.0.partial_cmp(other)
+    }
+}
+
+impl<'de> Deserialize<'de> for Cpus {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(CpusVisitor)
+    }
+}
+
+/// [`Visitor`] for deserializing [`Cpus`].
+struct CpusVisitor;
+
+impl<'de> Visitor<'de> for CpusVisitor {
+    type Value = Cpus;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str("a number")
+    }
+
+    fn visit_u8<E: de::Error>(self, v: u8) -> Result<Self::Value, E> {
+        self.visit_u32(v.into())
+    }
+
+    fn visit_u16<E: de::Error>(self, v: u16) -> Result<Self::Value, E> {
+        self.visit_u32(v.into())
+    }
+
+    fn visit_u32<E: de::Error>(self, v: u32) -> Result<Self::Value, E> {
+        Ok(v.into())
+    }
+
+    forward_visitor! {
+        visit_f64,
+        visit_i8: i8,
+        visit_i16: i16,
+        visit_i32: i32,
+    }
+
+    fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+        v.try_into().map_err(E::custom)
+    }
+
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        self.visit_f64(v.parse().map_err(E::custom)?)
+    }
 }
 
 /// A device a container may [reserve](Reservations).
