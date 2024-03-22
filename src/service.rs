@@ -433,6 +433,22 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mac_address: Option<MacAddress>,
 
+    /// The amount of memory the container can allocate.
+    ///
+    /// Must be consistent with `memory` in [`deploy::resources::Limits`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#mem_limit)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mem_limit: Option<ByteValue>,
+
+    /// The amount of memory the container reserves for use.
+    ///
+    /// Must be consistent with `memory` in [`deploy::resources::Reservations`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#mem_reservation)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mem_reservation: Option<ByteValue>,
+
     /// Percentage of anonymous pages the host kernel is allowed to swap.
     ///
     /// The default is platform specific.
