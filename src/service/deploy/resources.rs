@@ -109,7 +109,7 @@ pub struct Reservations {
 /// Must be a positive and finite number.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#cpus)
-#[derive(Serialize, Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Serialize, Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
 #[serde(into = "f64")]
 pub struct Cpus(f64);
 

@@ -55,7 +55,7 @@ pub use self::{
     config_or_secret::ConfigOrSecret,
     cpuset::{CpuSet, ParseCpuSetError},
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
-    deploy::Deploy,
+    deploy::{resources::Cpus, Deploy},
     develop::Develop,
     device::Device,
     env_file::EnvFile,
@@ -166,6 +166,14 @@ pub struct Service {
         with = "duration_option"
     )]
     pub cpu_rt_period: Option<Duration>,
+
+    /// Number of (potentially virtual) CPUs to allocate to the container.
+    ///
+    /// Must be consistent with `cpus` in [`Deploy`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#cpus)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpus: Option<Cpus>,
 
     /// CPUs in which to allow execution.
     ///
