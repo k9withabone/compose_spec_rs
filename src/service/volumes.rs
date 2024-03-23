@@ -26,7 +26,7 @@ use crate::{impl_try_from, Identifier, InvalidIdentifierError, ShortOrLong};
 pub use self::mount::Mount;
 use self::mount::{Bind, Common, Volume};
 
-/// Volumes to mount within a [`Service`](super::Service) container.
+/// [`Volume`](crate::Volume)s to mount within a [`Service`](super::Service) container.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#volumes)
 pub type Volumes = IndexSet<ShortOrLong<ShortVolume, Mount>>;
@@ -431,7 +431,7 @@ pub enum Source {
     /// file.
     HostPath(HostPath),
 
-    /// Named volume.
+    /// Named [`Volume`](crate::Volume).
     Volume(Identifier),
 }
 

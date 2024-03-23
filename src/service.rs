@@ -415,6 +415,9 @@ pub struct Service {
 
     /// Network configuration of the service container.
     ///
+    /// Controls the container's [`NetworkMode`](network_config::NetworkMode) or which
+    /// [`Network`](super::Network)s it is connected to.
+    ///
     /// Represents either the
     /// [`network_mode`](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#network_mode)
     /// or [`networks`](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#networks)
@@ -654,7 +657,7 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub userns_mode: Option<String>,
 
-    /// Volumes to mount within the container.
+    /// [`Volume`](crate::Volume)s to mount within the container.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#volumes)
     #[serde(default, skip_serializing_if = "Volumes::is_empty")]
@@ -1310,8 +1313,6 @@ impl From<VolumesFromSource> for String {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use proptest::{
         arbitrary::{any, Arbitrary},
         path::PathParams,

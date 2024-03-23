@@ -16,6 +16,7 @@ mod name;
 pub mod network;
 mod serde;
 pub mod service;
+mod volume;
 
 use std::path::PathBuf;
 
@@ -26,14 +27,27 @@ pub use self::{
     common::{
         AsShort, AsShortIter, ExtensionKey, Extensions, Identifier, InvalidExtensionKeyError,
         InvalidIdentifierError, InvalidMapKeyError, ItemOrList, ListOrMap, Map, MapKey, Number,
-        ParseNumberError, ShortOrLong, StringOrNumber, TryFromNumberError, TryFromValueError,
-        Value, YamlValue,
+        ParseNumberError, Resource, ShortOrLong, StringOrNumber, TryFromNumberError,
+        TryFromValueError, Value, YamlValue,
     },
     include::Include,
     name::{InvalidNameError, Name},
     network::Network,
     service::Service,
+    volume::Volume,
 };
+
+/// Named networks which allow for [`Service`]s to communicate with each other.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md)
+pub type Networks = IndexMap<Identifier, Option<Resource<Network>>>;
+
+/// Named volumes which can be reused across multiple [`Service`]s.
+///
+/// Volumes are persistent data stores implemented by the container engine.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md)
+pub type Volumes = IndexMap<Identifier, Option<Resource<Volume>>>;
 
 /// The Compose file is a YAML file defining a containers based application.
 ///
@@ -70,8 +84,16 @@ pub struct Compose {
     /// Named networks for [`Service`]s to communicate with each other.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md)
-    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
-    pub networks: IndexMap<Identifier, Option<Network>>,
+    #[serde(default, skip_serializing_if = "Networks::is_empty")]
+    pub networks: Networks,
+
+    /// Named volumes which can be reused across multiple [`Service`]s.
+    ///
+    /// Volumes are persistent data stores implemented by the container engine.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md)
+    #[serde(default, skip_serializing_if = "Volumes::is_empty")]
+    pub volumes: Volumes,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

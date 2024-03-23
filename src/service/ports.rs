@@ -1044,7 +1044,10 @@ pub(super) mod tests {
     pub fn range() -> impl Strategy<Value = Range> {
         any::<u16>()
             .prop_flat_map(|start| (Just(start), option::of(start..)))
-            .prop_map(|(start, end)| Range { start, end })
+            .prop_map(|(start, end)| Range {
+                start,
+                end: end.filter(|end| *end != start),
+            })
     }
 
     pub fn protocol() -> impl Strategy<Value = Protocol> {

@@ -20,7 +20,7 @@ use crate::{
 
 use super::Hostname;
 
-/// Networks that a [`Service`](super::Service) container is attached to.
+/// [`Network`](crate::Network)s that a [`Service`](super::Service) container is attached to.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#networks)
 pub type Networks = ShortOrLong<IndexSet<Identifier>, IndexMap<Identifier, Option<Network>>>;
@@ -38,7 +38,7 @@ pub enum NetworkConfig {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#network_mode)
     NetworkMode(NetworkMode),
 
-    /// Networks that a [`Service`](super::Service) container is attached to.
+    /// [`Network`](crate::Network)s that a [`Service`](super::Service) container is attached to.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#networks)
     Networks(Networks),
@@ -331,7 +331,7 @@ impl From<NetworkMode> for Cow<'static, str> {
     }
 }
 
-/// How a [`Service`](super::Service) container should connect to a network.
+/// How a [`Service`](super::Service) container should connect to a [`Network`](crate::Network).
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#networks)
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
