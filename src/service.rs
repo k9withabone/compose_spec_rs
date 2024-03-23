@@ -415,6 +415,9 @@ pub struct Service {
 
     /// Network configuration of the service container.
     ///
+    /// Controls the container's [`NetworkMode`](network_config::NetworkMode) or which
+    /// [`Network`](super::Network)s it is connected to.
+    ///
     /// Represents either the
     /// [`network_mode`](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#network_mode)
     /// or [`networks`](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#networks)
