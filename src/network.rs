@@ -99,6 +99,8 @@ pub struct Network {
 /// [`Network`] driver.
 ///
 /// Default and available values are platform specific.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#driver)
 #[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq)]
 pub enum Driver {
     /// Use the host's networking stack.
@@ -169,7 +171,7 @@ impl From<Driver> for String {
     }
 }
 
-/// IP address management (IPAM) options for a [`Network`] [`Config`].
+/// IP address management (IPAM) options for a [`Network`].
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#ipam)
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
