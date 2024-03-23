@@ -16,7 +16,7 @@ mod name;
 pub mod network;
 mod serde;
 pub mod service;
-pub mod volume;
+mod volume;
 
 use std::path::PathBuf;
 

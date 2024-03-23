@@ -1,7 +1,22 @@
+//! Provides [`Volume`] for the top-level `volumes` field of a [`Compose`](super::Compose) file.
+
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use crate::{Extensions, MapKey, Resource, StringOrNumber};
+use crate::{Extensions, ListOrMap, MapKey, Resource, StringOrNumber};
+
+impl Resource<Volume> {
+    /// Custom volume name, if set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md#name)
+    #[must_use]
+    pub fn name(&self) -> Option<&String> {
+        match self {
+            Self::External { name } => name.as_ref(),
+            Self::Compose(volume) => volume.name.as_ref(),
+        }
+    }
+}
 
 impl From<Volume> for Resource<Volume> {
     fn from(value: Volume) -> Self {
@@ -29,6 +44,18 @@ pub struct Volume {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md#driver_opts)
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
     pub driver_opts: IndexMap<MapKey, StringOrNumber>,
+
+    /// Add metadata to the volume.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md#labels)
+    #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
+    pub labels: ListOrMap,
+
+    /// Custom name for the volume.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md#name)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
