@@ -262,7 +262,7 @@ impl From<Cluster> for Mount {
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#long-syntax-5)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Volume {
-    /// Name of the volume to mount.
+    /// Name of the [`Volume`](crate::Volume) to mount.
     ///
     /// If [`None`] an anonymous volume is used.
     #[serde(default, skip_serializing_if = "Option::is_none")]

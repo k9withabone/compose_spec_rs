@@ -657,7 +657,7 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub userns_mode: Option<String>,
 
-    /// Volumes to mount within the container.
+    /// [`Volume`](crate::Volume)s to mount within the container.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#volumes)
     #[serde(default, skip_serializing_if = "Volumes::is_empty")]
