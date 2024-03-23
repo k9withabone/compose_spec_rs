@@ -1310,8 +1310,6 @@ impl From<VolumesFromSource> for String {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use proptest::{
         arbitrary::{any, Arbitrary},
         path::PathParams,
