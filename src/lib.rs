@@ -10,6 +10,7 @@
 //! [`Vec`]s.
 
 mod common;
+pub mod config;
 pub mod duration;
 mod include;
 mod name;
@@ -30,6 +31,7 @@ pub use self::{
         ParseNumberError, Resource, ShortOrLong, StringOrNumber, TryFromNumberError,
         TryFromValueError, Value, YamlValue,
     },
+    config::Config,
     include::Include,
     name::{InvalidNameError, Name},
     network::Network,
@@ -48,6 +50,12 @@ pub type Networks = IndexMap<Identifier, Option<Resource<Network>>>;
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md)
 pub type Volumes = IndexMap<Identifier, Option<Resource<Volume>>>;
+
+/// Configs allow [`Service`]s to adapt their behaviour without needing to rebuild the container
+/// image.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/08-configs.md)
+pub type Configs = IndexMap<Identifier, Option<Resource<Config>>>;
 
 /// The Compose file is a YAML file defining a containers based application.
 ///
@@ -94,6 +102,13 @@ pub struct Compose {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md)
     #[serde(default, skip_serializing_if = "Volumes::is_empty")]
     pub volumes: Volumes,
+
+    /// Configs allow [`Service`]s to adapt their behaviour without needing to rebuild the container
+    /// image.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/08-configs.md)
+    #[serde(default, skip_serializing_if = "Configs::is_empty")]
+    pub configs: Configs,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
