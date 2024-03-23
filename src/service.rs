@@ -55,7 +55,7 @@ pub use self::{
     config_or_secret::ConfigOrSecret,
     cpuset::{CpuSet, ParseCpuSetError},
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
-    deploy::Deploy,
+    deploy::{resources::Cpus, Deploy},
     develop::Develop,
     device::Device,
     env_file::EnvFile,
@@ -166,6 +166,14 @@ pub struct Service {
         with = "duration_option"
     )]
     pub cpu_rt_period: Option<Duration>,
+
+    /// Number of (potentially virtual) CPUs to allocate to the container.
+    ///
+    /// Must be consistent with `cpus` in [`Deploy`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#cpus)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpus: Option<Cpus>,
 
     /// CPUs in which to allow execution.
     ///
@@ -425,6 +433,22 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mac_address: Option<MacAddress>,
 
+    /// The amount of memory the container can allocate.
+    ///
+    /// Must be consistent with `memory` in [`deploy::resources::Limits`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#mem_limit)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mem_limit: Option<ByteValue>,
+
+    /// The amount of memory the container reserves for use.
+    ///
+    /// Must be consistent with `memory` in [`deploy::resources::Reservations`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#mem_reservation)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mem_reservation: Option<ByteValue>,
+
     /// Percentage of anonymous pages the host kernel is allowed to swap.
     ///
     /// The default is platform specific.
@@ -458,6 +482,14 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#pid)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pid: Option<String>,
+
+    /// Tune the container's PIDs limit.
+    ///
+    /// Must be consistent with `pids` in [`deploy::resources::Limits`] if both are set.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#pids_limit)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pids_limit: Option<u32>,
 
     /// Target platform for the container to run on.
     ///

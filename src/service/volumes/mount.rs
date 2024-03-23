@@ -7,6 +7,7 @@ use std::{
     fmt::{self, Display, Formatter},
     hash::{Hash, Hasher},
     ops::Not,
+    path::PathBuf,
 };
 
 use serde::{Deserialize, Serialize};
@@ -305,6 +306,10 @@ pub struct VolumeOptions {
     #[serde(default, skip_serializing_if = "Not::not")]
     pub nocopy: bool,
 
+    /// Path inside the volume to mount instead of the volume root.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subpath: Option<PathBuf>,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
@@ -314,17 +319,28 @@ pub struct VolumeOptions {
 
 impl PartialEq for VolumeOptions {
     fn eq(&self, other: &Self) -> bool {
-        let Self { nocopy, extensions } = self;
+        let Self {
+            nocopy,
+            subpath,
+            extensions,
+        } = self;
 
-        *nocopy == other.nocopy && extensions.as_slice() == other.extensions.as_slice()
+        *nocopy == other.nocopy
+            && *subpath == other.subpath
+            && extensions.as_slice() == other.extensions.as_slice()
     }
 }
 
 impl Hash for VolumeOptions {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let Self { nocopy, extensions } = self;
+        let Self {
+            nocopy,
+            subpath,
+            extensions,
+        } = self;
 
         nocopy.hash(state);
+        subpath.hash(state);
         extensions.as_slice().hash(state);
     }
 }
