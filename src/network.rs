@@ -2,7 +2,6 @@
 
 use std::{
     borrow::Cow,
-    collections::HashMap,
     fmt::{self, Display, Formatter},
     net::IpAddr,
     ops::Not,
@@ -11,139 +10,36 @@ use std::{
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use indexmap::IndexMap;
 use ipnet::IpNet;
-use serde::{
-    de::{self, IntoDeserializer},
-    ser::SerializeStruct,
-    Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    impl_from_str, service::Hostname, Extensions, Identifier, ListOrMap, MapKey, StringOrNumber,
+    impl_from_str, service::Hostname, Extensions, ListOrMap, MapKey, Resource, StringOrNumber,
 };
 
-/// A named network which allows for [`Service`](super::Service)s to communicate with each other.
-///
-/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md)
-#[derive(Debug, Clone, PartialEq)]
-pub enum Network {
-    /// Externally managed network.
-    ///
-    /// (De)serializes from/to the mapping `external: true`.
-    ///
-    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#external)
-    External {
-        /// A custom name for the network.
-        ///
-        /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#name)
-        // #[serde(default, skip_serializing_if = "Option::is_none")]
-        name: Option<Identifier>,
-    },
-
-    /// Network configuration.
-    Config(Config),
-}
-
-impl Network {
-    /// [`Self::External`] field name.
-    const EXTERNAL: &'static str = "external";
-
-    /// `Self::External.name` field.
-    const NAME: &'static str = "name";
-
-    /// Returns `true` if the network is [`External`].
-    ///
-    /// [`External`]: Network::External
-    #[must_use]
-    pub fn is_external(&self) -> bool {
-        matches!(self, Self::External { .. })
-    }
-
-    /// Returns [`Some`] if the network is [`Config`].
-    ///
-    /// [`Config`]: Network::Config
-    #[must_use]
-    pub fn as_config(&self) -> Option<&Config> {
-        if let Self::Config(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
+impl Resource<Network> {
     /// Custom network name, if set.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#name)
     #[must_use]
-    pub fn name(&self) -> Option<&Identifier> {
+    pub fn name(&self) -> Option<&String> {
         match self {
             Self::External { name } => name.as_ref(),
-            Self::Config(config) => config.name.as_ref(),
+            Self::Compose(network) => network.name.as_ref(),
         }
     }
 }
 
-impl From<Config> for Network {
-    fn from(value: Config) -> Self {
-        Self::Config(value)
+impl From<Network> for Resource<Network> {
+    fn from(value: Network) -> Self {
+        Self::Compose(value)
     }
 }
 
-impl Serialize for Network {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Network::External { name } => {
-                let mut state =
-                    serializer.serialize_struct("Network", 1 + usize::from(name.is_some()))?;
-                state.serialize_field(Self::EXTERNAL, &true)?;
-                if let Some(name) = name {
-                    state.serialize_field(Self::NAME, name)?;
-                }
-                state.end()
-            }
-            Network::Config(config) => config.serialize(serializer),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for Network {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let mut map = HashMap::<String, serde_yaml::Value>::deserialize(deserializer)?;
-
-        let external = map
-            .remove(Self::EXTERNAL)
-            .map(bool::deserialize)
-            .transpose()
-            .map_err(de::Error::custom)?
-            .unwrap_or_default();
-
-        if external {
-            let name = map
-                .remove(Self::NAME)
-                .map(Identifier::deserialize)
-                .transpose()
-                .map_err(de::Error::custom)?;
-
-            if map.is_empty() {
-                Ok(Self::External { name })
-            } else {
-                Err(de::Error::custom(
-                    "cannot set `external` and fields other than `name`",
-                ))
-            }
-        } else {
-            Config::deserialize(map.into_deserializer())
-                .map(Self::Config)
-                .map_err(de::Error::custom)
-        }
-    }
-}
-
-/// [`Network`] configuration.
+/// A named network which allows for [`Service`](super::Service)s to communicate with each other.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md)
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-#[serde(rename = "Network")]
-pub struct Config {
+pub struct Network {
     /// Which driver to use for this network.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#driver)
@@ -191,7 +87,7 @@ pub struct Config {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#name)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<Identifier>,
+    pub name: Option<String>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

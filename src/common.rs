@@ -5,6 +5,7 @@ mod short_or_long;
 
 use std::{
     borrow::Cow,
+    collections::HashMap,
     fmt::{self, Display, Formatter, LowerExp, UpperExp},
     hash::Hash,
     num::{ParseFloatError, ParseIntError, TryFromIntError},
@@ -12,7 +13,11 @@ use std::{
 };
 
 use indexmap::{indexset, IndexMap, IndexSet};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{
+    de::{self, IntoDeserializer},
+    ser::SerializeMap,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 use serde_untagged::UntaggedEnumVisitor;
 pub use serde_yaml::Value as YamlValue;
 use thiserror::Error;
@@ -860,6 +865,113 @@ impl TryFrom<StringOrNumber> for Number {
         match value {
             StringOrNumber::String(value) => value.parse(),
             StringOrNumber::Number(value) => Ok(value),
+        }
+    }
+}
+
+/// A resource managed either externally or by the compose implementation, e.g.
+/// a [`Network`](super::Network) or [`Volume`](super::Volume).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Resource<T> {
+    /// Externally managed resource.
+    ///
+    /// (De)serializes from/to the mapping `external: true` with an optional `name` entry.
+    External {
+        /// A custom name for the resource.
+        // #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+    },
+
+    /// Resource manged by the compose implementation.
+    Compose(T),
+}
+
+impl<T> Resource<T> {
+    /// [`Self::External`] field name.
+    const EXTERNAL: &'static str = "external";
+
+    /// `Self::External.name` field.
+    const NAME: &'static str = "name";
+
+    /// Create a [`Resource::External`] with an optional `name`.
+    #[must_use]
+    pub fn external(name: Option<String>) -> Self {
+        Self::External { name }
+    }
+
+    /// Returns `true` if the resource is [`External`].
+    ///
+    /// [`External`]: Resource::External
+    #[must_use]
+    pub fn is_external(&self) -> bool {
+        matches!(self, Self::External { .. })
+    }
+
+    /// Returns `true` if the resource is managed by the [`Compose`] implementation.
+    ///
+    /// [`Compose`]: Resource::Compose
+    #[must_use]
+    pub fn is_compose(&self) -> bool {
+        matches!(self, Self::Compose(..))
+    }
+
+    /// Returns [`Some`] if the resource is managed by the [`Compose`] implementation.
+    ///
+    /// [`Compose`]: Resource::Compose
+    pub fn as_compose(&self) -> Option<&T> {
+        if let Self::Compose(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl<T: Serialize> Serialize for Resource<T> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::External { name } => {
+                let mut map = serializer.serialize_map(Some(1 + usize::from(name.is_some())))?;
+                map.serialize_entry(Self::EXTERNAL, &true)?;
+                if let Some(name) = name {
+                    map.serialize_entry(Self::NAME, name)?;
+                }
+                map.end()
+            }
+            Self::Compose(resource) => resource.serialize(serializer),
+        }
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for Resource<T> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut map = HashMap::<String, YamlValue>::deserialize(deserializer)?;
+
+        let external = map
+            .remove(Self::EXTERNAL)
+            .map(bool::deserialize)
+            .transpose()
+            .map_err(de::Error::custom)?
+            .unwrap_or_default();
+
+        if external {
+            let name = map
+                .remove(Self::NAME)
+                .map(String::deserialize)
+                .transpose()
+                .map_err(de::Error::custom)?;
+
+            if map.is_empty() {
+                Ok(Self::External { name })
+            } else {
+                Err(de::Error::custom(
+                    "cannot set `external` and fields other than `name`",
+                ))
+            }
+        } else {
+            T::deserialize(map.into_deserializer())
+                .map(Self::Compose)
+                .map_err(de::Error::custom)
         }
     }
 }
