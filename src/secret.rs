@@ -5,9 +5,10 @@ use std::{
     path::PathBuf,
 };
 
+use indexmap::IndexMap;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{Extensions, Resource};
+use crate::{Extensions, ListOrMap, MapKey, Resource, StringOrNumber};
 
 impl From<Secret> for Resource<Secret> {
     fn from(value: Secret) -> Self {
@@ -30,6 +31,20 @@ pub struct Secret {
     #[serde(flatten)]
     pub source: Source,
 
+    /// Add metadata to the secret.
+    #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
+    pub labels: ListOrMap,
+
+    /// Which driver to use for this secret.
+    ///
+    /// Default and available values are platform specific.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub driver: Option<String>,
+
+    /// Driver-dependent options.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub driver_opts: IndexMap<MapKey, StringOrNumber>,
+
     /// Extension values, which are (de)serialized via flattening.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
@@ -41,6 +56,9 @@ impl From<Source> for Secret {
     fn from(source: Source) -> Self {
         Self {
             source,
+            labels: ListOrMap::default(),
+            driver: None,
+            driver_opts: IndexMap::default(),
             extensions: Extensions::default(),
         }
     }
