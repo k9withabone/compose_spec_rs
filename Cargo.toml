@@ -40,7 +40,6 @@ indexmap = { version = "2", features = ["serde"] }
 ipnet = { version = "2", features = ["serde"] }
 itoa = "1"
 serde = { workspace = true, features = ["derive"] }
-serde-untagged = "0.1"
 serde_yaml.workspace = true
 thiserror = "1.0.28"
 url = { version = "2.3", features = ["serde"] }

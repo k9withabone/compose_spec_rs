@@ -14,11 +14,14 @@ use std::{
 
 use indexmap::{indexset, IndexMap, IndexSet};
 use serde::{
-    de::{self, IntoDeserializer},
+    de::{
+        self,
+        value::{MapAccessDeserializer, SeqAccessDeserializer},
+        IntoDeserializer, MapAccess, SeqAccess, Visitor,
+    },
     ser::SerializeMap,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use serde_untagged::UntaggedEnumVisitor;
 pub use serde_yaml::Value as YamlValue;
 use thiserror::Error;
 
@@ -248,10 +251,26 @@ impl ListOrMap {
 
 impl<'de> Deserialize<'de> for ListOrMap {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        UntaggedEnumVisitor::new()
-            .seq(|seq| seq.deserialize().map(Self::List))
-            .map(|map| map.deserialize().map(Self::Map))
-            .deserialize(deserializer)
+        deserializer.deserialize_any(ListOrMapVisitor)
+    }
+}
+
+/// [`Visitor`] for deserializing [`ListOrMap`].
+struct ListOrMapVisitor;
+
+impl<'de> Visitor<'de> for ListOrMapVisitor {
+    type Value = ListOrMap;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str("a sequence of strings or map of strings to optional values")
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> Result<Self::Value, A::Error> {
+        IndexSet::deserialize(SeqAccessDeserializer::new(seq)).map(ListOrMap::List)
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+        Map::deserialize(MapAccessDeserializer::new(map)).map(ListOrMap::Map)
     }
 }
 
