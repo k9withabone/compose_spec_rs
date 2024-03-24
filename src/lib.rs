@@ -15,6 +15,7 @@ pub mod duration;
 mod include;
 mod name;
 pub mod network;
+pub mod secret;
 mod serde;
 pub mod service;
 mod volume;
@@ -35,6 +36,7 @@ pub use self::{
     include::Include,
     name::{InvalidNameError, Name},
     network::Network,
+    secret::Secret,
     service::Service,
     volume::Volume,
 };
@@ -56,6 +58,11 @@ pub type Volumes = IndexMap<Identifier, Option<Resource<Volume>>>;
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/08-configs.md)
 pub type Configs = IndexMap<Identifier, Resource<Config>>;
+
+/// Sensitive data that a [`Service`] may be granted access to.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/09-secrets.md)
+pub type Secrets = IndexMap<Identifier, Resource<Secret>>;
 
 /// The Compose file is a YAML file defining a containers based application.
 ///
@@ -109,6 +116,12 @@ pub struct Compose {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/08-configs.md)
     #[serde(default, skip_serializing_if = "Configs::is_empty")]
     pub configs: Configs,
+
+    /// Sensitive data that a [`Service`] may be granted access to.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/09-secrets.md)
+    #[serde(default, skip_serializing_if = "Secrets::is_empty")]
+    pub secrets: Secrets,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

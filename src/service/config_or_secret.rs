@@ -9,15 +9,15 @@ use crate::{serde::display_from_str_option, Extensions, Identifier};
 ///
 /// # Config
 ///
-/// Configs allow services to adapt their behavior without the need to rebuild a container image.
-/// Services can only access configs when explicitly granted by the
+/// [`Config`](crate::Config)s allow services to adapt their behavior without the need to rebuild a
+/// container image. Services can only access configs when explicitly granted by the
 /// [`configs`](super::Service#structfield.configs) field.
 ///
 /// [service config compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#configs)
 ///
 /// # Secret
 ///
-/// Secrets grant access to sensitive data defined by
+/// [`Secret`](crate::Secret)s grant access to sensitive data defined by the top-level
 /// [`secrets`](crate::Compose#structfield.secrets) on a per-service basis.
 ///
 /// [service secrets compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#configs)
@@ -25,7 +25,8 @@ use crate::{serde::display_from_str_option, Extensions, Identifier};
 /// [build secrets compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#secrets)
 #[derive(Serialize, Deserialize, AsShort, FromShort, Debug, Clone, PartialEq, Eq)]
 pub struct ConfigOrSecret {
-    /// The name of the config/secret as it exists on the platform.
+    /// The name of the [`Config`](crate::Config) / [`Secret`](crate::Secret) as it exists on the
+    /// platform.
     #[as_short(short)]
     pub source: Identifier,
 
