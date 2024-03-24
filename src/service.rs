@@ -215,7 +215,8 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub command: Option<Command>,
 
-    /// Configs allow services to adapt their behavior without the need to rebuild a container image.
+    /// [`Config`](crate::Config)s allow services to adapt their behavior without the need to
+    /// rebuild a container image.
     ///
     /// Services can only access configs when explicitly granted by the `configs` field.
     ///
@@ -561,7 +562,7 @@ pub struct Service {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scale: Option<u64>,
 
-    /// Grant access to sensitive data defined by secrets.
+    /// Grant access to sensitive data defined by [`Secret`](crate::Secret)s.
     ///
     /// Services can only access secrets when explicitly granted by the `secrets` field.
     ///
