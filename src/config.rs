@@ -7,7 +7,7 @@ use std::{
 
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{Extensions, Resource};
+use crate::{Extensions, ListOrMap, Resource};
 
 impl From<Config> for Resource<Config> {
     fn from(value: Config) -> Self {
@@ -26,7 +26,7 @@ impl From<Config> for Resource<Config> {
 ///
 /// [`Service`]: super::Service
 /// [`Volume`]: super::Volume
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Config {
     /// Source of the config's contents.
     ///
@@ -35,6 +35,10 @@ pub struct Config {
     /// (De)serialized via flattening.
     #[serde(flatten)]
     pub source: Source,
+
+    /// Add metadata to the config.
+    #[serde(default, skip_serializing_if = "ListOrMap::is_empty")]
+    pub labels: ListOrMap,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
@@ -47,6 +51,7 @@ impl From<Source> for Config {
     fn from(source: Source) -> Self {
         Self {
             source,
+            labels: ListOrMap::default(),
             extensions: Extensions::default(),
         }
     }
