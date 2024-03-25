@@ -8,6 +8,8 @@ readme.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 description = "Procedural macros for use in the compose_spec crate"
+keywords = ["compose", "containers", "proc_macro"]
+categories = ["development-tools", "development-tools::procedural-macro-helpers"]
 
 [lib]
 proc-macro = true
