@@ -700,3 +700,11 @@ pub fn platforms(input: TokenStream) -> TokenStream {
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }
+
+#[cfg(test)]
+mod tests {
+    // This is to satisfy the `unused_crate_dependencies` lint. `serde` and `serde_yaml` are used in
+    // the examples for the proc macros above but nowhere else.
+    use serde as _;
+    use serde_yaml as _;
+}
