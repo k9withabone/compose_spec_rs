@@ -73,7 +73,7 @@ enum Field {
 
 impl Field {
     /// Field identifier as a static string slice.
-    pub const fn as_str(self) -> &'static str {
+    const fn as_str(self) -> &'static str {
         match self {
             Self::NetworkMode => "network_mode",
             Self::Networks => "networks",
@@ -137,10 +137,10 @@ pub(super) mod option {
     /// # Errors
     ///
     /// Returns an error if the `serializer` does while serializing.
-    pub fn serialize<S>(value: &Option<NetworkConfig>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+    pub(in super::super) fn serialize<S: Serializer>(
+        value: &Option<NetworkConfig>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         value.serialize(serializer)
     }
 
@@ -150,10 +150,9 @@ pub(super) mod option {
     ///
     /// Returns an error if the `deserializer` does, there is an error deserializing either
     /// [`NetworkConfig`] variant, or both fields are present.
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<NetworkConfig>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
+    pub(in super::super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<NetworkConfig>, D::Error> {
         let NetworkConfigFlat {
             network_mode,
             networks,

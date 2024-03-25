@@ -123,10 +123,10 @@ pub(super) mod option {
     /// # Errors
     ///
     /// Returns an error if the `serializer` does while serializing.
-    pub fn serialize<S>(value: &Option<Dockerfile>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+    pub(in super::super) fn serialize<S: Serializer>(
+        value: &Option<Dockerfile>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         value.serialize(serializer)
     }
 
@@ -136,10 +136,9 @@ pub(super) mod option {
     ///
     /// Returns an error if the `deserializer` does, there is an error deserializing either
     /// [`Dockerfile`] variant, or both fields are present.
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Dockerfile>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
+    pub(in super::super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<Dockerfile>, D::Error> {
         let DockerfileFlat {
             dockerfile,
             dockerfile_inline,

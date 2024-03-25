@@ -47,7 +47,7 @@ pub(crate) struct ValueEnumVisitor<U = (), I = (), F = (), B = (), S = ()> {
 }
 
 impl ValueEnumVisitor {
-    pub fn new(expecting: &'static str) -> Self {
+    pub(crate) fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             visit_u64: (),
@@ -60,7 +60,10 @@ impl ValueEnumVisitor {
 }
 
 impl<I, F, B, S> ValueEnumVisitor<(), I, F, B, S> {
-    pub fn u64<U: FnOnce(u64) -> V, V>(self, visit_u64: U) -> ValueEnumVisitor<U, I, F, B, S> {
+    pub(crate) fn u64<U, V>(self, visit_u64: U) -> ValueEnumVisitor<U, I, F, B, S>
+    where
+        U: FnOnce(u64) -> V,
+    {
         let Self {
             expecting,
             visit_u64: (),
@@ -82,7 +85,7 @@ impl<I, F, B, S> ValueEnumVisitor<(), I, F, B, S> {
 }
 
 impl<U, F, B, S> ValueEnumVisitor<U, (), F, B, S> {
-    pub fn i64<I, V>(self, visit_i64: I) -> ValueEnumVisitor<U, I, F, B, S>
+    pub(crate) fn i64<I, V>(self, visit_i64: I) -> ValueEnumVisitor<U, I, F, B, S>
     where
         I: FnOnce(i64) -> V,
     {
@@ -107,7 +110,7 @@ impl<U, F, B, S> ValueEnumVisitor<U, (), F, B, S> {
 }
 
 impl<U, I, B, S> ValueEnumVisitor<U, I, (), B, S> {
-    pub fn f64<F, V>(self, visit_f64: F) -> ValueEnumVisitor<U, I, F, B, S>
+    pub(crate) fn f64<F, V>(self, visit_f64: F) -> ValueEnumVisitor<U, I, F, B, S>
     where
         F: FnOnce(f64) -> V,
     {
@@ -132,7 +135,7 @@ impl<U, I, B, S> ValueEnumVisitor<U, I, (), B, S> {
 }
 
 impl<U, I, F, S> ValueEnumVisitor<U, I, F, (), S> {
-    pub fn bool<B, V>(self, visit_bool: B) -> ValueEnumVisitor<U, I, F, B, S>
+    pub(crate) fn bool<B, V>(self, visit_bool: B) -> ValueEnumVisitor<U, I, F, B, S>
     where
         B: FnOnce(bool) -> V,
     {
@@ -157,7 +160,7 @@ impl<U, I, F, S> ValueEnumVisitor<U, I, F, (), S> {
 }
 
 impl<U, I, F, B> ValueEnumVisitor<U, I, F, B, ()> {
-    pub fn string<S, V>(self, visit_string: S) -> ValueEnumVisitor<U, I, F, B, S>
+    pub(crate) fn string<S, V>(self, visit_string: S) -> ValueEnumVisitor<U, I, F, B, S>
     where
         S: FnOnce(String) -> V,
     {
@@ -182,7 +185,7 @@ impl<U, I, F, B> ValueEnumVisitor<U, I, F, B, ()> {
 }
 
 impl<U, I, F, B, S> ValueEnumVisitor<U, I, F, B, S> {
-    pub fn deserialize<'de, V, D>(self, deserializer: D) -> Result<V, D::Error>
+    pub(crate) fn deserialize<'de, V, D>(self, deserializer: D) -> Result<V, D::Error>
     where
         D: Deserializer<'de>,
         Self: Visitor<'de, Value = V>,
@@ -315,7 +318,7 @@ impl<V, I, L> ItemOrListVisitor<V, I, L> {
     ///
     /// `expecting` should complete the sentence "This Visitor expects to receive ...",
     /// the [`Default`] implementation uses "a single value or sequence".
-    pub fn new(expecting: &'static str) -> Self {
+    pub(crate) fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             value: PhantomData,
@@ -337,7 +340,7 @@ where
     L: Into<V> + Deserialize<'de>,
 {
     /// Alias for `deserializer.deserialize_any(visitor)`.
-    pub fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
+    pub(crate) fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
         deserializer.deserialize_any(self)
     }
 }
@@ -404,7 +407,7 @@ impl<V> FromStrVisitor<V> {
     ///
     /// `expecting` should complete the sentence "This Visitor expects to receive ...",
     /// the [`Default`] implementation uses "a string".
-    pub fn new(expecting: &'static str) -> Self {
+    pub(crate) fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             value: PhantomData,
@@ -418,7 +421,10 @@ where
     V::Err: Error,
 {
     /// Alias for `deserializer.deserialize_str(visitor)`.
-    pub fn deserialize<'de, D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<V, D::Error> {
         deserializer.deserialize_str(self)
     }
 }
@@ -458,7 +464,7 @@ impl<V> TryFromStringVisitor<V> {
     ///
     /// `expecting` should complete the sentence "This Visitor expects to receive ...",
     /// the [`Default`] implementation uses "a string".
-    pub fn new(expecting: &'static str) -> Self {
+    pub(crate) fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             value: PhantomData,
@@ -474,7 +480,10 @@ where
     for<'a> <&'a str as TryInto<V>>::Error: Error,
 {
     /// Alias for `deserializer.deserialize_string(visitor)`.
-    pub fn deserialize<'de, D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<V, D::Error> {
         deserializer.deserialize_string(self)
     }
 }
@@ -518,7 +527,7 @@ impl<V> FromStrOrU16Visitor<V> {
     ///
     /// `expecting` should complete the sentence "This Visitor expects to receive ...",
     /// the [`Default`] implementation uses "a string or integer".
-    pub fn new(expecting: &'static str) -> Self {
+    pub(crate) fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             value: PhantomData,
@@ -533,7 +542,10 @@ where
     V::Err: Error,
 {
     /// Alias for `deserializer.deserialize_any(visitor)`.
-    pub fn deserialize<'de, D: Deserializer<'de>>(self, deserializer: D) -> Result<V, D::Error> {
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<V, D::Error> {
         deserializer.deserialize_any(self)
     }
 }

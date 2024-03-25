@@ -17,7 +17,7 @@ use super::{concat, impl_traits, kw, prefix::Prefix};
 /// Definition of platform architectures.
 ///
 /// `pub enum Arch { #(#items),* }`
-pub struct Arch {
+pub(super) struct Arch {
     attributes: Vec<Attribute>,
     visibility: Visibility,
     _enum: Token![enum],
@@ -28,7 +28,7 @@ pub struct Arch {
 
 impl Prefix {
     /// Continue parsing the `input` into an [`Arch`].
-    pub fn parse_arch(self, input: ParseStream) -> Result<Arch> {
+    pub(super) fn parse_arch(self, input: ParseStream) -> Result<Arch> {
         let Self {
             attributes,
             visibility,
@@ -54,7 +54,10 @@ impl Arch {
     /// # Errors
     ///
     /// Checks if each OS arch in `os_arch_names` is defined and that no arch is unused.
-    pub fn to_map<'a>(&self, os_arch_names: impl IntoIterator<Item = &'a LitStr>) -> Result<Map> {
+    pub(super) fn to_map<'a>(
+        &self,
+        os_arch_names: impl IntoIterator<Item = &'a LitStr>,
+    ) -> Result<Map> {
         let map = Map {
             inner: self
                 .items
@@ -104,7 +107,7 @@ impl Arch {
     /// - [`Display`](std::fmt::Display)
     /// - [`FromStr`](std::str::FromStr)
     /// - [`TryFrom<&str>`]
-    pub fn expand(&self, apply_to_all: &[Attribute], from_str_error: &Type) -> TokenStream {
+    pub(super) fn expand(&self, apply_to_all: &[Attribute], from_str_error: &Type) -> TokenStream {
         let Self {
             attributes,
             visibility,
@@ -151,7 +154,7 @@ impl Arch {
 /// Map of architecture names to [`Arch`] values.
 ///
 /// Created with [`Arch::to_map()`].
-pub struct Map<'a> {
+pub(super) struct Map<'a> {
     inner: HashMap<String, &'a Item>,
 }
 
@@ -166,7 +169,7 @@ impl<'a> Map<'a> {
     }
 
     /// Match arm(s) for use in `Platform::as_str()`.
-    pub fn platform_as_str_arms(
+    pub(super) fn platform_as_str_arms(
         &self,
         arch: &str,
         os: &Ident,
@@ -177,7 +180,7 @@ impl<'a> Map<'a> {
     }
 
     /// Match arm(s) for use in [`FromStr`](std::str::FromStr) for `Platform`.
-    pub fn platform_from_str_arms(
+    pub(super) fn platform_from_str_arms(
         &self,
         arch: &str,
         os: &Ident,
@@ -188,27 +191,27 @@ impl<'a> Map<'a> {
     }
 
     /// Variant for use in defining `Arch` and `{Os}Arch` enums.
-    pub fn arch_enum_variant(&self, arch: &str) -> TokenStream {
+    pub(super) fn arch_enum_variant(&self, arch: &str) -> TokenStream {
         self.get(arch).arch_enum_variant()
     }
 
     /// Match arm(s) for use in `Arch::as_str()` or `{Os}Arch::as_str()`.
-    pub fn arch_as_str_arms(&self, arch: &str) -> TokenStream {
+    pub(super) fn arch_as_str_arms(&self, arch: &str) -> TokenStream {
         self.get(arch).arch_as_str_arms()
     }
 
     /// Match arm(s) for use in [`FromStr`](std::str::FromStr).
-    pub fn arch_from_str_arms(&self, arch: &str) -> TokenStream {
+    pub(super) fn arch_from_str_arms(&self, arch: &str) -> TokenStream {
         self.get(arch).arch_from_str_arms()
     }
 
     /// Match arm for use in [`TryFrom<Arch>`] for `{Os}Arch`.
-    pub fn os_arch_try_from_arch_arm(&self, arch: &str) -> TokenStream {
+    pub(super) fn os_arch_try_from_arch_arm(&self, arch: &str) -> TokenStream {
         self.get(arch).os_arch_try_from_arch_arm()
     }
 
     /// Match arm for use in [`From<{Os}Arch>`] for `Arch`.
-    pub fn arch_from_os_arch_arm(&self, arch: &str, os_arch: &Ident) -> TokenStream {
+    pub(super) fn arch_from_os_arch_arm(&self, arch: &str, os_arch: &Ident) -> TokenStream {
         self.get(arch).arch_from_os_arch_arm(os_arch)
     }
 }

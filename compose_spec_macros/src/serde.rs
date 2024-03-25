@@ -7,7 +7,7 @@ use quote::{quote, ToTokens};
 use syn::{Attribute, DeriveInput, Generics, Ident, Lifetime, LifetimeParam, LitStr, Result};
 
 /// [`SerializeDisplay`](super::serialize_display()) derive macro input.
-pub struct Input {
+pub(super) struct Input {
     expecting: Option<LitStr>,
     ident: Ident,
     generics: Generics,
@@ -15,7 +15,7 @@ pub struct Input {
 
 impl Input {
     /// Create an [`Input`] from [`DeriveInput`].
-    pub fn from_syn(
+    pub(super) fn from_syn(
         DeriveInput {
             attrs,
             ident,
@@ -34,7 +34,7 @@ impl Input {
     /// [`Display`](std::fmt::Display) implementation.
     ///
     /// [`Serialize`]: https://docs.rs/serde/latest/serde/trait.Serialize.html
-    pub fn impl_serialize_display(self) -> TokenStream {
+    pub(super) fn impl_serialize_display(self) -> TokenStream {
         let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
         let ident = &self.ident;
 
@@ -56,7 +56,7 @@ impl Input {
     /// [`FromStr`](std::str::FromStr) implementation.
     ///
     /// [`Deserialize`]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
-    pub fn impl_deserialize_from_str(self) -> TokenStream {
+    pub(super) fn impl_deserialize_from_str(self) -> TokenStream {
         self.impl_deserialize(quote!(crate::serde::FromStrVisitor))
     }
 
@@ -64,7 +64,7 @@ impl Input {
     /// implementation.
     ///
     /// [`Deserialize`]: https://docs.rs/serde/latest/serde/trait.Deserialize.html
-    pub fn impl_deserialize_try_from_string(self) -> TokenStream {
+    pub(super) fn impl_deserialize_try_from_string(self) -> TokenStream {
         self.impl_deserialize(quote!(crate::serde::TryFromStringVisitor))
     }
 

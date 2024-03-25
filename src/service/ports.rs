@@ -1044,7 +1044,7 @@ pub(super) mod tests {
         }
     }
 
-    pub fn range() -> impl Strategy<Value = Range> {
+    pub(in super::super) fn range() -> impl Strategy<Value = Range> {
         any::<u16>()
             .prop_flat_map(|start| (Just(start), option::of(start..)))
             .prop_map(|(start, end)| Range {
@@ -1053,7 +1053,7 @@ pub(super) mod tests {
             })
     }
 
-    pub fn protocol() -> impl Strategy<Value = Protocol> {
+    pub(in super::super) fn protocol() -> impl Strategy<Value = Protocol> {
         prop_oneof![
             Just(Protocol::Tcp),
             Just(Protocol::Udp),

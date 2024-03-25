@@ -10,7 +10,7 @@ use syn::{
 /// [`Default`](super::default()) derive macro input.
 ///
 /// Created with [`Input::from_syn()`].
-pub struct Input<'a> {
+pub(super) struct Input<'a> {
     /// Name of the input struct.
     ident: &'a Ident,
 
@@ -28,7 +28,7 @@ impl<'a> Input<'a> {
     ///
     /// Returns an error if the input is not a struct with named fields or a `default` attribute has
     /// an incorrect format or duplicates.
-    pub fn from_syn(
+    pub(super) fn from_syn(
         DeriveInput {
             ident,
             generics,
@@ -57,7 +57,7 @@ impl<'a> Input<'a> {
     }
 
     /// Expand the input into a [`Default`] implementation.
-    pub fn expand(self) -> TokenStream {
+    pub(super) fn expand(self) -> TokenStream {
         let Self {
             ident,
             generics,

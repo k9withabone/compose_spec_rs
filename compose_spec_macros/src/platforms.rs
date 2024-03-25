@@ -33,7 +33,7 @@ use self::{
 /// Input for the [`platforms!`](super::platforms()) macro.
 ///
 /// `#![apply_to_all(#(#apply_to_all),*)] #platform #os #arch #parse_error_type #try_from_arch_error_type`
-pub struct Input {
+pub(super) struct Input {
     apply_to_all: Vec<Attribute>,
     platform: Platform,
     os: Os,
@@ -107,7 +107,7 @@ impl Parse for Input {
 
 impl Input {
     /// Expand into `Platform`, `Os`, `Arch`, and `{Os}Arch` enums.
-    pub fn expand(&self) -> Result<TokenStream> {
+    pub(super) fn expand(&self) -> Result<TokenStream> {
         let Self {
             apply_to_all,
             platform,
