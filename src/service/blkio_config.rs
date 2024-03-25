@@ -131,7 +131,7 @@ impl Weight {
 
 /// Error returned when attempting to create a [`Weight`] and the number is not between 10 and 1000,
 /// inclusive.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("weights must be between 10 and 1000")]
 pub struct WeightRangeError {
     /// Source of the error when converting into a [`NonZeroU16`] fails.

@@ -728,7 +728,7 @@ impl TryFrom<Number> for f64 {
 }
 
 /// Error returned when failing to convert a [`Number`] into another type.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TryFromNumberError {
     /// Cannot convert from a [`Float`](Number::Float) to an integer.
     #[error("cannot convert a float to an integer")]

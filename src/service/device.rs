@@ -60,7 +60,7 @@ impl TryFrom<&str> for Device {
 }
 
 /// Error returned when parsing a [`Device`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseDeviceError {
     /// Given device was an empty string.
     #[error("device cannot be an empty string")]
@@ -155,7 +155,7 @@ impl TryFrom<&str> for Permissions {
 }
 
 /// Error returned when parsing [`Permissions`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("invalid device permission `{0}`, must be `r` (read), `w` (write), or `m` (mknod)")]
 pub struct ParsePermissionsError(char);
 

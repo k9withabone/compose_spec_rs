@@ -457,7 +457,7 @@ impl Source {
 }
 
 /// Error returned when [parsing](Source::parse()) a [`Source`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseSourceError {
     /// Error parsing [`HostPath`].
     #[error("error parsing host path")]

@@ -713,7 +713,7 @@ impl Percent {
 }
 
 /// Error returned when trying to convert an integer into a type with a limited range.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("value `{value}` is not between {start} and {end}")]
 pub struct RangeError {
     /// Value attempted to convert from.
@@ -786,7 +786,9 @@ pub type DependsOn = ShortOrLong<IndexSet<Identifier>, IndexMap<Identifier, Depe
 /// Configuration of a [`Service`] dependency.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#long-syntax-1)
-#[derive(Serialize, Deserialize, Debug, compose_spec_macros::Default, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, Debug, compose_spec_macros::Default, Clone, Copy, PartialEq, Eq,
+)]
 pub struct Dependency {
     /// Condition under which the dependency is considered satisfied.
     pub condition: Condition,

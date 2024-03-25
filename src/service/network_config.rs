@@ -294,7 +294,7 @@ impl NetworkMode {
 }
 
 /// Error returned when [parsing](NetworkMode::parse()) a [`NetworkMode`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("error parsing service network mode")]
 pub struct ParseNetworkModeError(#[from] InvalidIdentifierError);
 

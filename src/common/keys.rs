@@ -45,7 +45,7 @@ impl Identifier {
 }
 
 /// Error returned when attempting to create a [`Identifier`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidIdentifierError {
     /// Empty identifier
     #[error("identifier cannot be empty")]
@@ -109,11 +109,12 @@ impl MapKey {
 }
 
 /// Error returned when attempting to create a [`MapKey`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidMapKeyError {
     /// Empty map key
     #[error("map key cannot be empty")]
     Empty,
+
     /// Map key has multiple lines
     #[error("map key cannot have multiple lines (newline character `\\n` found)")]
     MultipleLines,

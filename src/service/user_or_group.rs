@@ -207,7 +207,7 @@ impl Name {
 }
 
 /// Error returned when parsing a [`Name`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidNameError {
     /// User/group name was empty.
     #[error("user and group names cannot be empty")]

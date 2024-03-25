@@ -590,6 +590,7 @@ impl IntoIterator for ShortRanges {
 }
 
 /// An [`Iterator`] which yields host-container port pairs from [`ShortRanges`].
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShortRangesIter {
     /// Host port iterator.
     host: Option<RangeInclusive<u16>>,
@@ -681,7 +682,7 @@ impl Range {
 }
 
 /// Error returned when creating a [`Range`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("the start `{start}` of the port range must be less than or equal to the end `{end}`")]
 pub struct RangeError {
     start: u16,
