@@ -10,6 +10,9 @@ use thiserror::Error;
 
 /// Validated [`Compose`](super::Compose) project name.
 ///
+/// Names cannot be empty, they must start with a lowercase ASCII letter (a-z) or digit (0-9), and
+/// must only contain lowercase ASCII letters (a-z), digits (0-9), underscores (_), or dashes (-).
+///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/04-version-and-name.md#name-top-level-element)
 #[derive(
     SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, PartialOrd, Ord,
@@ -21,10 +24,9 @@ impl Name {
     ///
     /// # Errors
     ///
-    /// Returns an error if the given string is not a valid [`Name`].
-    /// Names cannot be empty, the first character must be a lowercase ASCII letter (a-z)
-    /// or a digit (0-9), and all other characters must be a lowercase ASCII letter (a-z),
-    /// a digit (0-9), an underscore (_), or a dash (-).
+    /// Returns an error if the given string is not a valid [`Name`]. Names cannot be empty, they
+    /// must start with a lowercase ASCII letter (a-z) or digit (0-9), and must only contain
+    /// lowercase ASCII letters (a-z), digits (0-9), underscores (_), or dashes (-).
     pub fn new<T>(name: T) -> Result<Self, InvalidNameError>
     where
         T: AsRef<str> + Into<Box<str>>,
@@ -35,11 +37,11 @@ impl Name {
 
         // pattern from schema: "^[a-z0-9][a-z0-9_-]*$"
         if !matches!(first, 'a'..='z' | '0'..='9') {
-            return Err(InvalidNameError::InvalidFirstChar(first));
+            return Err(InvalidNameError::Start(first));
         }
         for char in chars {
             if !matches!(char, 'a'..='z' | '0'..='9' | '_' | '-') {
-                return Err(InvalidNameError::InvalidChar(char));
+                return Err(InvalidNameError::Character(char));
             }
         }
 
@@ -56,23 +58,30 @@ impl Name {
 }
 
 /// Error returned when attempting to create a [`Name`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidNameError {
-    /// Empty name
+    /// Empty name.
     #[error("name cannot be empty")]
     Empty,
-    /// First character is invalid
+
+    /// Invalid start character.
+    ///
+    /// Names must start with a lowercase ASCII letter (a-z) or digit (0-9).
     #[error(
-        "invalid character `{0}`, first character in name must be \
-            a lowercase ASCII letter (a-z) or a digit (0-9)"
+        "invalid character `{0}`, names must start with \
+            a lowercase ASCII letter (a-z) or digit (0-9)"
     )]
-    InvalidFirstChar(char),
-    /// Invalid character
+    Start(char),
+
+    /// Invalid character.
+    ///
+    /// Names must contain only lowercase ASCII letters (a-z), digits (0-9), underscores (_), or
+    /// dashes (-).
     #[error(
-        "invalid character `{0}`, characters in name must be \
-            a lowercase ASCII letter (a-z), a digit (0-9), an underscore (_), or a dash (-)"
+        "invalid character `{0}`, names must contain only \
+            lowercase ASCII letters (a-z), digits (0-9), underscores (_), or dashes (-)"
     )]
-    InvalidChar(char),
+    Character(char),
 }
 
 impl TryFrom<String> for Name {
