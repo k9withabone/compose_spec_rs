@@ -810,7 +810,9 @@ pub enum ParseRangeError {
     /// Error parsing an integer.
     #[error("error parsing `{value}` as an integer")]
     Int {
+        /// Source of the error.
         source: ParseIntError,
+        /// Value attempted to parse.
         value: String,
     },
 }

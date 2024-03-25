@@ -102,6 +102,7 @@ where
 
 /// Trait for types that represent a long syntax which could also be represented in a short syntax.
 pub trait AsShort {
+    /// The short syntax type, returned from [`as_short()`](AsShort::as_short()).
     type Short: ?Sized;
 
     /// Returns [`Some`] if the long syntax can be represented as the short syntax.
