@@ -198,10 +198,10 @@ macro_rules! key_impls {
                 String,
                 Box<str>,
                 &str,
-                std::borrow::Cow<'_, str>,
+                ::std::borrow::Cow<'_, str>,
             }
 
-            impl std::str::FromStr for $Ty {
+            impl ::std::str::FromStr for $Ty {
                 type Err = $Error;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -215,14 +215,14 @@ macro_rules! key_impls {
                 }
             }
 
-            impl std::borrow::Borrow<str> for $Ty {
+            impl ::std::borrow::Borrow<str> for $Ty {
                 fn borrow(&self) -> &str {
                     self.as_str()
                 }
             }
 
-            impl std::fmt::Display for $Ty {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            impl ::std::fmt::Display for $Ty {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     f.write_str(self.as_str())
                 }
             }

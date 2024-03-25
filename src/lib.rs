@@ -184,7 +184,7 @@ use impl_try_from;
 macro_rules! impl_from_str {
     ($($Ty:ident => $Error:ty),* $(,)?) => {
         $(
-            impl std::str::FromStr for $Ty {
+            impl ::std::str::FromStr for $Ty {
                 type Err = $Error;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -197,13 +197,13 @@ macro_rules! impl_from_str {
                 &str,
                 String,
                 Box<str>,
-                std::borrow::Cow<'_, str>,
+                ::std::borrow::Cow<'_, str>,
             }
         )*
     };
     ($($Ty:ident),* $(,)?) => {
         $(
-            impl std::str::FromStr for $Ty {
+            impl ::std::str::FromStr for $Ty {
                 type Err = std::convert::Infallible;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -211,7 +211,7 @@ macro_rules! impl_from_str {
                 }
             }
 
-            crate::impl_from!($Ty::parse, &str, String, Box<str>, std::borrow::Cow<'_, str>);
+            crate::impl_from!($Ty::parse, &str, String, Box<str>, ::std::borrow::Cow<'_, str>);
         )*
     };
 }
