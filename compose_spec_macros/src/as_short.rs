@@ -198,6 +198,8 @@ fn option_type(ty: &Type) -> Option<&Type> {
     if path.segments.len() != 1 {
         return None;
     }
+    // path.segments.len() == 1
+    #[allow(clippy::indexing_slicing)]
     let segment = &path.segments[0];
 
     let PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }) =
@@ -209,8 +211,11 @@ fn option_type(ty: &Type) -> Option<&Type> {
     if args.len() != 1 || segment.ident != "Option" {
         return None;
     }
+    // args.len() == 1
+    #[allow(clippy::indexing_slicing)]
+    let arg = &args[0];
 
-    if let GenericArgument::Type(ty) = &args[0] {
+    if let GenericArgument::Type(ty) = arg {
         Some(ty)
     } else {
         None

@@ -176,7 +176,14 @@ impl Image {
     /// ```
     #[must_use]
     pub fn registry(&self) -> Option<&str> {
-        self.registry_end.map(|end| &self.inner[..end])
+        self.registry_end.map(|end| {
+            // PANIC_SAFETY:
+            // `registry_end` is always within `inner`.
+            // `inner` only contains ASCII.
+            // Checked with `registry()` test.
+            #[allow(clippy::indexing_slicing, clippy::string_slice)]
+            &self.inner[..end]
+        })
     }
 
     /// Set the registry portion of the image name, use [`None`] to remove it.
@@ -242,6 +249,11 @@ impl Image {
     /// ```
     #[must_use]
     pub fn name(&self) -> &str {
+        // PANIC_SAFETY:
+        // `name_end()` is always within `inner`.
+        // `inner` only contains ASCII.
+        // Checked with `name()` test.
+        #[allow(clippy::indexing_slicing, clippy::string_slice)]
         &self.inner[..self.name_end()]
     }
 
@@ -293,6 +305,11 @@ impl Image {
     #[must_use]
     pub fn tag(&self) -> Option<&str> {
         if let Some(TagOrDigestStart::Tag(start)) = self.tag_or_digest_start {
+            // PANIC_SAFETY:
+            // `start` is always within `inner`.
+            // `inner` only contains ASCII.
+            // Checked with `tag_and_digest()` test.
+            #[allow(clippy::indexing_slicing, clippy::string_slice)]
             Some(&self.inner[start..])
         } else {
             None
@@ -339,6 +356,11 @@ impl Image {
     #[must_use]
     pub fn digest(&self) -> Option<&str> {
         if let Some(TagOrDigestStart::Digest(start)) = self.tag_or_digest_start {
+            // PANIC_SAFETY:
+            // `start` is always within `inner`.
+            // `inner` only contains ASCII.
+            // Checked with `tag_and_digest()` test.
+            #[allow(clippy::indexing_slicing, clippy::string_slice)]
             Some(&self.inner[start..])
         } else {
             None
@@ -375,10 +397,20 @@ impl Image {
     pub fn as_tag_or_digest(&self) -> Option<TagOrDigest> {
         match self.tag_or_digest_start {
             Some(TagOrDigestStart::Tag(start)) => {
+                // PANIC_SAFETY:
+                // `start` is always within `inner`.
+                // `inner` only contains ASCII.
+                // Checked with `tag_and_digest()` test.
+                #[allow(clippy::indexing_slicing, clippy::string_slice)]
                 let tag = Tag::new_unchecked(&self.inner[start..]);
                 Some(TagOrDigest::Tag(tag))
             }
             Some(TagOrDigestStart::Digest(start)) => {
+                // PANIC_SAFETY:
+                // `start` is always within `inner`.
+                // `inner` only contains ASCII.
+                // Checked with `tag_and_digest()` test.
+                #[allow(clippy::indexing_slicing, clippy::string_slice)]
                 let digest = Digest::new_unchecked(&self.inner[start..]);
                 Some(TagOrDigest::Digest(digest))
             }
