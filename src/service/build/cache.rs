@@ -34,11 +34,11 @@ impl Cache {
     ///
     /// Returns an error if a key in `options` fails to convert into a [`MapKey`],
     /// or if `cache_type` is [`Registry`](Kind::Registry) and `options` is missing a "ref" option.
-    pub fn new<O, K, V>(cache_type: Kind, options: O) -> Result<Self, Error>
+    pub fn new<O, K, V>(cache_type: Kind, options: O) -> Result<Self, InvalidCacheError>
     where
         O: IntoIterator<Item = (K, V)>,
         K: TryInto<MapKey>,
-        Error: From<K::Error>,
+        InvalidCacheError: From<K::Error>,
         V: Into<Box<str>>,
     {
         let options: IndexMap<_, _> = options
@@ -49,7 +49,7 @@ impl Cache {
         if cache_type.is_registry() {
             let ref_option = options.get("ref");
             if ref_option.is_none() || ref_option.is_some_and(|option| option.is_empty()) {
-                return Err(Error::RegistryMissingRef);
+                return Err(InvalidCacheError::RegistryMissingRef);
             }
         }
 
@@ -105,7 +105,7 @@ impl Cache {
 
 /// Error returned when creating a [`Cache`].
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Error {
+pub enum InvalidCacheError {
     /// [`Registry`](Kind::Registry) cache type given without a corresponding "ref" option.
     #[error("caches with type \"registry\" must have a \"ref\" option")]
     RegistryMissingRef,
@@ -160,7 +160,7 @@ impl Display for Cache {
 pub enum ParseCacheError {
     /// Error while creating [`Cache`].
     #[error("invalid cache options")]
-    Cache(#[from] Error),
+    Cache(#[from] InvalidCacheError),
 
     /// An option was missing a value.
     #[error("cache options must have a value")]

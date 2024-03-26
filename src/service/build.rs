@@ -15,7 +15,7 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 use crate::{Extensions, Identifier, ListOrMap, MapKey, ShortOrLong};
 
 pub use self::{
-    cache::{Cache, Error as InvalidCacheError, Kind as CacheType, ParseCacheError},
+    cache::{Cache, InvalidCacheError, Kind as CacheType, ParseCacheError},
     context::Context,
     dockerfile::Dockerfile,
     network::Network,
