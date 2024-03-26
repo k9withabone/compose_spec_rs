@@ -121,10 +121,9 @@ impl<'a> Field<'a> {
     fn expand(self) -> TokenStream {
         let Self { default, ident } = self;
 
-        if let Some(default) = default {
-            quote!(#ident: #default)
-        } else {
-            quote!(#ident: ::std::default::Default::default())
-        }
+        default.map_or_else(
+            || quote!(#ident: ::std::default::Default::default()),
+            |default| quote!(#ident: #default),
+        )
     }
 }

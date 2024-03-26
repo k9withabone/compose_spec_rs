@@ -630,18 +630,14 @@ impl Range {
     ///
     /// Returns an error if `start` is greater than `end`.
     pub fn new(start: u16, end: Option<u16>) -> Result<Self, RangeError> {
-        if let Some(end) = end {
-            match start.cmp(&end) {
-                Ordering::Less => Ok(Self {
-                    start,
-                    end: Some(end),
-                }),
-                Ordering::Equal => Ok(Self { start, end: None }),
-                Ordering::Greater => Err(RangeError { start, end }),
-            }
-        } else {
-            Ok(Self { start, end: None })
-        }
+        end.map_or(Ok(Self { start, end: None }), |end| match start.cmp(&end) {
+            Ordering::Less => Ok(Self {
+                start,
+                end: Some(end),
+            }),
+            Ordering::Equal => Ok(Self { start, end: None }),
+            Ordering::Greater => Err(RangeError { start, end }),
+        })
     }
 
     /// Start of the port range.
@@ -1007,11 +1003,10 @@ pub(super) mod tests {
     proptest! {
         #[test]
         fn short_ranges_iter(ranges in short_ranges()) {
-            let iter: Vec<_> = if let Some(host) = ranges.host {
-                host.into_iter().map(Some).zip(ranges.container).collect()
-            } else {
-                std::iter::repeat(None).zip(ranges.container).collect()
-            };
+            let iter: Vec<_> = ranges.host.map_or_else(
+                || std::iter::repeat(None).zip(ranges.container).collect(),
+                |host| host.into_iter().map(Some).zip(ranges.container).collect(),
+            );
 
             let ranges: Vec<_> = ranges.into_iter().collect();
             prop_assert_eq!(ranges, iter);

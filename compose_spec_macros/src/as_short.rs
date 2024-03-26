@@ -241,19 +241,18 @@ struct ShortField<'a> {
 impl<'a> ShortField<'a> {
     /// Create a [`ShortField`].
     fn new(ident: &'a Ident, ty: &'a Type) -> Self {
-        if let Some(ty) = option_type(ty) {
-            Self {
-                ident,
-                ty,
-                optional: true,
-            }
-        } else {
+        option_type(ty).map_or(
             Self {
                 ident,
                 ty,
                 optional: false,
-            }
-        }
+            },
+            |ty| Self {
+                ident,
+                ty,
+                optional: true,
+            },
+        )
     }
 }
 

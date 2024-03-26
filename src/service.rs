@@ -1211,16 +1211,24 @@ impl VolumesFrom {
         T: AsRef<str> + TryInto<Identifier>,
         T::Error: Into<InvalidIdentifierError>,
     {
-        if let Some(volumes_from) = volumes_from.as_ref().strip_suffix(Self::READ_ONLY_SUFFIX) {
-            volumes_from.parse().map(|source| Self {
-                source,
-                read_only: true,
+        #[allow(clippy::map_unwrap_or)]
+        volumes_from
+            .as_ref()
+            .strip_suffix(Self::READ_ONLY_SUFFIX)
+            .map(|volumes_from| {
+                volumes_from.parse().map(|source| Self {
+                    source,
+                    read_only: true,
+                })
             })
-        } else if let Some(volumes_from) = volumes_from.as_ref().strip_suffix(":rw") {
-            volumes_from.parse().map(VolumesFromSource::into)
-        } else {
-            VolumesFromSource::parse(volumes_from).map(Into::into)
-        }
+            .unwrap_or_else(|| {
+                volumes_from
+                    .as_ref()
+                    .strip_suffix(":rw")
+                    .map(str::parse)
+                    .unwrap_or_else(|| VolumesFromSource::parse(volumes_from))
+                    .map(Into::into)
+            })
     }
 }
 
@@ -1286,11 +1294,12 @@ impl VolumesFromSource {
         T: AsRef<str> + TryInto<Identifier>,
         T::Error: Into<InvalidIdentifierError>,
     {
-        if let Some(container) = source.as_ref().strip_prefix(Self::CONTAINER_PREFIX) {
-            container.parse().map(Self::Container)
-        } else {
-            source.try_into().map(Self::Service).map_err(Into::into)
-        }
+        #[allow(clippy::map_unwrap_or)]
+        source
+            .as_ref()
+            .strip_prefix(Self::CONTAINER_PREFIX)
+            .map(|container| container.parse().map(Self::Container))
+            .unwrap_or_else(|| source.try_into().map(Self::Service).map_err(Into::into))
     }
 }
 

@@ -34,11 +34,10 @@ impl UserOrGroup {
     where
         T: AsRef<str> + TryInto<Name>,
     {
-        if let Ok(id) = user_or_group.as_ref().parse() {
-            Ok(Self::Id(id))
-        } else {
-            user_or_group.try_into().map(Self::Name)
-        }
+        user_or_group.as_ref().parse().map_or_else(
+            |_| user_or_group.try_into().map(Self::Name),
+            |id| Ok(Self::Id(id)),
+        )
     }
 
     /// Returns `true` if the user or group is an [`Id`](Self::Id).
