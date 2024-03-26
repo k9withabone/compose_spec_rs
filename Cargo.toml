@@ -25,8 +25,11 @@ variant_size_differences = "warn"
 
 [workspace.lints.clippy]
 pedantic = "warn"
-nursery = "warn"
 cargo = "warn"
+
+nursery = { level = "warn", priority = -1 }
+# conflicts with `unreachable_pub`
+redundant_pub_crate = "allow"
 
 # restriction lint group
 absolute_paths = "warn"
