@@ -26,6 +26,7 @@ pub(super) struct Os {
     items: Punctuated<Item, Token![,]>,
 }
 
+#[allow(clippy::multiple_inherent_impl)]
 impl Prefix {
     /// Continue parsing the `input` into an [`Os`].
     pub(super) fn parse_os(self, input: ParseStream) -> Result<Os> {
@@ -395,9 +396,12 @@ struct Fields {
 impl Parse for Fields {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
+        let brace = braced!(content in input);
+        let arch = content.parse()?;
+
         Ok(Self {
-            _brace: braced!(content in input),
-            arch: content.parse()?,
+            _brace: brace,
+            arch,
         })
     }
 }

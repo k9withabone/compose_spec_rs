@@ -176,6 +176,7 @@ struct Platform {
     _semicolon: Token![;],
 }
 
+#[allow(clippy::multiple_inherent_impl)]
 impl Prefix {
     /// Continue parsing the `input` into a [`Platform`].
     fn parse_platform(self, input: ParseStream) -> Result<Platform> {

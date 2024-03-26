@@ -26,6 +26,7 @@ pub(super) struct Arch {
     items: Punctuated<Item, Token![,]>,
 }
 
+#[allow(clippy::multiple_inherent_impl)]
 impl Prefix {
     /// Continue parsing the `input` into an [`Arch`].
     pub(super) fn parse_arch(self, input: ParseStream) -> Result<Arch> {
@@ -409,9 +410,12 @@ struct Fields {
 impl Parse for Fields {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
+        let brace = braced!(content in input);
+        let variants = content.parse()?;
+
         Ok(Self {
-            _brace: braced!(content in input),
-            variants: content.parse()?,
+            _brace: brace,
+            variants,
         })
     }
 }
