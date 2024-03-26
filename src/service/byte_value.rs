@@ -169,6 +169,7 @@ impl<'de> de::Visitor<'de> for Visitor {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use serde::de::value::U64Deserializer;
 

@@ -240,6 +240,7 @@ pub enum InvalidNameError {
 key_impls!(Name => InvalidNameError);
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

@@ -411,6 +411,7 @@ impl Display for MajorMinorNumber {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use proptest::{
         arbitrary::any,

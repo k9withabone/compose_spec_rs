@@ -713,6 +713,7 @@ const fn char_is_alnum(char: char) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

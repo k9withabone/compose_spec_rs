@@ -183,6 +183,7 @@ pub enum ParseDurationError {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 pub(crate) mod tests {
     use proptest::{prop_assert_eq, prop_compose, proptest};
 
