@@ -232,7 +232,7 @@ impl ListOrMap {
     /// Returns an error if a key is not a valid [`MapKey`].
     pub fn into_map_split_on(self, delimiters: &[char]) -> Result<Map, InvalidMapKeyError> {
         match self {
-            ListOrMap::List(list) => list
+            Self::List(list) => list
                 .into_iter()
                 .map(|item| {
                     let (key, value) = item
@@ -244,7 +244,7 @@ impl ListOrMap {
                     ))
                 })
                 .collect(),
-            ListOrMap::Map(map) => Ok(map),
+            Self::Map(map) => Ok(map),
         }
     }
 }

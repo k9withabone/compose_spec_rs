@@ -246,11 +246,11 @@ macro_rules! impl_long_conversion {
                 }
             }
 
-            impl<S> From<ShortOrLong<S, $t>> for $t
+            impl<S> From<ShortOrLong<S, Self>> for $t
             where
-                S: Into<$t>,
+                S: Into<Self>,
             {
-                fn from(value: ShortOrLong<S, $t>) -> Self {
+                fn from(value: ShortOrLong<S, Self>) -> Self {
                     match value {
                         ShortOrLong::Short(short) => short.into(),
                         ShortOrLong::Long(long) => long,
@@ -277,13 +277,13 @@ impl<S, K, V> From<IndexMap<K, V>> for ShortOrLong<S, IndexMap<K, V>> {
     }
 }
 
-impl<S, K, V> From<ShortOrLong<S, IndexMap<K, V>>> for IndexMap<K, V>
+impl<S, K, V> From<ShortOrLong<S, Self>> for IndexMap<K, V>
 where
     S: IntoIterator<Item = K>,
     K: Hash + Eq,
     V: Default,
 {
-    fn from(value: ShortOrLong<S, IndexMap<K, V>>) -> Self {
+    fn from(value: ShortOrLong<S, Self>) -> Self {
         match value {
             ShortOrLong::Short(short) => short
                 .into_iter()

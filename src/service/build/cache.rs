@@ -191,8 +191,8 @@ impl Kind {
         T: AsRef<str> + Into<String>,
     {
         match cache_kind.as_ref() {
-            Self::REGISTRY => Kind::Registry,
-            _ => Kind::Other(cache_kind.into()),
+            Self::REGISTRY => Self::Registry,
+            _ => Self::Other(cache_kind.into()),
         }
     }
 
