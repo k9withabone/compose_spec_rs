@@ -742,8 +742,8 @@ impl PartialEq<u8> for Percent {
     }
 }
 
-/// [Cgroup](https://man7.org/linux/man-pages/man7/cgroups.7.html) namespace for a
-/// [`Service`](super::Service) container to join.
+/// [Cgroup](https://man7.org/linux/man-pages/man7/cgroups.7.html) namespace for a [`Service`]'s
+/// container to join.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#cgroup)
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,3 +1,6 @@
+//! Provides [`ConfigOrSecret`] for the `configs` and `secrets` fields of
+//! [`Service`](super::Service) and the `secrets` field of the long [`Build`](super::Build) syntax.
+
 use std::path::PathBuf;
 
 use compose_spec_macros::{AsShort, FromShort};

@@ -1,3 +1,5 @@
+//! The [`ShortOrLong`] type, along with associated implementations and traits.
+
 use std::{
     ffi::{OsStr, OsString},
     fmt::{self, Formatter},
@@ -43,10 +45,10 @@ use crate::{
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(untagged)]
 pub enum ShortOrLong<S, L> {
-    /// Short syntax, a single value.
+    /// Short syntax, a single value or sequence.
     Short(S),
 
-    /// Long syntax, a sequence or map.
+    /// Long syntax, a map.
     Long(L),
 }
 
@@ -312,7 +314,9 @@ where
 
 /// [`de::Visitor`] for deserializing [`ShortOrLong`].
 struct Visitor<S, L> {
+    /// The type of the [`Short`](ShortOrLong::Short) to deserialize.
     short: PhantomData<S>,
+    /// The type of the [`Long`](ShortOrLong::Long) to deserialize.
     long: PhantomData<L>,
 }
 

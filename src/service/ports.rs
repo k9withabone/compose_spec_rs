@@ -493,7 +493,9 @@ fn range_size_eq(host: Option<Range>, container: Range) -> Result<(), ShortRange
         container port range size `{container_size}`"
 )]
 pub struct ShortRangesError {
+    /// Size of the host port [`Range`].
     host_size: u16,
+    /// Size of the container port [`Range`].
     container_size: u16,
 }
 
@@ -681,7 +683,9 @@ impl Range {
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("the start `{start}` of the port range must be less than or equal to the end `{end}`")]
 pub struct RangeError {
+    /// Given start of the port range.
     start: u16,
+    /// Given end of the port range.
     end: u16,
 }
 

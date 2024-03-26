@@ -192,6 +192,11 @@ impl FromStr for ShortVolume {
     }
 }
 
+/// Parse `container_path` into an [`AbsolutePath`].
+///
+/// # Errors
+///
+/// Returns an error if the container path is not an absolute path.
 fn parse_container_path(container_path: &str) -> Result<AbsolutePath, ParseShortVolumeError> {
     #[allow(clippy::map_err_ignore)]
     container_path
@@ -306,6 +311,9 @@ impl AbsolutePath {
 #[error("path is not absolute")]
 pub struct AbsolutePathError;
 
+/// Implement methods and traits for a [`PathBuf`] newtype.
+///
+/// The type must have a `new()` function which returns a [`Result<Self, Error>`].
 macro_rules! path_impls {
     ($Ty:ident => $Error:ty) => {
         impl $Ty {

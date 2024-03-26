@@ -23,7 +23,9 @@ use crate::{impl_from_str, InvalidMapKeyError, MapKey};
 #[derive(SerializeDisplay, DeserializeFromStr, Default, Clone, Debug, PartialEq, Eq)]
 #[serde(expecting = "an image name or a string of the format \"type=TYPE[,KEY=VALUE,...]\"")]
 pub struct Cache {
+    /// The type of the cache.
     kind: Kind,
+    /// Cache options.
     options: IndexMap<MapKey, Box<str>>,
 }
 

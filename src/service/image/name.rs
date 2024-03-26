@@ -102,6 +102,7 @@ impl<'a> Name<'a> {
         }
     }
 
+    /// Byte position of `inner` where the registry ends, if the image name has a registry part.
     pub(super) const fn registry_end(&self) -> Option<usize> {
         self.registry_end
     }

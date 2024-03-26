@@ -175,8 +175,11 @@ pub(super) mod option {
         expecting = "a struct with either a `network_mode` or `networks` field"
     )]
     struct NetworkConfigFlat {
+        /// [`NetworkConfig::NetworkMode`]
         #[serde(default)]
         network_mode: Option<NetworkMode>,
+
+        /// [`NetworkConfig::Networks`]
         #[serde(default)]
         networks: Option<Networks>,
     }

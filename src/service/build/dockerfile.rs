@@ -45,7 +45,9 @@ impl Dockerfile {
 #[derive(Deserialize, Debug, Clone, Copy)]
 #[serde(field_identifier, rename_all = "snake_case")]
 enum Field {
+    /// [`Dockerfile::File`] / `dockerfile`
     Dockerfile,
+    /// [`Dockerfile::Inline`] / `dockerfile_inline`
     DockerfileInline,
 }
 
@@ -161,8 +163,11 @@ pub(super) mod option {
         expecting = "a struct with either a `dockerfile` or `dockerfile_inline` field"
     )]
     struct DockerfileFlat {
+        /// [`Dockerfile::File`]
         #[serde(default)]
         dockerfile: Option<PathBuf>,
+
+        /// [`Dockerfile::Inline`]
         #[serde(default)]
         dockerfile_inline: Option<String>,
     }

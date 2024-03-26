@@ -148,6 +148,7 @@ impl<'de> Deserialize<'de> for ByteValue {
     }
 }
 
+/// [`de::Visitor`] for deserializing [`ByteValue`] from a [`u64`] or a string.
 struct Visitor;
 
 impl<'de> de::Visitor<'de> for Visitor {
