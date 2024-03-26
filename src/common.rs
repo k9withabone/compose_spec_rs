@@ -1004,7 +1004,7 @@ mod tests {
         assert_eq!(Value::parse("true"), Value::Bool(true));
         assert_eq!(Value::parse("1"), Value::Number(1_u64.into()));
         assert_eq!(Value::parse("-1"), Value::Number((-1_i64).into()));
-        assert_eq!(Value::parse("1.23"), Value::Number(1.23.into()));
+        assert_eq!(Value::parse("1.23"), Value::Number(1.23_f64.into()));
         assert_eq!(
             Value::parse("string"),
             Value::String(String::from("string")),
