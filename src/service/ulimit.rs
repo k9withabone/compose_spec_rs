@@ -96,11 +96,7 @@ impl AsShort for Ulimit {
             extensions,
         } = self;
 
-        if *soft == *hard && extensions.is_empty() {
-            Some(soft)
-        } else {
-            None
-        }
+        (*soft == *hard && extensions.is_empty()).then_some(soft)
     }
 }
 
