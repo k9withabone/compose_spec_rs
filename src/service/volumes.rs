@@ -193,6 +193,7 @@ impl FromStr for ShortVolume {
 }
 
 fn parse_container_path(container_path: &str) -> Result<AbsolutePath, ParseShortVolumeError> {
+    #[allow(clippy::map_err_ignore)]
     container_path
         .parse()
         .map_err(|_| ParseShortVolumeError::AbsoluteContainerPath(container_path.to_owned()))

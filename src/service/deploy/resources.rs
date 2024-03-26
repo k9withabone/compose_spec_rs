@@ -465,6 +465,7 @@ impl<'de> Visitor<'de> for CountVisitor {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        #[allow(clippy::map_err_ignore)]
         v.parse()
             .map_err(|_| E::invalid_value(Unexpected::Str(v), &self))
     }
