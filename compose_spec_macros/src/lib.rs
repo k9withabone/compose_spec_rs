@@ -18,6 +18,10 @@
 //! [`FromStr`]: std::str::FromStr
 //! [`Serialize`]: https://docs.rs/serde/latest/serde/trait.Serialize.html
 
+// Undocumented items are the struct fields which are fairly self-explanatory and are not documented
+// in `syn` either.
+#![allow(clippy::missing_docs_in_private_items)]
+
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, Error};
 
