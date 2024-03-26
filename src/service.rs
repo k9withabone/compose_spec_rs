@@ -3,7 +3,6 @@
 pub mod blkio_config;
 pub mod build;
 mod byte_value;
-mod cgroup;
 mod config_or_secret;
 mod cpuset;
 mod credential_spec;
@@ -51,7 +50,6 @@ pub use self::{
     blkio_config::BlkioConfig,
     build::Build,
     byte_value::{ByteValue, ParseByteValueError},
-    cgroup::{Cgroup, ParseCgroupError},
     config_or_secret::ConfigOrSecret,
     cpuset::{CpuSet, ParseCpuSetError},
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
@@ -741,6 +739,43 @@ impl From<Percent> for u8 {
 impl PartialEq<u8> for Percent {
     fn eq(&self, other: &u8) -> bool {
         self.0.eq(other)
+    }
+}
+
+/// [Cgroup](https://man7.org/linux/man-pages/man7/cgroups.7.html) namespace for a
+/// [`Service`](super::Service) container to join.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#cgroup)
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Cgroup {
+    /// Run the container in the Container runtime cgroup namespace.
+    Host,
+
+    /// Run the container in its own private cgroup namespace.
+    Private,
+}
+
+impl Cgroup {
+    /// [`Cgroup`] option as a static string slice.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Host => "host",
+            Self::Private => "private",
+        }
+    }
+}
+
+impl AsRef<str> for Cgroup {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Display for Cgroup {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 
