@@ -1,3 +1,5 @@
+//! Utilities for (de)serializing with [`serde`].
+
 pub(crate) mod display_from_str_option;
 pub(crate) mod duration_option;
 pub(crate) mod duration_us_option;
@@ -14,10 +16,12 @@ use serde::{
     Deserialize, Deserializer,
 };
 
+/// Return `true`, for use in `#[serde(default = "default_true")]`.
 pub(crate) const fn default_true() -> bool {
     true
 }
 
+/// Return `true` if `bool` is `true`, for use in `#[serde(skip_serializing_if = "skip_true")]`.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub(crate) const fn skip_true(bool: &bool) -> bool {
     *bool
@@ -36,17 +40,27 @@ macro_rules! forward_visitor {
 
 pub(crate) use forward_visitor;
 
+/// A [`Visitor`] for deserializing enums composed of several basic types.
 #[derive(Debug)]
 pub(crate) struct ValueEnumVisitor<U = (), I = (), F = (), B = (), S = ()> {
+    /// Expected value, used in [`Visitor::expecting()`].
     expecting: &'static str,
+    /// Closure to use when deserializing from a [`u64`].
     visit_u64: U,
+    /// Closure to use when deserializing from a [`i64`].
     visit_i64: I,
+    /// Closure to use when deserializing from a [`f64`].
     visit_f64: F,
+    /// Closure to use when deserializing from a [`bool`].
     visit_bool: B,
+    /// Closure to use when deserializing from a [`String`].
     visit_string: S,
 }
 
 impl ValueEnumVisitor {
+    /// Create a new [`ValueEnumVisitor`].
+    ///
+    /// `expecting` should complete the sentence "This Visitor expects to receive ...".
     pub(crate) const fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
@@ -60,6 +74,7 @@ impl ValueEnumVisitor {
 }
 
 impl<I, F, B, S> ValueEnumVisitor<(), I, F, B, S> {
+    /// Set the closure to use when deserializing from a [`u64`].
     pub(crate) fn u64<U, V>(self, visit_u64: U) -> ValueEnumVisitor<U, I, F, B, S>
     where
         U: FnOnce(u64) -> V,
@@ -85,6 +100,7 @@ impl<I, F, B, S> ValueEnumVisitor<(), I, F, B, S> {
 }
 
 impl<U, F, B, S> ValueEnumVisitor<U, (), F, B, S> {
+    /// Set the closure to use when deserializing from a [`i64`].
     pub(crate) fn i64<I, V>(self, visit_i64: I) -> ValueEnumVisitor<U, I, F, B, S>
     where
         I: FnOnce(i64) -> V,
@@ -110,6 +126,7 @@ impl<U, F, B, S> ValueEnumVisitor<U, (), F, B, S> {
 }
 
 impl<U, I, B, S> ValueEnumVisitor<U, I, (), B, S> {
+    /// Set the closure to use when deserializing from a [`f64`].
     pub(crate) fn f64<F, V>(self, visit_f64: F) -> ValueEnumVisitor<U, I, F, B, S>
     where
         F: FnOnce(f64) -> V,
@@ -135,6 +152,7 @@ impl<U, I, B, S> ValueEnumVisitor<U, I, (), B, S> {
 }
 
 impl<U, I, F, S> ValueEnumVisitor<U, I, F, (), S> {
+    /// Set the closure to use when deserializing from a [`bool`].
     pub(crate) fn bool<B, V>(self, visit_bool: B) -> ValueEnumVisitor<U, I, F, B, S>
     where
         B: FnOnce(bool) -> V,
@@ -160,6 +178,7 @@ impl<U, I, F, S> ValueEnumVisitor<U, I, F, (), S> {
 }
 
 impl<U, I, F, B> ValueEnumVisitor<U, I, F, B, ()> {
+    /// Set the closure to use when deserializing from a [`String`].
     pub(crate) fn string<S, V>(self, visit_string: S) -> ValueEnumVisitor<U, I, F, B, S>
     where
         S: FnOnce(String) -> V,
@@ -185,6 +204,7 @@ impl<U, I, F, B> ValueEnumVisitor<U, I, F, B, ()> {
 }
 
 impl<U, I, F, B, S> ValueEnumVisitor<U, I, F, B, S> {
+    /// Alias for `deserializer.deserialize_any(visitor)`.
     pub(crate) fn deserialize<'de, V, D>(self, deserializer: D) -> Result<V, D::Error>
     where
         D: Deserializer<'de>,
@@ -307,9 +327,13 @@ where
 /// A [`Visitor`] for deserializing a single item or a list.
 #[derive(Debug)]
 pub(crate) struct ItemOrListVisitor<V, I, L = Vec<I>> {
+    /// Expected value, used in [`Visitor::expecting()`].
     expecting: &'static str,
+    /// The type of the value to deserialize.
     value: PhantomData<V>,
+    /// The type of the item to deserialize.
     item: PhantomData<I>,
+    /// The type of the list to deserialize.
     list: PhantomData<L>,
 }
 
@@ -398,7 +422,9 @@ where
 /// A [`Visitor`] which deserializes a type using its [`FromStr`] implementation.
 #[derive(Debug)]
 pub(crate) struct FromStrVisitor<V> {
+    /// Expected value, used in [`Visitor::expecting()`].
     expecting: &'static str,
+    /// The type of the value to deserialize.
     value: PhantomData<V>,
 }
 
@@ -455,7 +481,9 @@ where
 /// implementations.
 #[derive(Debug)]
 pub(crate) struct TryFromStringVisitor<V> {
+    /// Expected value, used in [`Visitor::expecting()`].
     expecting: &'static str,
+    /// The type of the value to deserialize.
     value: PhantomData<V>,
 }
 
@@ -518,7 +546,9 @@ where
 
 /// A [`Visitor`] for deserializing via [`FromStr`] or from a [`u16`].
 pub(crate) struct FromStrOrU16Visitor<V> {
+    /// Expected value, used in [`Visitor::expecting()`].
     expecting: &'static str,
+    /// The type of the value to deserialize.
     value: PhantomData<V>,
 }
 
@@ -613,12 +643,17 @@ where
     de::Error::custom(output)
 }
 
+/// An [`Iterator`] of [`Error`] sources.
+///
+/// Modeled after the unstable `std::error::Source`.
 #[derive(Debug, Clone)]
 struct ErrorSources<'a> {
+    /// The next [`Error`] to return from [`Iterator::next()`].
     current: Option<&'a (dyn Error + 'static)>,
 }
 
 impl<'a> ErrorSources<'a> {
+    /// Create a new [`ErrorSources`] [`Iterator`].
     fn new(error: &'a (dyn Error + 'static)) -> Self {
         Self {
             current: Some(error),
