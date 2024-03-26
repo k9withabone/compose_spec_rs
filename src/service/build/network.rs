@@ -58,7 +58,7 @@ impl Network {
     ///
     /// [`None`]: Network::None
     #[must_use]
-    pub fn is_none(&self) -> bool {
+    pub const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 

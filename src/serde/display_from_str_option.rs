@@ -39,7 +39,7 @@ struct Visitor<T> {
 }
 
 impl<T> Visitor<T> {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self { value: PhantomData }
     }
 }

@@ -42,13 +42,13 @@ impl UserOrGroup {
 
     /// Returns `true` if the user or group is an [`Id`](Self::Id).
     #[must_use]
-    pub fn is_id(&self) -> bool {
+    pub const fn is_id(&self) -> bool {
         matches!(self, Self::Id(..))
     }
 
     /// Returns [`Some`] if [`Id`](Self::Id).
     #[must_use]
-    pub fn as_id(&self) -> Option<u32> {
+    pub const fn as_id(&self) -> Option<u32> {
         if let Self::Id(v) = self {
             Some(*v)
         } else {
@@ -58,13 +58,13 @@ impl UserOrGroup {
 
     /// Returns `true` if the user or group is a [`Name`](Self::Name).
     #[must_use]
-    pub fn is_name(&self) -> bool {
+    pub const fn is_name(&self) -> bool {
         matches!(self, Self::Name(..))
     }
 
     /// Returns [`Some`] if [`Name`](Self::Name).
     #[must_use]
-    pub fn as_name(&self) -> Option<&Name> {
+    pub const fn as_name(&self) -> Option<&Name> {
         if let Self::Name(v) = self {
             Some(v)
         } else {

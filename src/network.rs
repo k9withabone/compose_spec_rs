@@ -21,7 +21,7 @@ impl Resource<Network> {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#name)
     #[must_use]
-    pub fn name(&self) -> Option<&String> {
+    pub const fn name(&self) -> Option<&String> {
         match self {
             Self::External { name } => name.as_ref(),
             Self::Compose(network) => network.name.as_ref(),

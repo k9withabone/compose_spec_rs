@@ -10,7 +10,7 @@ impl Resource<Volume> {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/07-volumes.md#name)
     #[must_use]
-    pub fn name(&self) -> Option<&String> {
+    pub const fn name(&self) -> Option<&String> {
         match self {
             Self::External { name } => name.as_ref(),
             Self::Compose(volume) => volume.name.as_ref(),

@@ -92,13 +92,13 @@ impl Cache {
     /// The value of the cache "type" field.
     #[doc(alias = "kind", alias = "type")]
     #[must_use]
-    pub fn cache_type(&self) -> &Kind {
+    pub const fn cache_type(&self) -> &Kind {
         &self.kind
     }
 
     /// Cache options.
     #[must_use]
-    pub fn options(&self) -> &IndexMap<MapKey, Box<str>> {
+    pub const fn options(&self) -> &IndexMap<MapKey, Box<str>> {
         &self.options
     }
 }
@@ -200,7 +200,7 @@ impl Kind {
     ///
     /// [`Registry`]: Kind::Registry
     #[must_use]
-    pub fn is_registry(&self) -> bool {
+    pub const fn is_registry(&self) -> bool {
         matches!(self, Self::Registry)
     }
 

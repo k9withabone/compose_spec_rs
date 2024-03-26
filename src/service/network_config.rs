@@ -239,7 +239,7 @@ impl NetworkMode {
     ///
     /// [`None`]: NetworkMode::None
     #[must_use]
-    pub fn is_none(&self) -> bool {
+    pub const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 
@@ -247,7 +247,7 @@ impl NetworkMode {
     ///
     /// [`Host`]: NetworkMode::Host
     #[must_use]
-    pub fn is_host(&self) -> bool {
+    pub const fn is_host(&self) -> bool {
         matches!(self, Self::Host)
     }
 
@@ -255,7 +255,7 @@ impl NetworkMode {
     ///
     /// [`Service`]: NetworkMode::Service
     #[must_use]
-    pub fn is_service(&self) -> bool {
+    pub const fn is_service(&self) -> bool {
         matches!(self, Self::Service(..))
     }
 
@@ -263,7 +263,7 @@ impl NetworkMode {
     ///
     /// [`Service`]: NetworkMode::Service
     #[must_use]
-    pub fn as_service(&self) -> Option<&Identifier> {
+    pub const fn as_service(&self) -> Option<&Identifier> {
         if let Self::Service(v) = self {
             Some(v)
         } else {
@@ -275,7 +275,7 @@ impl NetworkMode {
     ///
     /// [`Other`]: NetworkMode::Other
     #[must_use]
-    pub fn is_other(&self) -> bool {
+    pub const fn is_other(&self) -> bool {
         matches!(self, Self::Other(..))
     }
 
@@ -283,7 +283,7 @@ impl NetworkMode {
     ///
     /// [`Other`]: NetworkMode::Other
     #[must_use]
-    pub fn as_other(&self) -> Option<&String> {
+    pub const fn as_other(&self) -> Option<&String> {
         if let Self::Other(v) = self {
             Some(v)
         } else {

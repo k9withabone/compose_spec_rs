@@ -83,7 +83,7 @@ impl<T> ItemOrList<T> {
 
     /// Returns [`Some`] if a list.
     #[must_use]
-    pub fn as_list(&self) -> Option<&IndexSet<T>> {
+    pub const fn as_list(&self) -> Option<&IndexSet<T>> {
         if let Self::List(v) = self {
             Some(v)
         } else {
@@ -164,7 +164,7 @@ impl ListOrMap {
 
     /// Return [`Some`] if a list.
     #[must_use]
-    pub fn as_list(&self) -> Option<&IndexSet<String>> {
+    pub const fn as_list(&self) -> Option<&IndexSet<String>> {
         if let Self::List(v) = self {
             Some(v)
         } else {
@@ -174,7 +174,7 @@ impl ListOrMap {
 
     /// Return [`Some`] if a map.
     #[must_use]
-    pub fn as_map(&self) -> Option<&Map> {
+    pub const fn as_map(&self) -> Option<&Map> {
         if let Self::Map(v) = self {
             Some(v)
         } else {
@@ -315,13 +315,13 @@ impl Value {
 
     /// Returns `true` if the value is a [`String`].
     #[must_use]
-    pub fn is_string(&self) -> bool {
+    pub const fn is_string(&self) -> bool {
         matches!(self, Self::String(..))
     }
 
     /// Returns [`Some`] if the value is a [`String`].
     #[must_use]
-    pub fn as_string(&self) -> Option<&String> {
+    pub const fn as_string(&self) -> Option<&String> {
         if let Self::String(v) = self {
             Some(v)
         } else {
@@ -331,13 +331,13 @@ impl Value {
 
     /// Returns `true` if the value is a [`Number`].
     #[must_use]
-    pub fn is_number(&self) -> bool {
+    pub const fn is_number(&self) -> bool {
         matches!(self, Self::Number(..))
     }
 
     /// Returns [`Some`] if the value is a [`Number`].
     #[must_use]
-    pub fn as_number(&self) -> Option<&Number> {
+    pub const fn as_number(&self) -> Option<&Number> {
         if let Self::Number(v) = self {
             Some(v)
         } else {
@@ -347,13 +347,13 @@ impl Value {
 
     /// Returns `true` if the value is a [`bool`].
     #[must_use]
-    pub fn is_bool(&self) -> bool {
+    pub const fn is_bool(&self) -> bool {
         matches!(self, Self::Bool(..))
     }
 
     /// Returns [`Some`] if the value is a [`bool`].
     #[must_use]
-    pub fn as_bool(&self) -> Option<bool> {
+    pub const fn as_bool(&self) -> Option<bool> {
         if let Self::Bool(v) = self {
             Some(*v)
         } else {
@@ -538,7 +538,7 @@ impl Number {
     ///
     /// [`UnsignedInt`]: Number::UnsignedInt
     #[must_use]
-    pub fn is_unsigned_int(&self) -> bool {
+    pub const fn is_unsigned_int(&self) -> bool {
         matches!(self, Self::UnsignedInt(..))
     }
 
@@ -546,7 +546,7 @@ impl Number {
     ///
     /// [`UnsignedInt`]: Number::UnsignedInt
     #[must_use]
-    pub fn as_unsigned_int(&self) -> Option<u64> {
+    pub const fn as_unsigned_int(&self) -> Option<u64> {
         if let Self::UnsignedInt(v) = *self {
             Some(v)
         } else {
@@ -558,7 +558,7 @@ impl Number {
     ///
     /// [`SignedInt`]: Number::SignedInt
     #[must_use]
-    pub fn is_signed_int(&self) -> bool {
+    pub const fn is_signed_int(&self) -> bool {
         matches!(self, Self::SignedInt(..))
     }
 
@@ -566,7 +566,7 @@ impl Number {
     ///
     /// [`SignedInt`]: Number::SignedInt
     #[must_use]
-    pub fn as_signed_int(&self) -> Option<i64> {
+    pub const fn as_signed_int(&self) -> Option<i64> {
         if let Self::SignedInt(v) = *self {
             Some(v)
         } else {
@@ -578,7 +578,7 @@ impl Number {
     ///
     /// [`Float`]: Number::Float
     #[must_use]
-    pub fn is_float(&self) -> bool {
+    pub const fn is_float(&self) -> bool {
         matches!(self, Self::Float(..))
     }
 
@@ -586,7 +586,7 @@ impl Number {
     ///
     /// [`Float`]: Number::Float
     #[must_use]
-    pub fn as_float(&self) -> Option<f64> {
+    pub const fn as_float(&self) -> Option<f64> {
         if let Self::Float(v) = *self {
             Some(v)
         } else {
@@ -769,13 +769,13 @@ impl StringOrNumber {
 
     /// Returns `true` if the value is a [`String`].
     #[must_use]
-    pub fn is_string(&self) -> bool {
+    pub const fn is_string(&self) -> bool {
         matches!(self, Self::String(..))
     }
 
     /// Returns [`Some`] if the value is a [`String`].
     #[must_use]
-    pub fn as_string(&self) -> Option<&String> {
+    pub const fn as_string(&self) -> Option<&String> {
         if let Self::String(v) = self {
             Some(v)
         } else {
@@ -785,13 +785,13 @@ impl StringOrNumber {
 
     /// Returns `true` if the value is a [`Number`].
     #[must_use]
-    pub fn is_number(&self) -> bool {
+    pub const fn is_number(&self) -> bool {
         matches!(self, Self::Number(..))
     }
 
     /// Returns [`Some`] if the value is a [`Number`].
     #[must_use]
-    pub fn as_number(&self) -> Option<Number> {
+    pub const fn as_number(&self) -> Option<Number> {
         if let Self::Number(v) = *self {
             Some(v)
         } else {
@@ -914,7 +914,7 @@ impl<T> Resource<T> {
 
     /// Create a [`Resource::External`] with an optional `name`.
     #[must_use]
-    pub fn external(name: Option<String>) -> Self {
+    pub const fn external(name: Option<String>) -> Self {
         Self::External { name }
     }
 
@@ -922,7 +922,7 @@ impl<T> Resource<T> {
     ///
     /// [`External`]: Resource::External
     #[must_use]
-    pub fn is_external(&self) -> bool {
+    pub const fn is_external(&self) -> bool {
         matches!(self, Self::External { .. })
     }
 
@@ -930,14 +930,14 @@ impl<T> Resource<T> {
     ///
     /// [`Compose`]: Resource::Compose
     #[must_use]
-    pub fn is_compose(&self) -> bool {
+    pub const fn is_compose(&self) -> bool {
         matches!(self, Self::Compose(..))
     }
 
     /// Returns [`Some`] if the resource is managed by the [`Compose`] implementation.
     ///
     /// [`Compose`]: Resource::Compose
-    pub fn as_compose(&self) -> Option<&T> {
+    pub const fn as_compose(&self) -> Option<&T> {
         if let Self::Compose(v) = self {
             Some(v)
         } else {

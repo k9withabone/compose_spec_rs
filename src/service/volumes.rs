@@ -73,7 +73,7 @@ pub struct ShortVolume {
 impl ShortVolume {
     /// Create a new [`ShortVolume`].
     #[must_use]
-    pub fn new(container_path: AbsolutePath) -> Self {
+    pub const fn new(container_path: AbsolutePath) -> Self {
         Self {
             container_path,
             options: None,
@@ -323,7 +323,7 @@ macro_rules! path_impls {
 
             /// Return a reference to the inner value.
             #[must_use]
-            pub fn as_inner(&self) -> &PathBuf {
+            pub const fn as_inner(&self) -> &PathBuf {
                 &self.0
             }
 
@@ -405,7 +405,7 @@ pub struct ShortOptions {
 impl ShortOptions {
     /// Create a new [`ShortOptions`].
     #[must_use]
-    pub fn new(source: Source) -> Self {
+    pub const fn new(source: Source) -> Self {
         Self {
             source,
             read_only: false,

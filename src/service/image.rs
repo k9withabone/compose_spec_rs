@@ -676,7 +676,7 @@ impl<'a> AsRef<str> for TagOrDigest<'a> {
 }
 
 /// Returns `true` if `char` is a lowercase ASCII alphanumeric character.
-fn char_is_alnum(char: char) -> bool {
+const fn char_is_alnum(char: char) -> bool {
     matches!(char, 'a'..='z' | '0'..='9')
 }
 

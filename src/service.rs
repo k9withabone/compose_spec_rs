@@ -707,7 +707,7 @@ impl Percent {
 
     /// Return the inner value.
     #[must_use]
-    pub fn into_inner(self) -> u8 {
+    pub const fn into_inner(self) -> u8 {
         self.0
     }
 }

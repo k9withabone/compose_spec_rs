@@ -55,7 +55,7 @@ impl EndpointMode {
     ///
     /// [`VIp`]: EndpointMode::VIp
     #[must_use]
-    pub fn is_vip(&self) -> bool {
+    pub const fn is_vip(&self) -> bool {
         matches!(self, Self::VIp)
     }
 
@@ -63,7 +63,7 @@ impl EndpointMode {
     ///
     /// [`DnsRR`]: EndpointMode::DnsRR
     #[must_use]
-    pub fn is_dnsrr(&self) -> bool {
+    pub const fn is_dnsrr(&self) -> bool {
         matches!(self, Self::DnsRR)
     }
 

@@ -124,7 +124,7 @@ impl Weight {
 
     /// Return the inner value.
     #[must_use]
-    pub fn into_inner(self) -> NonZeroU16 {
+    pub const fn into_inner(self) -> NonZeroU16 {
         self.0
     }
 }

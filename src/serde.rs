@@ -47,7 +47,7 @@ pub(crate) struct ValueEnumVisitor<U = (), I = (), F = (), B = (), S = ()> {
 }
 
 impl ValueEnumVisitor {
-    pub(crate) fn new(expecting: &'static str) -> Self {
+    pub(crate) const fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             visit_u64: (),
@@ -318,7 +318,7 @@ impl<V, I, L> ItemOrListVisitor<V, I, L> {
     ///
     /// `expecting` should complete the sentence "This Visitor expects to receive ...",
     /// the [`Default`] implementation uses "a single value or sequence".
-    pub(crate) fn new(expecting: &'static str) -> Self {
+    pub(crate) const fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             value: PhantomData,
@@ -407,7 +407,7 @@ impl<V> FromStrVisitor<V> {
     ///
     /// `expecting` should complete the sentence "This Visitor expects to receive ...",
     /// the [`Default`] implementation uses "a string".
-    pub(crate) fn new(expecting: &'static str) -> Self {
+    pub(crate) const fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             value: PhantomData,
@@ -464,7 +464,7 @@ impl<V> TryFromStringVisitor<V> {
     ///
     /// `expecting` should complete the sentence "This Visitor expects to receive ...",
     /// the [`Default`] implementation uses "a string".
-    pub(crate) fn new(expecting: &'static str) -> Self {
+    pub(crate) const fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             value: PhantomData,
@@ -527,7 +527,7 @@ impl<V> FromStrOrU16Visitor<V> {
     ///
     /// `expecting` should complete the sentence "This Visitor expects to receive ...",
     /// the [`Default`] implementation uses "a string or integer".
-    pub(crate) fn new(expecting: &'static str) -> Self {
+    pub(crate) const fn new(expecting: &'static str) -> Self {
         Self {
             expecting,
             value: PhantomData,

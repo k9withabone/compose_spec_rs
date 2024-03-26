@@ -64,7 +64,7 @@ impl<S, L> ShortOrLong<S, L> {
     ///
     /// [`Short`]: Self::Short
     #[must_use]
-    pub fn is_short(&self) -> bool {
+    pub const fn is_short(&self) -> bool {
         matches!(self, Self::Short(..))
     }
 
@@ -72,7 +72,7 @@ impl<S, L> ShortOrLong<S, L> {
     ///
     /// [`Long`]: Self::Long
     #[must_use]
-    pub fn is_long(&self) -> bool {
+    pub const fn is_long(&self) -> bool {
         matches!(self, Self::Long(..))
     }
 
@@ -80,7 +80,7 @@ impl<S, L> ShortOrLong<S, L> {
     ///
     /// [`Long`]: Self::Long
     #[must_use]
-    pub fn as_long(&self) -> Option<&L> {
+    pub const fn as_long(&self) -> Option<&L> {
         if let Self::Long(v) = self {
             Some(v)
         } else {
@@ -318,7 +318,7 @@ struct Visitor<S, L> {
 
 impl<S, L> Visitor<S, L> {
     /// Create a new [`Visitor`].
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             short: PhantomData,
             long: PhantomData,

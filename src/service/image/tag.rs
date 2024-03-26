@@ -67,7 +67,7 @@ impl<'a> Tag<'a> {
 
     /// Return the inner string slice.
     #[must_use]
-    pub fn into_inner(self) -> &'a str {
+    pub const fn into_inner(self) -> &'a str {
         self.0
     }
 }

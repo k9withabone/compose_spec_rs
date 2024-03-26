@@ -238,7 +238,7 @@ pub struct ShortPort {
 impl ShortPort {
     /// Create a new [`ShortPort`].
     #[must_use]
-    pub fn new(ranges: ShortRanges) -> Self {
+    pub const fn new(ranges: ShortRanges) -> Self {
         Self {
             host_ip: None,
             ranges,
@@ -426,7 +426,7 @@ impl ShortRanges {
 
     /// Host port range.
     #[must_use]
-    pub fn host(&self) -> Option<Range> {
+    pub const fn host(&self) -> Option<Range> {
         self.host
     }
 
@@ -448,7 +448,7 @@ impl ShortRanges {
 
     /// Container port range.
     #[must_use]
-    pub fn container(&self) -> Range {
+    pub const fn container(&self) -> Range {
         self.container
     }
 
@@ -642,7 +642,7 @@ impl Range {
 
     /// Start of the port range.
     #[must_use]
-    pub fn start(&self) -> u16 {
+    pub const fn start(&self) -> u16 {
         self.start
     }
 
@@ -650,7 +650,7 @@ impl Range {
     ///
     /// Returns [`None`] if [`start()`](Self::start()) is the only port in the range.
     #[must_use]
-    pub fn end(&self) -> Option<u16> {
+    pub const fn end(&self) -> Option<u16> {
         self.end
     }
 

@@ -61,7 +61,7 @@ impl Mount {
     ///
     /// [`Volume`]: Mount::Volume
     #[must_use]
-    pub fn is_volume(&self) -> bool {
+    pub const fn is_volume(&self) -> bool {
         matches!(self, Self::Volume(..))
     }
 
@@ -69,7 +69,7 @@ impl Mount {
     ///
     /// [`Volume`]: Mount::Volume
     #[must_use]
-    pub fn as_volume(&self) -> Option<&Volume> {
+    pub const fn as_volume(&self) -> Option<&Volume> {
         if let Self::Volume(v) = self {
             Some(v)
         } else {
@@ -81,7 +81,7 @@ impl Mount {
     ///
     /// [`Bind`]: Mount::Bind
     #[must_use]
-    pub fn is_bind(&self) -> bool {
+    pub const fn is_bind(&self) -> bool {
         matches!(self, Self::Bind(..))
     }
 
@@ -89,7 +89,7 @@ impl Mount {
     ///
     /// [`Bind`]: Mount::Bind
     #[must_use]
-    pub fn as_bind(&self) -> Option<&Bind> {
+    pub const fn as_bind(&self) -> Option<&Bind> {
         if let Self::Bind(v) = self {
             Some(v)
         } else {
@@ -101,7 +101,7 @@ impl Mount {
     ///
     /// [`Tmpfs`]: Mount::Tmpfs
     #[must_use]
-    pub fn is_tmpfs(&self) -> bool {
+    pub const fn is_tmpfs(&self) -> bool {
         matches!(self, Self::Tmpfs(..))
     }
 
@@ -109,7 +109,7 @@ impl Mount {
     ///
     /// [`Tmpfs`]: Mount::Tmpfs
     #[must_use]
-    pub fn as_tmpfs(&self) -> Option<&Tmpfs> {
+    pub const fn as_tmpfs(&self) -> Option<&Tmpfs> {
         if let Self::Tmpfs(v) = self {
             Some(v)
         } else {
@@ -121,7 +121,7 @@ impl Mount {
     ///
     /// [`NamedPipe`]: Mount::NamedPipe
     #[must_use]
-    pub fn is_named_pipe(&self) -> bool {
+    pub const fn is_named_pipe(&self) -> bool {
         matches!(self, Self::NamedPipe(..))
     }
 
@@ -129,7 +129,7 @@ impl Mount {
     ///
     /// [`NamedPipe`]: Mount::NamedPipe
     #[must_use]
-    pub fn as_named_pipe(&self) -> Option<&NamedPipe> {
+    pub const fn as_named_pipe(&self) -> Option<&NamedPipe> {
         if let Self::NamedPipe(v) = self {
             Some(v)
         } else {
@@ -141,7 +141,7 @@ impl Mount {
     ///
     /// [`Cluster`]: Mount::Cluster
     #[must_use]
-    pub fn is_cluster(&self) -> bool {
+    pub const fn is_cluster(&self) -> bool {
         matches!(self, Self::Cluster(..))
     }
 
@@ -149,7 +149,7 @@ impl Mount {
     ///
     /// [`Cluster`]: Mount::Cluster
     #[must_use]
-    pub fn as_cluster(&self) -> Option<&Cluster> {
+    pub const fn as_cluster(&self) -> Option<&Cluster> {
         if let Self::Cluster(v) = self {
             Some(v)
         } else {
@@ -159,7 +159,7 @@ impl Mount {
 
     /// [`Common`] mount options.
     #[must_use]
-    pub fn common(&self) -> &Common {
+    pub const fn common(&self) -> &Common {
         match self {
             Self::Volume(mount) => &mount.common,
             Self::Bind(mount) => &mount.common,
@@ -282,7 +282,7 @@ pub struct Volume {
 impl Volume {
     /// Create a [`Volume`] [`Mount`] from [`Common`] mount options.
     #[must_use]
-    pub fn new(common: Common) -> Self {
+    pub const fn new(common: Common) -> Self {
         Self {
             source: None,
             volume: None,
@@ -367,7 +367,7 @@ pub struct Bind {
 impl Bind {
     /// Create a [`Bind`] [`Mount`] from a `source` and [`Common`] mount options.
     #[must_use]
-    pub fn new(source: HostPath, common: Common) -> Self {
+    pub const fn new(source: HostPath, common: Common) -> Self {
         Self {
             source,
             bind: None,
@@ -561,7 +561,7 @@ pub struct Tmpfs {
 impl Tmpfs {
     /// Create a [`Tmpfs`] [`Mount`] from [`Common`] mount options.
     #[must_use]
-    pub fn new(common: Common) -> Self {
+    pub const fn new(common: Common) -> Self {
         Self {
             tmpfs: None,
             common,

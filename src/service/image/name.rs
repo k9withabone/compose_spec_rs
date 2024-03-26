@@ -102,7 +102,7 @@ impl<'a> Name<'a> {
         }
     }
 
-    pub(super) fn registry_end(&self) -> Option<usize> {
+    pub(super) const fn registry_end(&self) -> Option<usize> {
         self.registry_end
     }
 
@@ -123,7 +123,7 @@ impl<'a> Name<'a> {
 
     /// Return the inner string slice.
     #[must_use]
-    pub fn into_inner(self) -> &'a str {
+    pub const fn into_inner(self) -> &'a str {
         self.inner
     }
 }
