@@ -23,6 +23,7 @@ pub mod user_or_group;
 pub mod volumes;
 
 use std::{
+    borrow::Cow,
     fmt::{self, Display, Formatter},
     net::IpAddr,
     ops::Not,
@@ -375,6 +376,12 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#init)
     #[serde(default, skip_serializing_if = "Not::not")]
     pub init: bool,
+
+    /// IPC isolation mode for the service container.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#ipc)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ipc: Option<Ipc>,
 
     /// UTS namespace mode for the service container.
     ///
@@ -1027,7 +1034,135 @@ where
         .collect()
 }
 
-/// UTS namespace modes for [`Service`] containers.
+/// IPC isolation mode for a [`Service`] container.
+///
+/// Available values are platform specific.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#ipc)
+#[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq)]
+pub enum Ipc {
+    /// Give the container its own private IPC namespace and allow it to be shared with other
+    /// containers.
+    Shareable,
+    /// Make the container join another container's ([`Shareable`](Self::Shareable)) IPC namespace.
+    Service(Identifier),
+    /// Other IPC isolation mode.
+    Other(String),
+}
+
+impl Ipc {
+    /// [`Self::Shareable`] string value.
+    const SHAREABLE: &'static str = "shareable";
+
+    /// [`Self::Service`] string prefix.
+    const SERVICE_PREFIX: &'static str = "service:";
+
+    /// Parse [`Ipc`] from a string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the service in the service IPC isolation mode is not a valid
+    /// [`Identifier`].
+    pub fn parse<T>(ipc: T) -> Result<Self, ParseIpcError>
+    where
+        T: AsRef<str> + Into<String>,
+    {
+        if ipc.as_ref() == Self::SHAREABLE {
+            Ok(Self::Shareable)
+        } else if let Some(service) = ipc.as_ref().strip_prefix(Self::SERVICE_PREFIX) {
+            service.parse().map(Self::Service).map_err(Into::into)
+        } else {
+            Ok(Self::Other(ipc.into()))
+        }
+    }
+
+    /// Returns `true` if the IPC isolation mode is [`Shareable`].
+    ///
+    /// [`Shareable`]: Ipc::Shareable
+    #[must_use]
+    pub const fn is_shareable(&self) -> bool {
+        matches!(self, Self::Shareable)
+    }
+
+    /// Returns `true` if the IPC isolation mode is [`Service`].
+    ///
+    /// [`Service`]: Ipc::Service
+    #[must_use]
+    pub const fn is_service(&self) -> bool {
+        matches!(self, Self::Service(..))
+    }
+
+    /// Returns [`Some`] if the IPC isolation mode is [`Service`].
+    ///
+    /// [`Service`]: Ipc::Service
+    #[must_use]
+    pub const fn as_service(&self) -> Option<&Identifier> {
+        if let Self::Service(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if the IPC isolation mode is [`Other`].
+    ///
+    /// [`Other`]: Ipc::Other
+    #[must_use]
+    pub const fn is_other(&self) -> bool {
+        matches!(self, Self::Other(..))
+    }
+
+    /// Returns [`Some`] if the IPC isolation mode is [`Other`].
+    ///
+    /// [`Other`]: Ipc::Other
+    #[must_use]
+    pub const fn as_other(&self) -> Option<&String> {
+        if let Self::Other(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl_from_str!(Ipc => ParseIpcError);
+
+/// Error returned when [parsing](Ipc::parse()) [`Ipc`] from a string.
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
+#[error("error parsing service IPC isolation mode")]
+pub struct ParseIpcError(#[from] InvalidIdentifierError);
+
+impl Display for Ipc {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Shareable => f.write_str(Self::SHAREABLE),
+            Self::Service(service) => write!(f, "{}{service}", Self::SERVICE_PREFIX),
+            Self::Other(other) => f.write_str(other),
+        }
+    }
+}
+
+impl From<Ipc> for String {
+    fn from(value: Ipc) -> Self {
+        if let Ipc::Other(other) = value {
+            other
+        } else {
+            value.to_string()
+        }
+    }
+}
+
+impl From<Ipc> for Cow<'static, str> {
+    fn from(value: Ipc) -> Self {
+        if value.is_shareable() {
+            Ipc::SHAREABLE.into()
+        } else {
+            value.to_string().into()
+        }
+    }
+}
+
+/// UTS namespace mode for a [`Service`] container.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#uts)
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
