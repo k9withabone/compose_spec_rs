@@ -101,11 +101,6 @@ impl MapKey {
             Ok(Self(key.into()))
         }
     }
-
-    /// Create a new [`MapKey`] without checking for its constraints.
-    pub(crate) fn new_unchecked(key: impl Into<Box<str>>) -> Self {
-        Self(key.into())
-    }
 }
 
 /// Error returned when attempting to create a [`MapKey`].
