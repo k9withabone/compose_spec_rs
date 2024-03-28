@@ -181,8 +181,8 @@ pub struct Ipam {
     pub driver: Option<String>,
 
     /// IPAM configuration.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub config: Option<IpamConfig>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub config: Vec<IpamConfig>,
 
     /// Driver-specific options.
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
