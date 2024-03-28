@@ -217,3 +217,22 @@ macro_rules! impl_from_str {
 }
 
 use impl_from_str;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn full_round_trip() -> serde_yaml::Result<()> {
+        let yaml = include_str!("test-full.yaml");
+
+        let compose: Compose = serde_yaml::from_str(yaml)?;
+
+        assert_eq!(
+            serde_yaml::from_str::<serde_yaml::Value>(yaml)?,
+            serde_yaml::to_value(compose)?,
+        );
+
+        Ok(())
+    }
+}

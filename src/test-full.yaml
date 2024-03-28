@@ -1,0 +1,725 @@
+# A compose file for testing the structural correctness of `compose_spec::Compose`.
+#
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
+
+version: version
+
+name: name
+
+include:
+  - include
+  - path: path
+    project_directory: project_directory
+    env_file: env_file
+
+services:
+  build-short:
+    build: context
+
+  build-long-dockerfile:
+    build:
+      dockerfile: dockerfile
+
+  build-long-dockerfile_inline:
+    build:
+      dockerfile_inline: dockerfile_inline
+
+  build-long-args-list:
+    build:
+      args:
+        - arg=value
+
+  build-long-args-map:
+    build:
+      args:
+        arg: value
+
+  build-long-network-none:
+    build:
+      network: none
+
+  build-long-other:
+    build:
+      context: context
+      ssh:
+        - default
+        - id=key
+      cache_from:
+        - image:latest
+      cache_to:
+        - type=registry,ref=image,key=value
+        - type=local,src=path
+      additional_contexts:
+        additional_context: https://example.com/
+        additional_context2: /path
+      extra_hosts:
+        host4: 127.0.0.1
+        host6: ::1
+      isolation: isolation
+      privileged: true
+      labels:
+        - label=value
+      no_cache: true
+      pull: true
+      network: network
+      shm_size: 1b
+      target: target
+      secrets:
+        - secret
+        - source: secret
+          target: target
+          uid: "1000"
+          gid: "1000"
+          mode: 365
+          x-test: test
+      tags:
+        - image:tag
+        - registry/username/repo:tag
+      ulimits:
+        ulimit: 500
+        softhard:
+          soft: 100
+          hard: 200
+          x-test: test
+      platforms:
+        - linux/amd64
+        - linux/arm
+        - linux/arm/v6
+        - linux/arm/v7
+        - linux/arm/v8
+        - linux/arm64
+        - linux/arm64/v8
+
+  blkio_config:
+    blkio_config:
+      device_read_bps:
+        - path: path
+          rate: 1kb
+      device_read_iops:
+        - path: path
+          rate: 100
+      device_write_bps:
+        - path: path
+          rate: 1mb
+      device_write_iops:
+        - path: path
+          rate: 100
+      weight: 10
+      weight_device:
+        - path: path
+          weight: 1000
+
+  cgroup-host:
+    cgroup: host
+
+  cgroup-private:
+    cgroup: private
+
+  command-string:
+    command: string
+
+  command-list:
+    command:
+      - one
+      - two
+
+  credential_spec-config:
+    credential_spec:
+      config: config
+      x-test: test
+
+  credential_spec-file:
+    credential_spec:
+      file: file
+      x-test: test
+
+  credential_spec-registry:
+    credential_spec:
+      registry: registry
+      x-test: test
+
+  depends_on-short:
+    depends_on:
+      - service
+
+  depends_on-long-condition-started:
+    depends_on:
+      service:
+        condition: service_started
+        restart: true
+        required: false
+
+  depends_on-long-condition-healthy:
+    depends_on:
+      service:
+        condition: service_healthy
+
+  depends_on-long-condition-completed_successfully:
+    depends_on:
+      service:
+        condition: service_completed_successfully
+
+  deploy-endpoint_mode-vip:
+    deploy:
+      endpoint_mode: vip
+
+  deploy-endpoint_mode-dnsrr:
+    deploy:
+      endpoint_mode: dnsrr
+
+  deploy-mode-global:
+    deploy:
+      mode: global
+
+  deploy-mode-replicated:
+    deploy:
+      mode: replicated
+
+  deploy-restart_policy-condition-none:
+    deploy:
+      restart_policy:
+        condition: none
+
+  deploy-restart_policy-condition-on-failure:
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  deploy-restart_policy-condition-any:
+    deploy:
+      restart_policy:
+        condition: any
+
+  deploy-other:
+    deploy:
+      endpoint_mode: other
+      labels:
+        label: value
+      placement:
+        constraints:
+          - constraint
+        preferences:
+          - spread: spread
+            x-test: test
+        max_replicas_per_node: 2
+        x-test: test
+      replicas: 2
+      resources:
+        limits:
+          cpus: 1.5
+          memory: 1gb
+          pids: 10
+          x-test: test
+        reservations:
+          cpus: 1.5
+          memory: 1gb
+          devices:
+            - capabilities:
+                - gpu
+                - tpu
+              driver: driver
+              count: all
+              options:
+                - opt=value
+            - capabilities:
+                - other
+              count: 1
+              device_ids:
+                - id
+              options:
+                opt: value
+              x-test: test
+          generic_resources:
+            - discrete_resource_spec:
+                kind: kind
+                value: 1
+                x-test: test
+              x-test: test
+          x-test: test
+        x-test: test
+      restart_policy:
+        delay: 1s
+        max_attempts: 1
+        window: 1m
+        x-test: test
+      rollback_config:
+        parallelism: 0
+        delay: 1h
+        failure_action: continue
+        monitor: 1s
+        max_failure_ratio: 0
+        order: stop-first
+        x-test: test
+      update_config:
+        parallelism: 0
+        delay: 1h
+        failure_action: continue
+        monitor: 1s
+        max_failure_ratio: 0
+        order: stop-first
+        x-test: test
+      x-test: test
+
+  develop:
+    develop:
+      watch:
+        - action: rebuild
+          path: path
+        - action: sync
+          path: path
+        - action: sync+restart
+          ignore:
+            - ignore
+          path: path
+          target: target
+          x-test: test
+
+  dns-string:
+    dns: 1.1.1.1
+
+  dns-list:
+    dns:
+      - 1.1.1.1
+      - ::1
+
+  dns_search-string:
+    dns_search: search
+
+  dns_search-list:
+    dns_search:
+      - search
+
+  entrypoint-string:
+    entrypoint: entrypoint
+
+  entrypoint-list:
+    entrypoint:
+      - one
+      - two
+
+  env_file-string:
+    env_file: env_file
+
+  env_file-list:
+    env_file:
+      - env_file
+      - path: path
+        required: false
+
+  environment-list:
+    environment:
+      - var=value
+
+  environment-map:
+    environment:
+      var: value
+
+  annotations-list:
+    annotations:
+      - annotation=value
+
+  annotations-map:
+    annotations:
+      annotation: value
+
+  healthcheck-disable:
+    healthcheck:
+      disable: true
+
+  healthcheck-test-string:
+    healthcheck:
+      test: test
+
+  healthcheck-test-list:
+    healthcheck:
+      test:
+        - CMD
+        - test
+
+  healthcheck-other:
+    healthcheck:
+      interval: 1s
+      timeout: 1s
+      retries: 1
+      start_period: 1s
+      start_interval: 1s
+      x-test: test
+
+  ipc-shareable:
+    ipc: shareable
+
+  ipc-service:
+    ipc: service:service
+
+  ipc-other:
+    ipc: other
+
+  labels-list:
+    labels:
+      - label=value
+
+  labels-map:
+    labels:
+      label: value
+
+  network_mode-none:
+    network_mode: none
+
+  network_mode-host:
+    network_mode: host
+
+  network_mode-service:
+    network_mode: service:service
+
+  network_mode-other:
+    network_mode: other
+
+  networks-short:
+    networks:
+      - network
+
+  networks-long:
+    networks:
+      network:
+        aliases:
+          - alias
+        ipv4_address: 127.0.0.1
+        ipv6_address: ::1
+        link_local_ips:
+          - 127.0.0.1
+          - ::1
+        mac_address: 92:d0:c6:0a:29:33
+        priority: 100
+        x-test: test
+
+  pull_policy-always:
+    pull_policy: always
+
+  pull_policy-never:
+    pull_policy: never
+
+  pull_policy-missing:
+    pull_policy: missing
+
+  pull_policy-build:
+    pull_policy: build
+
+  restart-no:
+    restart: no
+
+  restart-always:
+    restart: always
+
+  restart-on-failure:
+    restart: on-failure
+
+  restart-unless-stopped:
+    restart: unless-stopped
+
+  sysctls-list:
+    sysctls:
+      - one
+      - two
+
+  sysctls-map:
+    sysctls:
+      key: value
+
+  tmpfs-string:
+    tmpfs: tmpfs
+
+  tmpfs-list:
+    tmpfs:
+      - tmpfs
+
+  other:
+    attach: false
+    cpu_count: 2
+    cpu_percent: 100
+    cpu_shares: 1
+    cpu_period: 1
+    cpu_quota: 1
+    cpu_rt_runtime: 1us
+    cpu_rt_period: 1ms
+    cpus: 1.5
+    cpuset: 0-2,4,6-8
+    cap_add:
+      - ALL
+    cap_drop:
+      - ALL
+    cgroup_parent: parent
+    configs:
+      - config
+      - source: config
+        target: target
+        uid: "1000"
+        gid: "1000"
+        mode: 365
+        x-test: test
+    container_name: name
+    device_cgroup_rules:
+      - a *:* r
+      - c 1:1 w
+      - b 2:2 m
+      - a 3:3 rwm
+    devices:
+      - host:container
+      - host:container:rwm
+    dns_opt:
+      - opt
+    domainname: domainname
+    expose:
+      - 100
+      - 100-200
+      - 100/tcp
+      - 100-200/udp
+      - 100-200/other
+    extends:
+      service: service
+      file: file
+    external_links:
+      - service
+      - service:alias
+    extra_hosts:
+      host4: 127.0.0.1
+      host6: ::1
+    group_add:
+      - group
+      - 1000
+    hostname: hostname
+    image: image
+    init: true
+    uts: host
+    isolation: isolation
+    links:
+      - service
+      - service:alias
+    logging:
+      driver: driver
+      options:
+        string: string
+        number: 1.5
+        "null": null
+      x-test: test
+    mac_address: 92:d0:c6:0a:29:33
+    mem_limit: 1gb
+    mem_reservation: 1gb
+    mem_swappiness: 0
+    memswap_limit: -1
+    oom_kill_disable: true
+    oom_score_adj: -1000
+    pid: pid
+    pids_limit: 10
+    platform: darwin/arm64
+    ports:
+      - 100
+      - 100:100
+      - 100-200
+      - 100-200:100-200
+      - 100/tcp
+      - 100/udp
+      - 100/other
+      - target: 100
+        published: 100-200
+        host_ip: ::1
+        protocol: tcp
+        mode: host
+      - name: name
+        target: 100
+        published: 100
+        host_ip: 127.0.0.1
+        protocol: udp
+        app_protocol: http
+        mode: ingress
+        x-test: test
+    privileged: true
+    profiles:
+      - profile
+    read_only: true
+    runtime: crun
+    scale: 1
+    secrets:
+      - secret
+      - source: secret
+        target: target
+        uid: "1000"
+        gid: "1000"
+        mode: 365
+        x-test: test
+    security_opt:
+      - security_opt
+    shm_size: 1gb
+    stdin_open: true
+    stop_grace_period: 1s
+    stop_signal: signal
+    storage_opt:
+      key: value
+    tty: true
+    ulimits:
+      ulimit: 500
+      softhard:
+        soft: 100
+        hard: 200
+        x-test: test
+    user: user
+    userns_mode: userns_mode
+    volumes:
+      - /container
+      - host:/container
+      - ./host:/container
+      - ./host:/container:ro,z
+      - ./host:/container:Z
+      - type: volume
+        source: source
+        target: /target
+        read_only: true
+        volume:
+          nocopy: true
+          subpath: subpath
+          x-test: test
+        consistency: consistency
+        x-test: test
+      - type: bind
+        source: ./source
+        target: /target
+        read_only: true
+        bind:
+          propagation: private
+          create_host_path: true
+          selinux: z
+        consistency: consistency
+        x-test: test
+      - type: tmpfs
+        target: /target
+        read_only: true
+        tmpfs:
+          size: 1gb
+          mode: 365
+        consistency: consistency
+        x-test: test
+      - type: npipe
+        source: ./source
+        target: /target
+        read_only: true
+        consistency: consistency
+        x-test: test
+      - type: cluster
+        source: source
+        target: /target
+        read_only: true
+        consistency: consistency
+        x-test: test
+    volumes_from:
+      - service
+      - container:container
+      - container:container:ro
+    working_dir: working_dir
+    x-test: test
+
+networks:
+  "null": null
+
+  empty: {}
+
+  external:
+    external: true
+    name: name
+
+  driver-host:
+    driver: host
+
+  driver-none:
+    driver: none
+
+  driver-other:
+    driver: other
+
+  labels-list:
+    labels:
+      - label=value
+
+  labels-map:
+    labels:
+      label: value
+
+  other:
+    driver_opts:
+      string: string
+      number: 1.5
+    attachable: true
+    enable_ipv6: true
+    ipam:
+      driver: driver
+      config:
+        - subnet: 10.0.0.0/24
+          ip_range: 10.0.0.0/32
+          gateway: 10.0.0.1
+          aux_addresses:
+            host: 10.0.0.5
+          x-test: test
+      options: 
+        option: value
+      x-test: test
+    name: name
+    x-test: test
+    
+volumes:
+  "null": null
+
+  empty: {}
+
+  external:
+    external: true
+    name: name
+
+  labels-list:
+    labels:
+      - label=value
+
+  labels-map:
+    labels:
+      label: value
+
+  other:
+    driver: driver
+    driver_opts:
+      string: string
+      number: 1.5
+    name: name
+    x-test: test
+
+configs:
+  external:
+    external: true
+    name: name
+
+  file:
+    file: file
+    x-test: test
+
+  environment:
+    environment: environment
+    x-test: test
+
+  content:
+    content: content
+    x-test: test
+
+secrets:
+  external:
+    external: true
+    name: name
+
+  file:
+    file: file
+    x-test: test
+
+  environment:
+    environment: environment
+    labels:
+      label: value
+    driver: driver
+    driver_opts:
+      string: string
+      number: 1.5
+    x-test: test
