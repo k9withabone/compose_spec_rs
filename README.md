@@ -95,6 +95,9 @@ If you are submitting code changes in a pull request and would like to run the C
   - Install [cargo-minimal-versions](https://github.com/taiki-e/cargo-minimal-versions).
   - `cargo minimal-versions check --workspace`
   - `cargo minimal-versions test --workspace`
+- semver-checks:
+  - Install [cargo-semver-checks](https://github.com/obi1kenobi/cargo-semver-checks-action).
+  - `cargo semver-checks`
 
 ## License
 
