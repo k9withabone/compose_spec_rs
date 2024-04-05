@@ -238,7 +238,7 @@ pub struct ShortPort {
 impl ShortPort {
     /// Create a new [`ShortPort`].
     #[must_use]
-    pub fn new(ranges: ShortRanges) -> Self {
+    pub const fn new(ranges: ShortRanges) -> Self {
         Self {
             host_ip: None,
             ranges,
@@ -426,7 +426,7 @@ impl ShortRanges {
 
     /// Host port range.
     #[must_use]
-    pub fn host(&self) -> Option<Range> {
+    pub const fn host(&self) -> Option<Range> {
         self.host
     }
 
@@ -448,7 +448,7 @@ impl ShortRanges {
 
     /// Container port range.
     #[must_use]
-    pub fn container(&self) -> Range {
+    pub const fn container(&self) -> Range {
         self.container
     }
 
@@ -493,7 +493,9 @@ fn range_size_eq(host: Option<Range>, container: Range) -> Result<(), ShortRange
         container port range size `{container_size}`"
 )]
 pub struct ShortRangesError {
+    /// Size of the host port [`Range`].
     host_size: u16,
+    /// Size of the container port [`Range`].
     container_size: u16,
 }
 
@@ -590,6 +592,7 @@ impl IntoIterator for ShortRanges {
 }
 
 /// An [`Iterator`] which yields host-container port pairs from [`ShortRanges`].
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShortRangesIter {
     /// Host port iterator.
     host: Option<RangeInclusive<u16>>,
@@ -629,23 +632,19 @@ impl Range {
     ///
     /// Returns an error if `start` is greater than `end`.
     pub fn new(start: u16, end: Option<u16>) -> Result<Self, RangeError> {
-        if let Some(end) = end {
-            match start.cmp(&end) {
-                Ordering::Less => Ok(Self {
-                    start,
-                    end: Some(end),
-                }),
-                Ordering::Equal => Ok(Self { start, end: None }),
-                Ordering::Greater => Err(RangeError { start, end }),
-            }
-        } else {
-            Ok(Self { start, end: None })
-        }
+        end.map_or(Ok(Self { start, end: None }), |end| match start.cmp(&end) {
+            Ordering::Less => Ok(Self {
+                start,
+                end: Some(end),
+            }),
+            Ordering::Equal => Ok(Self { start, end: None }),
+            Ordering::Greater => Err(RangeError { start, end }),
+        })
     }
 
     /// Start of the port range.
     #[must_use]
-    pub fn start(&self) -> u16 {
+    pub const fn start(&self) -> u16 {
         self.start
     }
 
@@ -653,7 +652,7 @@ impl Range {
     ///
     /// Returns [`None`] if [`start()`](Self::start()) is the only port in the range.
     #[must_use]
-    pub fn end(&self) -> Option<u16> {
+    pub const fn end(&self) -> Option<u16> {
         self.end
     }
 
@@ -681,10 +680,12 @@ impl Range {
 }
 
 /// Error returned when creating a [`Range`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("the start `{start}` of the port range must be less than or equal to the end `{end}`")]
 pub struct RangeError {
+    /// Given start of the port range.
     start: u16,
+    /// Given end of the port range.
     end: u16,
 }
 
@@ -809,7 +810,9 @@ pub enum ParseRangeError {
     /// Error parsing an integer.
     #[error("error parsing `{value}` as an integer")]
     Int {
+        /// Source of the error.
         source: ParseIntError,
+        /// Value attempted to parse.
         value: String,
     },
 }
@@ -1004,11 +1007,10 @@ pub(super) mod tests {
     proptest! {
         #[test]
         fn short_ranges_iter(ranges in short_ranges()) {
-            let iter: Vec<_> = if let Some(host) = ranges.host {
-                host.into_iter().map(Some).zip(ranges.container).collect()
-            } else {
-                std::iter::repeat(None).zip(ranges.container).collect()
-            };
+            let iter: Vec<_> = ranges.host.map_or_else(
+                || std::iter::repeat(None).zip(ranges.container).collect(),
+                |host| host.into_iter().map(Some).zip(ranges.container).collect(),
+            );
 
             let ranges: Vec<_> = ranges.into_iter().collect();
             prop_assert_eq!(ranges, iter);
@@ -1041,7 +1043,7 @@ pub(super) mod tests {
         }
     }
 
-    pub fn range() -> impl Strategy<Value = Range> {
+    pub(in super::super) fn range() -> impl Strategy<Value = Range> {
         any::<u16>()
             .prop_flat_map(|start| (Just(start), option::of(start..)))
             .prop_map(|(start, end)| Range {
@@ -1050,7 +1052,7 @@ pub(super) mod tests {
             })
     }
 
-    pub fn protocol() -> impl Strategy<Value = Protocol> {
+    pub(in super::super) fn protocol() -> impl Strategy<Value = Protocol> {
         prop_oneof![
             Just(Protocol::Tcp),
             Just(Protocol::Udp),

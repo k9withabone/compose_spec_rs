@@ -73,7 +73,7 @@ pub struct ShortVolume {
 impl ShortVolume {
     /// Create a new [`ShortVolume`].
     #[must_use]
-    pub fn new(container_path: AbsolutePath) -> Self {
+    pub const fn new(container_path: AbsolutePath) -> Self {
         Self {
             container_path,
             options: None,
@@ -192,7 +192,13 @@ impl FromStr for ShortVolume {
     }
 }
 
+/// Parse `container_path` into an [`AbsolutePath`].
+///
+/// # Errors
+///
+/// Returns an error if the container path is not an absolute path.
 fn parse_container_path(container_path: &str) -> Result<AbsolutePath, ParseShortVolumeError> {
+    #[allow(clippy::map_err_ignore)]
     container_path
         .parse()
         .map_err(|_| ParseShortVolumeError::AbsoluteContainerPath(container_path.to_owned()))
@@ -305,6 +311,9 @@ impl AbsolutePath {
 #[error("path is not absolute")]
 pub struct AbsolutePathError;
 
+/// Implement methods and traits for a [`PathBuf`] newtype.
+///
+/// The type must have a `new()` function which returns a [`Result<Self, Error>`].
 macro_rules! path_impls {
     ($Ty:ident => $Error:ty) => {
         impl $Ty {
@@ -323,7 +332,7 @@ macro_rules! path_impls {
 
             /// Return a reference to the inner value.
             #[must_use]
-            pub fn as_inner(&self) -> &PathBuf {
+            pub const fn as_inner(&self) -> &PathBuf {
                 &self.0
             }
 
@@ -405,7 +414,7 @@ pub struct ShortOptions {
 impl ShortOptions {
     /// Create a new [`ShortOptions`].
     #[must_use]
-    pub fn new(source: Source) -> Self {
+    pub const fn new(source: Source) -> Self {
         Self {
             source,
             read_only: false,
@@ -457,7 +466,7 @@ impl Source {
 }
 
 /// Error returned when [parsing](Source::parse()) a [`Source`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseSourceError {
     /// Error parsing [`HostPath`].
     #[error("error parsing host path")]

@@ -1,13 +1,69 @@
-//! Types for (de)serializing from/to the
-//! [compose-spec](https://github.com/compose-spec/compose-spec). The types are validated while they
-//! are deserialized when possible.
+//! `compose_spec` is a library for (de)serializing from/to the [Compose specification].
+//!
+//! This library attempts to make interacting with and creating Compose files as idiomatic and
+//! correct as possible.
+//!
+//! - [`PathBuf`]s are used for fields which denote a path.
+//! - Enums are used for fields which conflict with each other.
+//! - Values are fully parsed and validated when they have a defined format.
+//! - Lists that must contain unique values use [`IndexSet`](indexmap::IndexSet), otherwise they are
+//!   [`Vec`]s.
+//! - Strings which represent a span of time are converted to/from
+//!   [`Duration`](std::time::Duration)s, see the [`duration`] module.
 //!
 //! Note that the [`Deserialize`] implementations of many types make use of
 //! [`Deserializer::deserialize_any()`](::serde::de::Deserializer::deserialize_any). This means that
 //! you should only attempt to deserialize them from self-describing formats like YAML or JSON.
 //!
-//! Lists that must contain unique values use [`IndexSet`](indexmap::IndexSet) otherwise they are
-//! [`Vec`]s.
+//! # Examples
+//!
+//! ```
+//! use compose_spec::{Compose, Service, service::Image};
+//!
+//! let yaml = "\
+//! services:
+//!   caddy:
+//!     image: docker.io/library/caddy:latest
+//!     ports:
+//!       - 8000:80
+//!       - 8443:443
+//!     volumes:
+//!       - ./Caddyfile:/etc/caddy/Caddyfile
+//!       - caddy-data:/data
+//! volumes:
+//!   caddy-data:
+//! ";
+//!
+//! // Deserialize `Compose`
+//! let compose: Compose = serde_yaml::from_str(yaml)?;
+//!
+//! // Serialize `Compose`
+//! let value = serde_yaml::to_value(&compose)?;
+//! # let yaml: serde_yaml::Value = serde_yaml::from_str(yaml)?;
+//! # assert_eq!(value, yaml);
+//!
+//! // Get the `Image` of the "caddy" service
+//! let caddy: Option<&Service> = compose.services.get("caddy");
+//! let image: &Option<Image> = &caddy.unwrap().image;
+//! let image: &Image = image.as_ref().unwrap();
+//!
+//! assert_eq!(image, "docker.io/library/caddy:latest");
+//! assert_eq!(image.name(), "docker.io/library/caddy");
+//! assert_eq!(image.tag(), Some("latest"));
+//! # Ok::<(), serde_yaml::Error>(())
+//! ```
+//!
+//! # Short or Long Syntax Values
+//!
+//! Many values within the [Compose specification] can be represented in either a short or long
+//! syntax. The enum [`ShortOrLong`] is used to for these values. Conversion from the [`Short`]
+//! syntax to the [`Long`] syntax is always possible. The [`AsShort`] trait is used for [`Long`]
+//! syntax types which may be represented directly as the [`Short`] syntax type if additional
+//! options are not set.
+//!
+//! [Compose specification]: https://github.com/compose-spec/compose-spec
+//! [`Short`]: ShortOrLong::Short
+//! [`Long`]: ShortOrLong::Long
 
 mod common;
 pub mod config;
@@ -184,7 +240,7 @@ use impl_try_from;
 macro_rules! impl_from_str {
     ($($Ty:ident => $Error:ty),* $(,)?) => {
         $(
-            impl std::str::FromStr for $Ty {
+            impl ::std::str::FromStr for $Ty {
                 type Err = $Error;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -197,13 +253,13 @@ macro_rules! impl_from_str {
                 &str,
                 String,
                 Box<str>,
-                std::borrow::Cow<'_, str>,
+                ::std::borrow::Cow<'_, str>,
             }
         )*
     };
     ($($Ty:ident),* $(,)?) => {
         $(
-            impl std::str::FromStr for $Ty {
+            impl ::std::str::FromStr for $Ty {
                 type Err = std::convert::Infallible;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -211,9 +267,28 @@ macro_rules! impl_from_str {
                 }
             }
 
-            crate::impl_from!($Ty::parse, &str, String, Box<str>, std::borrow::Cow<'_, str>);
+            crate::impl_from!($Ty::parse, &str, String, Box<str>, ::std::borrow::Cow<'_, str>);
         )*
     };
 }
 
 use impl_from_str;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn full_round_trip() -> serde_yaml::Result<()> {
+        let yaml = include_str!("test-full.yaml");
+
+        let compose: Compose = serde_yaml::from_str(yaml)?;
+
+        assert_eq!(
+            serde_yaml::from_str::<serde_yaml::Value>(yaml)?,
+            serde_yaml::to_value(compose)?,
+        );
+
+        Ok(())
+    }
+}

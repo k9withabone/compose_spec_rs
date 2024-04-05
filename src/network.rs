@@ -21,7 +21,7 @@ impl Resource<Network> {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#name)
     #[must_use]
-    pub fn name(&self) -> Option<&String> {
+    pub const fn name(&self) -> Option<&String> {
         match self {
             Self::External { name } => name.as_ref(),
             Self::Compose(network) => network.name.as_ref(),
@@ -181,8 +181,8 @@ pub struct Ipam {
     pub driver: Option<String>,
 
     /// IPAM configuration.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub config: Option<IpamConfig>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub config: Vec<IpamConfig>,
 
     /// Driver-specific options.
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]

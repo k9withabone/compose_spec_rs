@@ -132,7 +132,7 @@ impl Cpus {
 
     /// Return the inner value.
     #[must_use]
-    pub fn into_inner(self) -> f64 {
+    pub const fn into_inner(self) -> f64 {
         self.0
     }
 }
@@ -332,7 +332,7 @@ impl Capability {
     ///
     /// [`Gpu`]: Capability::Gpu
     #[must_use]
-    pub fn is_gpu(&self) -> bool {
+    pub const fn is_gpu(&self) -> bool {
         matches!(self, Self::Gpu)
     }
 
@@ -340,7 +340,7 @@ impl Capability {
     ///
     /// [`Tpu`]: Capability::Tpu
     #[must_use]
-    pub fn is_tpu(&self) -> bool {
+    pub const fn is_tpu(&self) -> bool {
         matches!(self, Self::Tpu)
     }
 
@@ -465,6 +465,7 @@ impl<'de> Visitor<'de> for CountVisitor {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        #[allow(clippy::map_err_ignore)]
         v.parse()
             .map_err(|_| E::invalid_value(Unexpected::Str(v), &self))
     }

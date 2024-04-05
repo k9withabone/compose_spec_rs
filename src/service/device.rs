@@ -60,7 +60,7 @@ impl TryFrom<&str> for Device {
 }
 
 /// Error returned when parsing a [`Device`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseDeviceError {
     /// Given device was an empty string.
     #[error("device cannot be an empty string")]
@@ -109,7 +109,7 @@ pub struct Permissions {
 impl Permissions {
     /// Create [`Permissions`] where all fields are `true`.
     #[must_use]
-    pub fn all() -> Self {
+    pub const fn all() -> Self {
         Self {
             read: true,
             write: true,
@@ -119,7 +119,7 @@ impl Permissions {
 
     /// Returns `true` if any of the permissions are `true`.
     #[must_use]
-    pub fn any(self) -> bool {
+    pub const fn any(self) -> bool {
         let Self { read, write, mknod } = self;
         read || write || mknod
     }
@@ -155,7 +155,7 @@ impl TryFrom<&str> for Permissions {
 }
 
 /// Error returned when parsing [`Permissions`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("invalid device permission `{0}`, must be `r` (read), `w` (write), or `m` (mknod)")]
 pub struct ParsePermissionsError(char);
 
@@ -296,7 +296,7 @@ pub enum Kind {
 impl Kind {
     /// The character the device type corresponds to.
     #[must_use]
-    pub fn as_char(self) -> char {
+    pub const fn as_char(self) -> char {
         match self {
             Self::All => 'a',
             Self::Char => 'c',
@@ -411,6 +411,7 @@ impl Display for MajorMinorNumber {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use proptest::{
         arbitrary::any,

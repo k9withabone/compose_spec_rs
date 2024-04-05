@@ -1,3 +1,6 @@
+//! Provides [`Ulimits`] for the `ulimits` field of [`Service`](super::Service) and the long
+//! [`Build`](super::Build) syntax.
+
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -5,7 +8,7 @@ use thiserror::Error;
 
 use crate::{common::key_impls, AsShort, Extensions, ShortOrLong};
 
-/// Override the default ulimits for a container.
+/// Override the default ulimits for a [`Service`](super::Service) container.
 ///
 /// Ulimits are defined as map from a [`Resource`] to either a singe limit ([`u64`]) or a mapping
 /// of a soft and hard limit ([`Ulimit`]).
@@ -51,7 +54,7 @@ impl Resource {
 }
 
 /// Error returned when creating a [`Resource`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidResourceError {
     /// Resource was empty.
     #[error("ulimit resources cannot be empty")]
@@ -96,11 +99,7 @@ impl AsShort for Ulimit {
             extensions,
         } = self;
 
-        if *soft == *hard && extensions.is_empty() {
-            Some(soft)
-        } else {
-            None
-        }
+        (*soft == *hard && extensions.is_empty()).then_some(soft)
     }
 }
 

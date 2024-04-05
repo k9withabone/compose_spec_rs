@@ -1,64 +1,89 @@
 //! Provides [`Cache`] for the `cache_from` and `cache_to` fields of the long
 //! [`Build`](super::Build) syntax.
 
-use std::{
-    borrow::Cow,
-    fmt::{self, Display, Formatter},
-    str::FromStr,
-};
+use std::fmt::{self, Display, Formatter};
 
-use compose_spec_macros::{DeserializeFromStr, SerializeDisplay};
-use indexmap::{indexmap, IndexMap};
+use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
+use indexmap::IndexMap;
 use thiserror::Error;
 
-use crate::{impl_from_str, InvalidMapKeyError, MapKey};
+use crate::{
+    common::key_impls,
+    impl_from_str,
+    service::{image::InvalidImageError, Image},
+};
 
 /// Cache options for the `cache_from` and `cache_to` fields of the long [`Build`](super::Build)
 /// syntax.
 ///
-/// (De)serializes from/to "type=TYPE[,KEY=VALUE[,...]]", or deserializes/parses from an image name,
-/// see [`Cache::from_image()`].
+/// (De)serializes from/to an [`Image`] name or "type=TYPE[,KEY=VALUE...]".
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#cache_from)
-#[derive(SerializeDisplay, DeserializeFromStr, Default, Clone, Debug, PartialEq, Eq)]
-#[serde(expecting = "an image name or a string of the format \"type=TYPE[,KEY=VALUE,...]\"")]
+#[derive(SerializeDisplay, DeserializeTryFromString, Clone, Debug, PartialEq, Eq)]
+#[serde(expecting = "an image name or string in the format \"type=TYPE[,KEY=VALUE,...]\"")]
 pub struct Cache {
-    kind: Kind,
-    options: IndexMap<MapKey, Box<str>>,
+    /// The type of the cache.
+    pub cache_type: CacheType,
+    /// Cache options.
+    pub options: IndexMap<CacheOption, CacheOption>,
 }
 
 impl Cache {
-    /// Create a new [`Cache`].
+    /// Parse [`Cache`] from a string.
+    ///
+    /// The format is `{image}|type={cache_type}[,{key}={value}...]` where `image` is shorthand for
+    /// `type=registry,ref={image}`.
     ///
     /// # Errors
     ///
-    /// Returns an error if a key in options fails to convert into a [`MapKey`],
-    /// or if `cache_type` is [`Registry`](Kind::Registry) and `options` is missing a "ref" option.
-    pub fn new<O, K, V>(cache_type: Kind, options: O) -> Result<Self, Error>
+    /// Returns an error if the string is just an image name and it is not a valid [`Image`],
+    /// otherwise the string must start with `type=`, its options must be valid [`CacheOption`]s,
+    /// and if its [`CacheType::Registry`], it must contain a `ref` option with value being a valid
+    /// [`Image`].
+    pub fn parse<T>(cache: T) -> Result<Self, ParseCacheError>
     where
-        O: IntoIterator<Item = (K, V)>,
-        K: TryInto<MapKey>,
-        Error: From<K::Error>,
-        V: Into<Box<str>>,
+        T: AsRef<str> + Into<String>,
     {
-        let options: IndexMap<_, _> = options
-            .into_iter()
-            // .map(|(key, value)| match key.try_into() {
-            //     Ok(key) => Ok((key, value.into())),
-            //     Err(error) => Err(error.into()),
-            // })
-            .map(|(key, value)| key.try_into().map(|key| (key, value.into())))
-            .collect::<Result<_, _>>()?;
-
-        if cache_type.is_registry() {
-            let ref_option = options.get("ref");
-            if ref_option.is_none() || ref_option.is_some_and(|option| option.is_empty()) {
-                return Err(Error::RegistryMissingRef);
-            }
+        if cache.as_ref().contains(',') {
+            Self::parse_str(cache.as_ref())
+        } else {
+            Image::parse(cache)
+                .map(Self::from_image)
+                .map_err(Into::into)
         }
+    }
+
+    /// Concrete implementation for [`Cache::parse()`] for string slices.
+    fn parse_str(cache: &str) -> Result<Self, ParseCacheError> {
+        // Format is "type=TYPE[,KEY=VALUE[,...]]"
+
+        let mut options = cache.split(',');
+
+        let cache_type = options
+            .next()
+            .expect("split has at least one element")
+            .strip_prefix("type=")
+            .ok_or(ParseCacheError::TypeFirst)?;
+
+        let mut options: IndexMap<CacheOption, CacheOption> = options
+            .map(|option| {
+                let (key, value) = option.split_once('=').unwrap_or((option, ""));
+                Ok((key.parse()?, value.parse()?))
+            })
+            .collect::<Result<_, ParseCacheError>>()?;
+
+        let cache_type = match cache_type {
+            "registry" => options
+                .shift_remove("ref")
+                .ok_or(ParseCacheError::MissingRef)?
+                .0
+                .try_into()
+                .map(CacheType::Registry)?,
+            other => other.parse().map(CacheType::Other)?,
+        };
 
         Ok(Self {
-            kind: cache_type,
+            cache_type,
             options,
         })
     }
@@ -70,86 +95,111 @@ impl Cache {
     /// # Examples
     ///
     /// ```
-    /// use compose_spec::service::build::{Cache, CacheType};
+    /// # fn main() -> Result<(), compose_spec::service::build::ParseCacheError> {
+    /// use indexmap::IndexMap;
+    /// use compose_spec::service::{build::{Cache, CacheType}, Image};
+    ///
+    /// let image = Image::parse("image")?;
+    /// let cache = Cache::from_image(image.clone());
+    ///
+    /// assert_eq!(cache,"type=registry,ref=image".parse()?);
     ///
     /// assert_eq!(
-    ///     Cache::from_image("image"),
-    ///     "type=registry,ref=image".parse().unwrap(),
+    ///     cache,
+    ///     Cache {
+    ///         cache_type: CacheType::Registry(image),
+    ///         options: IndexMap::default(),
+    ///     },
     /// );
-    ///
-    /// assert_eq!(
-    ///     Cache::from_image("image"),
-    ///     Cache::new(CacheType::Registry, [("ref", "image")]).unwrap(),
-    /// );
+    /// # Ok(()) }
     /// ```
     #[must_use]
-    pub fn from_image(image: &str) -> Self {
-        let key = MapKey::new_unchecked("ref");
-        Self {
-            kind: Kind::Registry,
-            options: indexmap! {
-                key => image.into(),
-            },
+    pub fn from_image(image: Image) -> Self {
+        CacheType::from(image).into()
+    }
+
+    /// Convert cache into a map of options.
+    ///
+    /// Inserts the [`CacheType`] into the options at the beginning.
+    #[must_use]
+    pub fn into_options(self) -> IndexMap<CacheOption, CacheOption> {
+        let Self {
+            cache_type,
+            mut options,
+        } = self;
+
+        match cache_type {
+            CacheType::Registry(image) => {
+                let (key, value) = CacheOption::pair_from_image(image);
+                options.shift_insert(0, key, value);
+
+                options.shift_insert(
+                    0,
+                    CacheOption("type".into()),
+                    CacheOption("registry".into()),
+                );
+
+                options
+            }
+            CacheType::Other(cache_type) => {
+                options.shift_insert(0, CacheOption("type".into()), cache_type);
+                options
+            }
         }
-    }
-
-    /// The value of the cache "type" field.
-    #[doc(alias = "kind", alias = "type")]
-    #[must_use]
-    pub fn cache_type(&self) -> &Kind {
-        &self.kind
-    }
-
-    /// Cache options.
-    #[must_use]
-    pub fn options(&self) -> &IndexMap<MapKey, Box<str>> {
-        &self.options
     }
 }
 
-/// Error returned when creating a [`Cache`].
+impl_from_str!(Cache => ParseCacheError);
+
+/// Error returned when parsing a [`Cache`] from a string.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum Error {
-    /// [`Registry`](Kind::Registry) cache type given without a corresponding "ref" option.
-    #[error("caches with type \"registry\" must have a \"ref\" option")]
-    RegistryMissingRef,
+pub enum ParseCacheError {
+    /// Error parsing [`Image`] for [`CacheType::Registry`].
+    #[error("error parsing cache image ref")]
+    Image(#[from] InvalidImageError),
 
-    /// Option keys must be valid [`MapKey`]s.
-    #[error("invalid option key")]
-    OptionKey(#[from] InvalidMapKeyError),
+    /// Cache did not start with `type=`.
+    #[error("cache options must start with `type=` if not an image")]
+    TypeFirst,
+
+    /// Error parsing [`CacheOption`].
+    #[error("error parsing cache option")]
+    CacheOption(#[from] InvalidCacheOptionError),
+
+    /// [`CacheType::Registry`] requires a `ref` option.
+    #[error("cache type `registry` missing required `ref` option")]
+    MissingRef,
 }
 
-impl FromStr for Cache {
-    type Err = ParseCacheError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Format is "NAME | type=TYPE[,KEY=VALUE[,...]]", where NAME is an image name.
-
-        let mut options = s.split(',');
-        let kind = options.next().expect("Split has at least one element");
-
-        if let Some(kind) = kind.strip_prefix("type=") {
-            let options: Vec<_> = options
-                .map(|option| {
-                    option
-                        .split_once('=')
-                        .filter(|(_, value)| !value.is_empty())
-                        .ok_or(ParseCacheError::OptionValueMissing)
-                })
-                .collect::<Result<_, _>>()?;
-
-            Self::new(kind.into(), options).map_err(Into::into)
-        } else {
-            Ok(Self::from_image(s))
+impl From<CacheType> for Cache {
+    fn from(cache_type: CacheType) -> Self {
+        Self {
+            cache_type,
+            options: IndexMap::default(),
         }
+    }
+}
+
+impl From<Image> for Cache {
+    fn from(image: Image) -> Self {
+        Self::from_image(image)
     }
 }
 
 impl Display for Cache {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let Self { kind, options } = self;
+        let Self {
+            cache_type,
+            options,
+        } = self;
 
-        write!(f, "type={kind}")?;
+        if options.is_empty() {
+            if let CacheType::Registry(image) = cache_type {
+                return Display::fmt(image, f);
+            }
+        }
+
+        Display::fmt(cache_type, f)?;
 
         for (key, value) in options {
             write!(f, ",{key}={value}")?;
@@ -159,106 +209,143 @@ impl Display for Cache {
     }
 }
 
-/// Error returned when parsing a [`Cache`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum ParseCacheError {
-    /// Error while creating [`Cache`].
-    #[error(transparent)]
-    Cache(#[from] Error),
-
-    /// An option was missing a value.
-    #[error("cache options must have a value")]
-    OptionValueMissing,
-}
-
-/// Cache type, all compose implementations must support the [`Registry`](Kind::Registry) type.
+/// [`Cache`] type.
+///
+/// The [`Display`] format is `type=registry,ref={image}` or `type={other}`.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#cache_from)
-#[doc(alias = "CacheKind")]
-#[derive(Default, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Kind {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[allow(clippy::module_name_repetitions)]
+pub enum CacheType {
     /// Retrieve build cache from an OCI image set by option "ref".
-    #[default]
-    Registry,
+    Registry(Image),
 
     /// Some other cache type.
-    Other(String),
+    Other(CacheOption),
 }
 
-impl Kind {
-    /// [`Self::Registry`] string value.
-    const REGISTRY: &'static str = "registry";
-
-    /// Parse [`CacheType`](Self) from a string.
-    pub fn parse<T>(cache_kind: T) -> Self
-    where
-        T: AsRef<str> + Into<String>,
-    {
-        match cache_kind.as_ref() {
-            Self::REGISTRY => Kind::Registry,
-            _ => Kind::Other(cache_kind.into()),
-        }
-    }
-
+impl CacheType {
     /// Returns `true` if the cache type is [`Registry`].
     ///
-    /// [`Registry`]: Kind::Registry
+    /// [`Registry`]: CacheType::Registry
     #[must_use]
-    pub fn is_registry(&self) -> bool {
-        matches!(self, Self::Registry)
+    pub const fn is_registry(&self) -> bool {
+        matches!(self, Self::Registry(_))
     }
 
-    /// Cache type as a string slice.
+    /// Returns [`Some`] if the cache type is [`Registry`].
+    ///
+    /// [`Registry`]: CacheType::Registry
     #[must_use]
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::Registry => Self::REGISTRY,
-            Self::Other(kind) => kind,
+    pub const fn as_registry(&self) -> Option<&Image> {
+        if let Self::Registry(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if the cache type is [`Other`].
+    ///
+    /// [`Other`]: CacheType::Other
+    #[must_use]
+    pub const fn is_other(&self) -> bool {
+        matches!(self, Self::Other(..))
+    }
+
+    /// Returns [`Some`] if the cache type is [`Other`].
+    ///
+    /// [`Other`]: CacheType::Other
+    #[must_use]
+    pub const fn as_other(&self) -> Option<&CacheOption> {
+        if let Self::Other(v) = self {
+            Some(v)
+        } else {
+            None
         }
     }
 }
 
-impl_from_str!(Kind);
-
-impl AsRef<str> for Kind {
-    fn as_ref(&self) -> &str {
-        self.as_str()
+impl From<Image> for CacheType {
+    fn from(image: Image) -> Self {
+        Self::Registry(image)
     }
 }
 
-impl From<Kind> for String {
-    fn from(value: Kind) -> Self {
-        match value {
-            Kind::Registry => value.as_str().to_owned(),
-            Kind::Other(value) => value,
-        }
-    }
-}
-
-impl From<Kind> for Cow<'static, str> {
-    fn from(value: Kind) -> Self {
-        match value {
-            Kind::Registry => Self::Borrowed(Kind::REGISTRY),
-            Kind::Other(other) => Self::Owned(other),
-        }
-    }
-}
-
-impl Display for Kind {
+impl Display for CacheType {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.write_str(self.as_str())
+        match self {
+            Self::Registry(image) => write!(f, "type=registry,ref={image}"),
+            Self::Other(other) => write!(f, "type={other}"),
+        }
+    }
+}
+
+/// An option for a [`Cache`].
+///
+/// Cache options cannot be empty or contain whitespace.
+#[derive(
+    SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+#[allow(clippy::module_name_repetitions)]
+pub struct CacheOption(Box<str>);
+
+impl CacheOption {
+    /// Create a new [`CacheOption`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `option` is empty or contains whitespace.
+    pub fn new<T>(option: T) -> Result<Self, InvalidCacheOptionError>
+    where
+        T: AsRef<str> + Into<Box<str>>,
+    {
+        if option.as_ref().is_empty() {
+            Err(InvalidCacheOptionError::Empty)
+        } else if option.as_ref().contains(char::is_whitespace) {
+            Err(InvalidCacheOptionError::Whitespace)
+        } else {
+            Ok(Self(option.into()))
+        }
+    }
+
+    /// Return a pair of cache options appropriate for inserting into a [`Cache`]'s `options` map.
+    fn pair_from_image(image: Image) -> (Self, Self) {
+        (Self("ref".into()), image.into())
+    }
+}
+
+/// Error returned when creating a new [`CacheOption`].
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidCacheOptionError {
+    /// Cache options cannot be empty.
+    #[error("cache options cannot be empty")]
+    Empty,
+
+    /// Cache options cannot container whitespace.
+    #[error("cache options cannot contain whitespace")]
+    Whitespace,
+}
+
+key_impls!(CacheOption => InvalidCacheOptionError);
+
+impl From<Image> for CacheOption {
+    fn from(value: Image) -> Self {
+        // Images are never empty or contain whitespace.
+        Self(value.into_inner().into_boxed_str())
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn round_trip() {
-        let cache = Cache::from_image("test");
+        let cache = Cache::from_image("image".parse().unwrap());
         let string = cache.to_string();
-        assert_eq!(string, "type=registry,ref=test");
+        assert_eq!(string, "image");
         assert_eq!(cache, string.parse().unwrap());
     }
 }

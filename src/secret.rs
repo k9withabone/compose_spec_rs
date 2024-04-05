@@ -98,6 +98,7 @@ enum SourceField {
 }
 
 impl SourceField {
+    /// [`Source`] field name as a static string slice.
     const fn as_str(self) -> &'static str {
         match self {
             Self::File => "file",

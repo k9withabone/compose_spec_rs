@@ -148,6 +148,7 @@ impl<'de> Deserialize<'de> for ByteValue {
     }
 }
 
+/// [`de::Visitor`] for deserializing [`ByteValue`] from a [`u64`] or a string.
 struct Visitor;
 
 impl<'de> de::Visitor<'de> for Visitor {
@@ -168,6 +169,7 @@ impl<'de> de::Visitor<'de> for Visitor {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use serde::de::value::U64Deserializer;
 

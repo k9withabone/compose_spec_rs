@@ -73,7 +73,7 @@ enum Field {
 
 impl Field {
     /// Field identifier as a static string slice.
-    pub const fn as_str(self) -> &'static str {
+    const fn as_str(self) -> &'static str {
         match self {
             Self::NetworkMode => "network_mode",
             Self::Networks => "networks",
@@ -137,10 +137,10 @@ pub(super) mod option {
     /// # Errors
     ///
     /// Returns an error if the `serializer` does while serializing.
-    pub fn serialize<S>(value: &Option<NetworkConfig>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+    pub(in super::super) fn serialize<S: Serializer>(
+        value: &Option<NetworkConfig>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         value.serialize(serializer)
     }
 
@@ -150,10 +150,9 @@ pub(super) mod option {
     ///
     /// Returns an error if the `deserializer` does, there is an error deserializing either
     /// [`NetworkConfig`] variant, or both fields are present.
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<NetworkConfig>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
+    pub(in super::super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<NetworkConfig>, D::Error> {
         let NetworkConfigFlat {
             network_mode,
             networks,
@@ -176,8 +175,11 @@ pub(super) mod option {
         expecting = "a struct with either a `network_mode` or `networks` field"
     )]
     struct NetworkConfigFlat {
+        /// [`NetworkConfig::NetworkMode`]
         #[serde(default)]
         network_mode: Option<NetworkMode>,
+
+        /// [`NetworkConfig::Networks`]
         #[serde(default)]
         networks: Option<Networks>,
     }
@@ -240,7 +242,7 @@ impl NetworkMode {
     ///
     /// [`None`]: NetworkMode::None
     #[must_use]
-    pub fn is_none(&self) -> bool {
+    pub const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 
@@ -248,7 +250,7 @@ impl NetworkMode {
     ///
     /// [`Host`]: NetworkMode::Host
     #[must_use]
-    pub fn is_host(&self) -> bool {
+    pub const fn is_host(&self) -> bool {
         matches!(self, Self::Host)
     }
 
@@ -256,7 +258,7 @@ impl NetworkMode {
     ///
     /// [`Service`]: NetworkMode::Service
     #[must_use]
-    pub fn is_service(&self) -> bool {
+    pub const fn is_service(&self) -> bool {
         matches!(self, Self::Service(..))
     }
 
@@ -264,7 +266,7 @@ impl NetworkMode {
     ///
     /// [`Service`]: NetworkMode::Service
     #[must_use]
-    pub fn as_service(&self) -> Option<&Identifier> {
+    pub const fn as_service(&self) -> Option<&Identifier> {
         if let Self::Service(v) = self {
             Some(v)
         } else {
@@ -276,7 +278,7 @@ impl NetworkMode {
     ///
     /// [`Other`]: NetworkMode::Other
     #[must_use]
-    pub fn is_other(&self) -> bool {
+    pub const fn is_other(&self) -> bool {
         matches!(self, Self::Other(..))
     }
 
@@ -284,7 +286,7 @@ impl NetworkMode {
     ///
     /// [`Other`]: NetworkMode::Other
     #[must_use]
-    pub fn as_other(&self) -> Option<&String> {
+    pub const fn as_other(&self) -> Option<&String> {
         if let Self::Other(v) = self {
             Some(v)
         } else {
@@ -294,7 +296,7 @@ impl NetworkMode {
 }
 
 /// Error returned when [parsing](NetworkMode::parse()) a [`NetworkMode`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("error parsing service network mode")]
 pub struct ParseNetworkModeError(#[from] InvalidIdentifierError);
 
@@ -531,6 +533,7 @@ impl Display for MacAddress {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use indexmap::indexset;
 

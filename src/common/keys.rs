@@ -45,7 +45,7 @@ impl Identifier {
 }
 
 /// Error returned when attempting to create a [`Identifier`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidIdentifierError {
     /// Empty identifier
     #[error("identifier cannot be empty")]
@@ -101,19 +101,15 @@ impl MapKey {
             Ok(Self(key.into()))
         }
     }
-
-    /// Create a new [`MapKey`] without checking for its constraints.
-    pub(crate) fn new_unchecked(key: impl Into<Box<str>>) -> Self {
-        Self(key.into())
-    }
 }
 
 /// Error returned when attempting to create a [`MapKey`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidMapKeyError {
     /// Empty map key
     #[error("map key cannot be empty")]
     Empty,
+
     /// Map key has multiple lines
     #[error("map key cannot have multiple lines (newline character `\\n` found)")]
     MultipleLines,
@@ -197,10 +193,10 @@ macro_rules! key_impls {
                 String,
                 Box<str>,
                 &str,
-                std::borrow::Cow<'_, str>,
+                ::std::borrow::Cow<'_, str>,
             }
 
-            impl std::str::FromStr for $Ty {
+            impl ::std::str::FromStr for $Ty {
                 type Err = $Error;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -214,14 +210,14 @@ macro_rules! key_impls {
                 }
             }
 
-            impl std::borrow::Borrow<str> for $Ty {
+            impl ::std::borrow::Borrow<str> for $Ty {
                 fn borrow(&self) -> &str {
                     self.as_str()
                 }
             }
 
-            impl std::fmt::Display for $Ty {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            impl ::std::fmt::Display for $Ty {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     f.write_str(self.as_str())
                 }
             }

@@ -99,11 +99,14 @@ pub struct Weight(NonZeroU16);
 
 impl Weight {
     /// The default value, 500.
-    // TODO: Remove unsafe once `Option::expect()` in const is
-    //       [stable](https://github.com/rust-lang/rust/issues/67441). Then, replace it with
-    //       `NonZeroU16::new(500).expect("500 is not zero")` and remove clippy allow above.
-    // SAFETY: 500 is not zero.
-    pub const DEFAULT: Self = Self(unsafe { NonZeroU16::new_unchecked(500) });
+    // TODO:
+    // Remove unsafe once `Option::expect()` in const is
+    // [stable](https://github.com/rust-lang/rust/issues/67441). Then, replace it with
+    // `NonZeroU16::new(500).expect("500 is not zero")` and remove clippy allow above.
+    pub const DEFAULT: Self = Self(
+        // SAFETY: 500 is not zero.
+        unsafe { NonZeroU16::new_unchecked(500) },
+    );
 
     /// Create a new [`Weight`].
     ///
@@ -124,14 +127,14 @@ impl Weight {
 
     /// Return the inner value.
     #[must_use]
-    pub fn into_inner(self) -> NonZeroU16 {
+    pub const fn into_inner(self) -> NonZeroU16 {
         self.0
     }
 }
 
 /// Error returned when attempting to create a [`Weight`] and the number is not between 10 and 1000,
 /// inclusive.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("weights must be between 10 and 1000")]
 pub struct WeightRangeError {
     /// Source of the error when converting into a [`NonZeroU16`] fails.

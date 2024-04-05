@@ -45,7 +45,9 @@ impl Dockerfile {
 #[derive(Deserialize, Debug, Clone, Copy)]
 #[serde(field_identifier, rename_all = "snake_case")]
 enum Field {
+    /// [`Dockerfile::File`] / `dockerfile`
     Dockerfile,
+    /// [`Dockerfile::Inline`] / `dockerfile_inline`
     DockerfileInline,
 }
 
@@ -123,10 +125,10 @@ pub(super) mod option {
     /// # Errors
     ///
     /// Returns an error if the `serializer` does while serializing.
-    pub fn serialize<S>(value: &Option<Dockerfile>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+    pub(in super::super) fn serialize<S: Serializer>(
+        value: &Option<Dockerfile>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         value.serialize(serializer)
     }
 
@@ -136,10 +138,9 @@ pub(super) mod option {
     ///
     /// Returns an error if the `deserializer` does, there is an error deserializing either
     /// [`Dockerfile`] variant, or both fields are present.
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Dockerfile>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
+    pub(in super::super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<Dockerfile>, D::Error> {
         let DockerfileFlat {
             dockerfile,
             dockerfile_inline,
@@ -162,14 +163,18 @@ pub(super) mod option {
         expecting = "a struct with either a `dockerfile` or `dockerfile_inline` field"
     )]
     struct DockerfileFlat {
+        /// [`Dockerfile::File`]
         #[serde(default)]
         dockerfile: Option<PathBuf>,
+
+        /// [`Dockerfile::Inline`]
         #[serde(default)]
         dockerfile_inline: Option<String>,
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

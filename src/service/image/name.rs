@@ -102,7 +102,8 @@ impl<'a> Name<'a> {
         }
     }
 
-    pub(super) fn registry_end(&self) -> Option<usize> {
+    /// Byte position of `inner` where the registry ends, if the image name has a registry part.
+    pub(super) const fn registry_end(&self) -> Option<usize> {
         self.registry_end
     }
 
@@ -118,12 +119,19 @@ impl<'a> Name<'a> {
     /// ```
     #[must_use]
     pub fn registry(&self) -> Option<&str> {
-        self.registry_end.map(|end| &self.inner[..end])
+        self.registry_end.map(|end| {
+            // PANIC_SAFETY:
+            // `registry_end` is always within `inner`.
+            // `inner` only contains ASCII.
+            // Checked with `registry()` test.
+            #[allow(clippy::indexing_slicing, clippy::string_slice)]
+            &self.inner[..end]
+        })
     }
 
     /// Return the inner string slice.
     #[must_use]
-    pub fn into_inner(self) -> &'a str {
+    pub const fn into_inner(self) -> &'a str {
         self.inner
     }
 }

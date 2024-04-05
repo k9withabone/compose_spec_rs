@@ -1,3 +1,5 @@
+//! The [`ShortOrLong`] type, along with associated implementations and traits.
+
 use std::{
     ffi::{OsStr, OsString},
     fmt::{self, Formatter},
@@ -43,10 +45,10 @@ use crate::{
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(untagged)]
 pub enum ShortOrLong<S, L> {
-    /// Short syntax, a single value.
+    /// Short syntax, a single value or sequence.
     Short(S),
 
-    /// Long syntax, a sequence or map.
+    /// Long syntax, a map.
     Long(L),
 }
 
@@ -64,7 +66,7 @@ impl<S, L> ShortOrLong<S, L> {
     ///
     /// [`Short`]: Self::Short
     #[must_use]
-    pub fn is_short(&self) -> bool {
+    pub const fn is_short(&self) -> bool {
         matches!(self, Self::Short(..))
     }
 
@@ -72,7 +74,7 @@ impl<S, L> ShortOrLong<S, L> {
     ///
     /// [`Long`]: Self::Long
     #[must_use]
-    pub fn is_long(&self) -> bool {
+    pub const fn is_long(&self) -> bool {
         matches!(self, Self::Long(..))
     }
 
@@ -80,7 +82,7 @@ impl<S, L> ShortOrLong<S, L> {
     ///
     /// [`Long`]: Self::Long
     #[must_use]
-    pub fn as_long(&self) -> Option<&L> {
+    pub const fn as_long(&self) -> Option<&L> {
         if let Self::Long(v) = self {
             Some(v)
         } else {
@@ -102,6 +104,7 @@ where
 
 /// Trait for types that represent a long syntax which could also be represented in a short syntax.
 pub trait AsShort {
+    /// The short syntax type, returned from [`as_short()`](AsShort::as_short()).
     type Short: ?Sized;
 
     /// Returns [`Some`] if the long syntax can be represented as the short syntax.
@@ -245,11 +248,11 @@ macro_rules! impl_long_conversion {
                 }
             }
 
-            impl<S> From<ShortOrLong<S, $t>> for $t
+            impl<S> From<ShortOrLong<S, Self>> for $t
             where
-                S: Into<$t>,
+                S: Into<Self>,
             {
-                fn from(value: ShortOrLong<S, $t>) -> Self {
+                fn from(value: ShortOrLong<S, Self>) -> Self {
                     match value {
                         ShortOrLong::Short(short) => short.into(),
                         ShortOrLong::Long(long) => long,
@@ -276,13 +279,13 @@ impl<S, K, V> From<IndexMap<K, V>> for ShortOrLong<S, IndexMap<K, V>> {
     }
 }
 
-impl<S, K, V> From<ShortOrLong<S, IndexMap<K, V>>> for IndexMap<K, V>
+impl<S, K, V> From<ShortOrLong<S, Self>> for IndexMap<K, V>
 where
     S: IntoIterator<Item = K>,
     K: Hash + Eq,
     V: Default,
 {
-    fn from(value: ShortOrLong<S, IndexMap<K, V>>) -> Self {
+    fn from(value: ShortOrLong<S, Self>) -> Self {
         match value {
             ShortOrLong::Short(short) => short
                 .into_iter()
@@ -311,13 +314,15 @@ where
 
 /// [`de::Visitor`] for deserializing [`ShortOrLong`].
 struct Visitor<S, L> {
+    /// The type of the [`Short`](ShortOrLong::Short) to deserialize.
     short: PhantomData<S>,
+    /// The type of the [`Long`](ShortOrLong::Long) to deserialize.
     long: PhantomData<L>,
 }
 
 impl<S, L> Visitor<S, L> {
     /// Create a new [`Visitor`].
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             short: PhantomData,
             long: PhantomData,

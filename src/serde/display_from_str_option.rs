@@ -9,7 +9,7 @@ use std::{
 
 use serde::{de, Deserialize, Deserializer, Serializer};
 
-use super::FromStrVisitor;
+use super::{error_chain, FromStrVisitor};
 
 /// Serialize an [`Option`]al value using its [`Display`] implementation.
 pub(crate) fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
@@ -34,12 +34,15 @@ where
     deserializer.deserialize_option(Visitor::new())
 }
 
+/// [`de::Visitor`] for deserializing [`Option<T>`] using `T`'s [`FromStr`] implementation.
 struct Visitor<T> {
+    /// The optional value type to deserialize.
     value: PhantomData<T>,
 }
 
 impl<T> Visitor<T> {
-    fn new() -> Self {
+    /// Create a new [`Visitor`].
+    const fn new() -> Self {
         Self { value: PhantomData }
     }
 }
@@ -55,26 +58,17 @@ where
         formatter.write_str("a string or none")
     }
 
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        v.parse().map(Some).map_err(de::Error::custom)
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        v.parse().map(Some).map_err(error_chain)
     }
 
-    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
+    fn visit_some<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         FromStrVisitor::default()
             .deserialize(deserializer)
             .map(Some)
     }
 
-    fn visit_none<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
+    fn visit_none<E: de::Error>(self) -> Result<Self::Value, E> {
         Ok(None)
     }
 }

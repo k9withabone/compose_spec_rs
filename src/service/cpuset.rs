@@ -128,6 +128,7 @@ impl From<CpuSet> for BTreeSet<u64> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use proptest::{prop_assert_eq, proptest};
 

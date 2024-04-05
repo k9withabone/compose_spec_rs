@@ -34,22 +34,21 @@ impl UserOrGroup {
     where
         T: AsRef<str> + TryInto<Name>,
     {
-        if let Ok(id) = user_or_group.as_ref().parse() {
-            Ok(Self::Id(id))
-        } else {
-            user_or_group.try_into().map(Self::Name)
-        }
+        user_or_group.as_ref().parse().map_or_else(
+            |_| user_or_group.try_into().map(Self::Name),
+            |id| Ok(Self::Id(id)),
+        )
     }
 
     /// Returns `true` if the user or group is an [`Id`](Self::Id).
     #[must_use]
-    pub fn is_id(&self) -> bool {
+    pub const fn is_id(&self) -> bool {
         matches!(self, Self::Id(..))
     }
 
     /// Returns [`Some`] if [`Id`](Self::Id).
     #[must_use]
-    pub fn as_id(&self) -> Option<u32> {
+    pub const fn as_id(&self) -> Option<u32> {
         if let Self::Id(v) = self {
             Some(*v)
         } else {
@@ -59,13 +58,13 @@ impl UserOrGroup {
 
     /// Returns `true` if the user or group is a [`Name`](Self::Name).
     #[must_use]
-    pub fn is_name(&self) -> bool {
+    pub const fn is_name(&self) -> bool {
         matches!(self, Self::Name(..))
     }
 
     /// Returns [`Some`] if [`Name`](Self::Name).
     #[must_use]
-    pub fn as_name(&self) -> Option<&Name> {
+    pub const fn as_name(&self) -> Option<&Name> {
         if let Self::Name(v) = self {
             Some(v)
         } else {
@@ -207,7 +206,7 @@ impl Name {
 }
 
 /// Error returned when parsing a [`Name`] from a string.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidNameError {
     /// User/group name was empty.
     #[error("user and group names cannot be empty")]
@@ -241,6 +240,7 @@ pub enum InvalidNameError {
 key_impls!(Name => InvalidNameError);
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

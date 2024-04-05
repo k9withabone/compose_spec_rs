@@ -14,11 +14,14 @@ use std::{
 
 use indexmap::{indexset, IndexMap, IndexSet};
 use serde::{
-    de::{self, IntoDeserializer},
+    de::{
+        self,
+        value::{MapAccessDeserializer, SeqAccessDeserializer},
+        IntoDeserializer, MapAccess, SeqAccess, Visitor,
+    },
     ser::SerializeMap,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use serde_untagged::UntaggedEnumVisitor;
 pub use serde_yaml::Value as YamlValue;
 use thiserror::Error;
 
@@ -80,7 +83,7 @@ impl<T> ItemOrList<T> {
 
     /// Returns [`Some`] if a list.
     #[must_use]
-    pub fn as_list(&self) -> Option<&IndexSet<T>> {
+    pub const fn as_list(&self) -> Option<&IndexSet<T>> {
         if let Self::List(v) = self {
             Some(v)
         } else {
@@ -161,7 +164,7 @@ impl ListOrMap {
 
     /// Return [`Some`] if a list.
     #[must_use]
-    pub fn as_list(&self) -> Option<&IndexSet<String>> {
+    pub const fn as_list(&self) -> Option<&IndexSet<String>> {
         if let Self::List(v) = self {
             Some(v)
         } else {
@@ -171,7 +174,7 @@ impl ListOrMap {
 
     /// Return [`Some`] if a map.
     #[must_use]
-    pub fn as_map(&self) -> Option<&Map> {
+    pub const fn as_map(&self) -> Option<&Map> {
         if let Self::Map(v) = self {
             Some(v)
         } else {
@@ -229,7 +232,7 @@ impl ListOrMap {
     /// Returns an error if a key is not a valid [`MapKey`].
     pub fn into_map_split_on(self, delimiters: &[char]) -> Result<Map, InvalidMapKeyError> {
         match self {
-            ListOrMap::List(list) => list
+            Self::List(list) => list
                 .into_iter()
                 .map(|item| {
                     let (key, value) = item
@@ -241,17 +244,33 @@ impl ListOrMap {
                     ))
                 })
                 .collect(),
-            ListOrMap::Map(map) => Ok(map),
+            Self::Map(map) => Ok(map),
         }
     }
 }
 
 impl<'de> Deserialize<'de> for ListOrMap {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        UntaggedEnumVisitor::new()
-            .seq(|seq| seq.deserialize().map(Self::List))
-            .map(|map| map.deserialize().map(Self::Map))
-            .deserialize(deserializer)
+        deserializer.deserialize_any(ListOrMapVisitor)
+    }
+}
+
+/// [`Visitor`] for deserializing [`ListOrMap`].
+struct ListOrMapVisitor;
+
+impl<'de> Visitor<'de> for ListOrMapVisitor {
+    type Value = ListOrMap;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str("a sequence of strings or map of strings to optional values")
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> Result<Self::Value, A::Error> {
+        IndexSet::deserialize(SeqAccessDeserializer::new(seq)).map(ListOrMap::List)
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+        Map::deserialize(MapAccessDeserializer::new(map)).map(ListOrMap::Map)
     }
 }
 
@@ -296,13 +315,13 @@ impl Value {
 
     /// Returns `true` if the value is a [`String`].
     #[must_use]
-    pub fn is_string(&self) -> bool {
+    pub const fn is_string(&self) -> bool {
         matches!(self, Self::String(..))
     }
 
     /// Returns [`Some`] if the value is a [`String`].
     #[must_use]
-    pub fn as_string(&self) -> Option<&String> {
+    pub const fn as_string(&self) -> Option<&String> {
         if let Self::String(v) = self {
             Some(v)
         } else {
@@ -312,13 +331,13 @@ impl Value {
 
     /// Returns `true` if the value is a [`Number`].
     #[must_use]
-    pub fn is_number(&self) -> bool {
+    pub const fn is_number(&self) -> bool {
         matches!(self, Self::Number(..))
     }
 
     /// Returns [`Some`] if the value is a [`Number`].
     #[must_use]
-    pub fn as_number(&self) -> Option<&Number> {
+    pub const fn as_number(&self) -> Option<&Number> {
         if let Self::Number(v) = self {
             Some(v)
         } else {
@@ -328,13 +347,13 @@ impl Value {
 
     /// Returns `true` if the value is a [`bool`].
     #[must_use]
-    pub fn is_bool(&self) -> bool {
+    pub const fn is_bool(&self) -> bool {
         matches!(self, Self::Bool(..))
     }
 
     /// Returns [`Some`] if the value is a [`bool`].
     #[must_use]
-    pub fn as_bool(&self) -> Option<bool> {
+    pub const fn as_bool(&self) -> Option<bool> {
         if let Self::Bool(v) = self {
             Some(*v)
         } else {
@@ -519,7 +538,7 @@ impl Number {
     ///
     /// [`UnsignedInt`]: Number::UnsignedInt
     #[must_use]
-    pub fn is_unsigned_int(&self) -> bool {
+    pub const fn is_unsigned_int(&self) -> bool {
         matches!(self, Self::UnsignedInt(..))
     }
 
@@ -527,7 +546,7 @@ impl Number {
     ///
     /// [`UnsignedInt`]: Number::UnsignedInt
     #[must_use]
-    pub fn as_unsigned_int(&self) -> Option<u64> {
+    pub const fn as_unsigned_int(&self) -> Option<u64> {
         if let Self::UnsignedInt(v) = *self {
             Some(v)
         } else {
@@ -539,7 +558,7 @@ impl Number {
     ///
     /// [`SignedInt`]: Number::SignedInt
     #[must_use]
-    pub fn is_signed_int(&self) -> bool {
+    pub const fn is_signed_int(&self) -> bool {
         matches!(self, Self::SignedInt(..))
     }
 
@@ -547,7 +566,7 @@ impl Number {
     ///
     /// [`SignedInt`]: Number::SignedInt
     #[must_use]
-    pub fn as_signed_int(&self) -> Option<i64> {
+    pub const fn as_signed_int(&self) -> Option<i64> {
         if let Self::SignedInt(v) = *self {
             Some(v)
         } else {
@@ -559,7 +578,7 @@ impl Number {
     ///
     /// [`Float`]: Number::Float
     #[must_use]
-    pub fn is_float(&self) -> bool {
+    pub const fn is_float(&self) -> bool {
         matches!(self, Self::Float(..))
     }
 
@@ -567,7 +586,7 @@ impl Number {
     ///
     /// [`Float`]: Number::Float
     #[must_use]
-    pub fn as_float(&self) -> Option<f64> {
+    pub const fn as_float(&self) -> Option<f64> {
         if let Self::Float(v) = *self {
             Some(v)
         } else {
@@ -709,7 +728,7 @@ impl TryFrom<Number> for f64 {
 }
 
 /// Error returned when failing to convert a [`Number`] into another type.
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TryFromNumberError {
     /// Cannot convert from a [`Float`](Number::Float) to an integer.
     #[error("cannot convert a float to an integer")]
@@ -750,13 +769,13 @@ impl StringOrNumber {
 
     /// Returns `true` if the value is a [`String`].
     #[must_use]
-    pub fn is_string(&self) -> bool {
+    pub const fn is_string(&self) -> bool {
         matches!(self, Self::String(..))
     }
 
     /// Returns [`Some`] if the value is a [`String`].
     #[must_use]
-    pub fn as_string(&self) -> Option<&String> {
+    pub const fn as_string(&self) -> Option<&String> {
         if let Self::String(v) = self {
             Some(v)
         } else {
@@ -766,13 +785,13 @@ impl StringOrNumber {
 
     /// Returns `true` if the value is a [`Number`].
     #[must_use]
-    pub fn is_number(&self) -> bool {
+    pub const fn is_number(&self) -> bool {
         matches!(self, Self::Number(..))
     }
 
     /// Returns [`Some`] if the value is a [`Number`].
     #[must_use]
-    pub fn as_number(&self) -> Option<Number> {
+    pub const fn as_number(&self) -> Option<Number> {
         if let Self::Number(v) = *self {
             Some(v)
         } else {
@@ -895,7 +914,7 @@ impl<T> Resource<T> {
 
     /// Create a [`Resource::External`] with an optional `name`.
     #[must_use]
-    pub fn external(name: Option<String>) -> Self {
+    pub const fn external(name: Option<String>) -> Self {
         Self::External { name }
     }
 
@@ -903,7 +922,7 @@ impl<T> Resource<T> {
     ///
     /// [`External`]: Resource::External
     #[must_use]
-    pub fn is_external(&self) -> bool {
+    pub const fn is_external(&self) -> bool {
         matches!(self, Self::External { .. })
     }
 
@@ -911,14 +930,14 @@ impl<T> Resource<T> {
     ///
     /// [`Compose`]: Resource::Compose
     #[must_use]
-    pub fn is_compose(&self) -> bool {
+    pub const fn is_compose(&self) -> bool {
         matches!(self, Self::Compose(..))
     }
 
     /// Returns [`Some`] if the resource is managed by the [`Compose`] implementation.
     ///
     /// [`Compose`]: Resource::Compose
-    pub fn as_compose(&self) -> Option<&T> {
+    pub const fn as_compose(&self) -> Option<&T> {
         if let Self::Compose(v) = self {
             Some(v)
         } else {
@@ -985,7 +1004,7 @@ mod tests {
         assert_eq!(Value::parse("true"), Value::Bool(true));
         assert_eq!(Value::parse("1"), Value::Number(1_u64.into()));
         assert_eq!(Value::parse("-1"), Value::Number((-1_i64).into()));
-        assert_eq!(Value::parse("1.23"), Value::Number(1.23.into()));
+        assert_eq!(Value::parse("1.23"), Value::Number(1.23_f64.into()));
         assert_eq!(
             Value::parse("string"),
             Value::String(String::from("string")),

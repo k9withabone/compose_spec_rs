@@ -17,7 +17,7 @@ use super::{impl_traits, kw, prefix::Prefix, ArchMap, Platform};
 /// Definition of platform operating systems and their architectures.
 ///
 /// `pub enum Os { #(#items),* }`
-pub struct Os {
+pub(super) struct Os {
     attributes: Vec<Attribute>,
     visibility: Visibility,
     _enum: Token![enum],
@@ -26,9 +26,10 @@ pub struct Os {
     items: Punctuated<Item, Token![,]>,
 }
 
+#[allow(clippy::multiple_inherent_impl)]
 impl Prefix {
     /// Continue parsing the `input` into an [`Os`].
-    pub fn parse_os(self, input: ParseStream) -> Result<Os> {
+    pub(super) fn parse_os(self, input: ParseStream) -> Result<Os> {
         let Self {
             attributes,
             visibility,
@@ -50,7 +51,7 @@ impl Prefix {
 
 impl Os {
     /// Iterator of string literals in all OS arch lists.
-    pub fn arch_list(&self) -> impl Iterator<Item = &LitStr> {
+    pub(super) fn arch_list(&self) -> impl Iterator<Item = &LitStr> {
         self.items.iter().flat_map(Item::arch_list)
     }
 
@@ -69,7 +70,7 @@ impl Os {
     /// - [`From<Os>`]
     ///
     /// Additionally, `{Os}Arch` enums are generated.
-    pub fn expand_platform(
+    pub(super) fn expand_platform(
         &self,
         platform: &Platform,
         apply_to_all: &[Attribute],
@@ -160,7 +161,7 @@ impl Os {
     /// - [`Display`](std::fmt::Display)
     /// - [`FromStr`](std::str::FromStr)
     /// - [`TryFrom<&str>`]
-    pub fn expand(&self, apply_to_all: &[Attribute], from_str_error: &Type) -> TokenStream {
+    pub(super) fn expand(&self, apply_to_all: &[Attribute], from_str_error: &Type) -> TokenStream {
         let Self {
             attributes,
             visibility,
@@ -395,9 +396,12 @@ struct Fields {
 impl Parse for Fields {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
+        let brace = braced!(content in input);
+        let arch = content.parse()?;
+
         Ok(Self {
-            _brace: braced!(content in input),
-            arch: content.parse()?,
+            _brace: brace,
+            arch,
         })
     }
 }

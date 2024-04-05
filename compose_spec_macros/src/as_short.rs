@@ -12,7 +12,7 @@ use syn::{
 /// [`AsShort`](super::as_short()) and [`FromShort`](super::from_short()) derive macro input.
 ///
 /// Created with [`Input::from_syn()`]
-pub struct Input<'a> {
+pub(super) struct Input<'a> {
     /// Name of the input struct.
     ident: &'a Ident,
 
@@ -33,7 +33,7 @@ impl<'a> Input<'a> {
     ///
     /// Returns an error if the input is not a struct with named fields, a `as_short` attribute has
     /// an incorrect format or duplicates, or the `#[as_short(short)]` attribute is missing.
-    pub fn from_syn(
+    pub(super) fn from_syn(
         DeriveInput {
             ident,
             generics,
@@ -89,7 +89,7 @@ impl<'a> Input<'a> {
     }
 
     /// Generate a `AsShort` implementation for the input type.
-    pub fn impl_as_short(&self) -> TokenStream {
+    pub(super) fn impl_as_short(&self) -> TokenStream {
         let Self {
             ident,
             generics,
@@ -144,7 +144,7 @@ impl<'a> Input<'a> {
     }
 
     /// Generate a [`From<Short>`] implementation for the input type.
-    pub fn impl_from_short(&self) -> TokenStream {
+    pub(super) fn impl_from_short(&self) -> TokenStream {
         let Self {
             ident,
             generics,
@@ -198,6 +198,8 @@ fn option_type(ty: &Type) -> Option<&Type> {
     if path.segments.len() != 1 {
         return None;
     }
+    // path.segments.len() == 1
+    #[allow(clippy::indexing_slicing)]
     let segment = &path.segments[0];
 
     let PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }) =
@@ -209,8 +211,11 @@ fn option_type(ty: &Type) -> Option<&Type> {
     if args.len() != 1 || segment.ident != "Option" {
         return None;
     }
+    // args.len() == 1
+    #[allow(clippy::indexing_slicing)]
+    let arg = &args[0];
 
-    if let GenericArgument::Type(ty) = &args[0] {
+    if let GenericArgument::Type(ty) = arg {
         Some(ty)
     } else {
         None
@@ -241,19 +246,18 @@ struct ShortField<'a> {
 impl<'a> ShortField<'a> {
     /// Create a [`ShortField`].
     fn new(ident: &'a Ident, ty: &'a Type) -> Self {
-        if let Some(ty) = option_type(ty) {
-            Self {
-                ident,
-                ty,
-                optional: true,
-            }
-        } else {
+        option_type(ty).map_or(
             Self {
                 ident,
                 ty,
                 optional: false,
-            }
-        }
+            },
+            |ty| Self {
+                ident,
+                ty,
+                optional: true,
+            },
+        )
     }
 }
 

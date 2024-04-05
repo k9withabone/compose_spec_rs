@@ -49,10 +49,14 @@ pub fn to_string(duration: Duration) -> String {
 
     let mut seconds = duration.as_secs();
 
+    // remainder captured in `seconds`
+    #[allow(clippy::integer_division)]
     let hours = seconds / SECONDS_PER_HOUR;
     push_value(&mut string, hours, "h");
     seconds %= SECONDS_PER_HOUR;
 
+    // remainder captured in `seconds`
+    #[allow(clippy::integer_division)]
     let minutes = seconds / SECONDS_PER_MINUTE;
     push_value(&mut string, minutes, "m");
     seconds %= SECONDS_PER_MINUTE;
@@ -61,6 +65,8 @@ pub fn to_string(duration: Duration) -> String {
 
     let mut microseconds = duration.subsec_micros();
 
+    // remainder captured in `microseconds`
+    #[allow(clippy::integer_division)]
     let milliseconds = microseconds / MICROSECONDS_PER_MILLISECOND;
     push_value(&mut string, milliseconds.into(), "ms");
     microseconds %= MICROSECONDS_PER_MILLISECOND;
@@ -177,6 +183,7 @@ pub enum ParseDurationError {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 pub(crate) mod tests {
     use proptest::{prop_assert_eq, prop_compose, proptest};
 
@@ -300,6 +307,8 @@ pub(crate) mod tests {
 
     prop_compose! {
         /// [`Duration`]s truncated to whole microseconds.
+        // Discarding the remainder is the desired behavior.
+        #[allow(clippy::integer_division)]
         pub(crate) fn duration_truncated()(secs: u64, micros in ..=(u32::MAX / 1000)) -> Duration {
             Duration::new(secs, micros * 1000)
         }

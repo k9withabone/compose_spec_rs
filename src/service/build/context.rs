@@ -58,7 +58,7 @@ impl Context {
 
     /// Returns [`Some`] if a path.
     #[must_use]
-    pub fn as_path(&self) -> Option<&PathBuf> {
+    pub const fn as_path(&self) -> Option<&PathBuf> {
         if let Self::Path(v) = self {
             Some(v)
         } else {
@@ -68,7 +68,7 @@ impl Context {
 
     /// Returns [`Some`] if a URL.
     #[must_use]
-    pub fn as_url(&self) -> Option<&Url> {
+    pub const fn as_url(&self) -> Option<&Url> {
         if let Self::Url(v) = self {
             Some(v)
         } else {
@@ -215,6 +215,7 @@ impl Display for Context {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

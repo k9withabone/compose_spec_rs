@@ -28,7 +28,7 @@ pub enum SshAuth {
 impl SshAuth {
     /// Returns [`Some`] if [`SshAuth::Id`].
     #[must_use]
-    pub fn as_id(&self) -> Option<&Id> {
+    pub const fn as_id(&self) -> Option<&Id> {
         if let Self::Id(v) = self {
             Some(v)
         } else {
@@ -39,15 +39,25 @@ impl SshAuth {
     /// The ID of the SSH authentication.
     ///
     /// Returns [`Some`] if [`SshAuth::Id`].
-    pub fn id(&self) -> Option<&str> {
-        self.as_id().map(Id::id)
+    #[must_use]
+    pub const fn id(&self) -> Option<&str> {
+        if let Self::Id(v) = self {
+            Some(v.id())
+        } else {
+            None
+        }
     }
 
     /// The path of the PEM file or ssh-agent socket.
     ///
     /// Returns [`Some`] if [`SshAuth::Id`].
-    pub fn path(&self) -> Option<&Path> {
-        self.as_id().map(Id::path)
+    #[must_use]
+    pub const fn path(&self) -> Option<&Path> {
+        if let Self::Id(v) = self {
+            Some(v.path())
+        } else {
+            None
+        }
     }
 }
 
@@ -114,13 +124,13 @@ impl Id {
 
     /// The ID of the SSH authentication.
     #[must_use]
-    pub fn id(&self) -> &str {
+    pub const fn id(&self) -> &str {
         &self.id
     }
 
     /// The path of the PEM file or ssh-agent socket.
     #[must_use]
-    pub fn path(&self) -> &Path {
+    pub const fn path(&self) -> &Path {
         &self.path
     }
 }
@@ -143,7 +153,7 @@ impl Display for Id {
 }
 
 /// Error returned when creating an [`Id`].
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IdError {
     /// Given `id` was empty
     #[error("ssh auth ID cannot be empty")]
