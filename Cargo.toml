@@ -91,7 +91,7 @@ use_debug = "warn"
 
 [workspace.dependencies]
 compose_spec_macros = { version = "=0.1.0", path = "compose_spec_macros" }
-serde = "1"
+serde = "1.0.147"
 serde_yaml = "0.9"
 
 [package]
@@ -112,7 +112,7 @@ workspace = true
 
 [dependencies]
 compose_spec_macros.workspace = true
-indexmap = { version = "2", features = ["serde"] }
+indexmap = { version = "2.2.3", features = ["serde"] }
 ipnet = { version = "2", features = ["serde"] }
 itoa = "1"
 serde = { workspace = true, features = ["derive"] }
