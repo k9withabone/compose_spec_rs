@@ -63,3 +63,23 @@ pub struct Volume {
     #[serde(flatten)]
     pub extensions: Extensions,
 }
+
+impl Volume {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            driver,
+            driver_opts,
+            labels,
+            name,
+            extensions,
+        } = self;
+
+        driver.is_none()
+            && driver_opts.is_empty()
+            && labels.is_empty()
+            && name.is_none()
+            && extensions.is_empty()
+    }
+}
