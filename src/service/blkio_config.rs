@@ -53,6 +53,28 @@ pub struct BlkioConfig {
     pub weight_device: Vec<WeightDevice>,
 }
 
+impl BlkioConfig {
+    /// Returns `true` if all fields are empty or [`None`].
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            device_read_bps,
+            device_read_iops,
+            device_write_bps,
+            device_write_iops,
+            weight,
+            weight_device,
+        } = self;
+
+        device_read_bps.is_empty()
+            && device_read_iops.is_empty()
+            && device_write_bps.is_empty()
+            && device_write_iops.is_empty()
+            && weight.is_none()
+            && weight_device.is_empty()
+    }
+}
+
 /// Limit in bytes per second for read/write operations on a given device.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#device_read_bps-device_write_bps)
