@@ -342,6 +342,30 @@ pub struct Command {
     pub extensions: Extensions,
 }
 
+impl Command {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            test,
+            interval,
+            timeout,
+            retries,
+            start_period,
+            start_interval,
+            extensions,
+        } = self;
+
+        test.is_none()
+            && interval.is_none()
+            && timeout.is_none()
+            && retries.is_none()
+            && start_period.is_none()
+            && start_interval.is_none()
+            && extensions.is_empty()
+    }
+}
+
 /// Command run to check container health as part of a [`Healthcheck`].
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#healthcheck)
