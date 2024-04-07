@@ -234,7 +234,7 @@ impl<'de> Visitor<'de> for CpusVisitor {
 /// A device a container may [reserve](Reservations).
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#devices)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Device {
     /// Generic and driver specific device capabilities.
     ///
