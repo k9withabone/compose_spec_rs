@@ -188,6 +188,58 @@ pub struct Build {
     pub extensions: Extensions,
 }
 
+impl Build {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            context,
+            dockerfile,
+            args,
+            ssh,
+            cache_from,
+            cache_to,
+            additional_contexts,
+            extra_hosts,
+            isolation,
+            privileged,
+            labels,
+            no_cache,
+            pull,
+            network,
+            shm_size,
+            target,
+            secrets,
+            tags,
+            ulimits,
+            platforms,
+            extensions,
+        } = self;
+
+        context.is_none()
+            && dockerfile.is_none()
+            && args.is_empty()
+            && ssh.is_empty()
+            && cache_from.is_empty()
+            && cache_to.is_empty()
+            && additional_contexts.is_empty()
+            && extra_hosts.is_empty()
+            && isolation.is_none()
+            && !privileged
+            && labels.is_empty()
+            && !no_cache
+            && !pull
+            && network.is_none()
+            && shm_size.is_none()
+            && target.is_none()
+            && secrets.is_empty()
+            && tags.is_empty()
+            && ulimits.is_empty()
+            && platforms.is_empty()
+            && extensions.is_empty()
+    }
+}
+
 /// Deserialize `additional_contexts` field of [`Build`].
 ///
 /// Converts from [`ListOrMap`].

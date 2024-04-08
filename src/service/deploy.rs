@@ -88,6 +88,67 @@ pub struct Deploy {
     pub extensions: Extensions,
 }
 
+impl Deploy {
+    /// Returns `true` if all fields are [`None`] or empty.
+    ///
+    /// The `placement`, `resources`, `restart_policy`, `rollback_config`, and `update_config`
+    /// fields count as empty if they are [`None`] or contain an empty value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use compose_spec::service::{Deploy, deploy::Placement};
+    ///
+    /// let mut deploy = Deploy::default();
+    /// assert!(deploy.is_empty());
+    ///
+    /// deploy.placement = Some(Placement::default());
+    /// assert!(deploy.is_empty());
+    ///
+    /// deploy.placement = Some(Placement {
+    ///     constraints: vec!["constraint".to_owned()],
+    ///     ..Placement::default()
+    /// });
+    /// assert!(!deploy.is_empty());
+    /// ```
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            endpoint_mode,
+            labels,
+            mode,
+            placement,
+            replicas,
+            resources,
+            restart_policy,
+            rollback_config,
+            update_config,
+            extensions,
+        } = self;
+
+        endpoint_mode.is_none()
+            && labels.is_empty()
+            && mode.is_none()
+            && !placement
+                .as_ref()
+                .is_some_and(|placement| !placement.is_empty())
+            && replicas.is_none()
+            && !resources
+                .as_ref()
+                .is_some_and(|resources| !resources.is_empty())
+            && !restart_policy
+                .as_ref()
+                .is_some_and(|restart| !restart.is_empty())
+            && !rollback_config
+                .as_ref()
+                .is_some_and(|rollback| !rollback.is_empty())
+            && !update_config
+                .as_ref()
+                .is_some_and(|update| !update.is_empty())
+            && extensions.is_empty()
+    }
+}
+
 /// The replication model used to run the service on the platform.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#mode)
@@ -150,6 +211,45 @@ pub struct Placement {
     pub extensions: Extensions,
 }
 
+impl Placement {
+    /// Returns `true` if all fields are empty or [`None`].
+    ///
+    /// The `preferences` field counts as empty if all [`Preference`]s are
+    /// [empty](Preference::is_empty()) or if the [`Vec`] is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use compose_spec::service::deploy::{Placement, Preference};
+    ///
+    /// let mut placement = Placement::default();
+    /// assert!(placement.is_empty());
+    ///
+    /// placement.preferences.push(Preference::default());
+    /// assert!(placement.is_empty());
+    ///
+    /// placement.preferences.push(Preference {
+    ///     spread: Some("spread".to_owned()),
+    ///     ..Preference::default()
+    /// });
+    /// assert!(!placement.is_empty());
+    /// ```
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            constraints,
+            preferences,
+            max_replicas_per_node,
+            extensions,
+        } = self;
+
+        constraints.is_empty()
+            && preferences.iter().all(Preference::is_empty)
+            && max_replicas_per_node.is_none()
+            && extensions.is_empty()
+    }
+}
+
 /// A property the platform's node should fulfill to run service container.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct Preference {
@@ -162,6 +262,16 @@ pub struct Preference {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl Preference {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self { spread, extensions } = self;
+
+        spread.is_none() && extensions.is_empty()
+    }
 }
 
 /// If and how to restart containers when they exit.
@@ -204,6 +314,26 @@ pub struct RestartPolicy {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl RestartPolicy {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            condition,
+            delay,
+            max_attempts,
+            window,
+            extensions,
+        } = self;
+
+        condition.is_none()
+            && delay.is_none()
+            && max_attempts.is_none()
+            && window.is_none()
+            && extensions.is_empty()
+    }
 }
 
 /// When to restart containers based on their exit status.
@@ -303,6 +433,30 @@ pub struct UpdateOrRollbackConfig {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl UpdateOrRollbackConfig {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            parallelism,
+            delay,
+            failure_action,
+            monitor,
+            max_failure_ratio,
+            order,
+            extensions,
+        } = self;
+
+        parallelism.is_none()
+            && delay.is_none()
+            && failure_action.is_none()
+            && monitor.is_none()
+            && max_failure_ratio.is_none()
+            && order.is_none()
+            && extensions.is_empty()
+    }
 }
 
 /// What to do if an [update or rollback](UpdateOrRollbackConfig) fails.

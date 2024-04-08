@@ -317,6 +317,20 @@ pub struct VolumeOptions {
     pub extensions: Extensions,
 }
 
+impl VolumeOptions {
+    /// Returns `true` if all fields are `false`, [`None`], or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            nocopy,
+            subpath,
+            extensions,
+        } = self;
+
+        !nocopy && subpath.is_none() && extensions.is_empty()
+    }
+}
+
 impl PartialEq for VolumeOptions {
     fn eq(&self, other: &Self) -> bool {
         let Self {
@@ -451,6 +465,19 @@ impl BindOptions {
         } = self;
 
         propagation.is_none() && *create_host_path && extensions.is_empty()
+    }
+
+    /// Returns `true` if all fields are [`None`], `false`, or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            propagation,
+            create_host_path,
+            selinux,
+            extensions,
+        } = self;
+
+        propagation.is_none() && !create_host_path && selinux.is_none() && extensions.is_empty()
     }
 }
 
@@ -597,6 +624,20 @@ pub struct TmpfsOptions {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl TmpfsOptions {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            size,
+            mode,
+            extensions,
+        } = self;
+
+        size.is_none() && mode.is_none() && extensions.is_empty()
+    }
 }
 
 impl PartialEq for TmpfsOptions {

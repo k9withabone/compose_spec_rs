@@ -96,6 +96,54 @@ pub struct Network {
     pub extensions: Extensions,
 }
 
+impl Network {
+    /// Returns `true` if all fields are [`None`], `false`, or empty.
+    ///
+    /// The `ipam` field counts as empty if it is [`None`] or [empty](Ipam::is_empty()).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use compose_spec::{Network, network::Ipam};
+    ///
+    /// let mut network = Network::default();
+    /// assert!(network.is_empty());
+    ///
+    /// network.ipam = Some(Ipam::default());
+    /// assert!(network.is_empty());
+    ///
+    /// network.ipam = Some(Ipam {
+    ///     driver: Some("driver".to_owned()),
+    ///     ..Ipam::default()
+    /// });
+    /// assert!(!network.is_empty());
+    /// ```
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            driver,
+            driver_opts,
+            attachable,
+            enable_ipv6,
+            ipam,
+            internal,
+            labels,
+            name,
+            extensions,
+        } = self;
+
+        driver.is_none()
+            && driver_opts.is_empty()
+            && !attachable
+            && !enable_ipv6
+            && !ipam.as_ref().is_some_and(|ipam| !ipam.is_empty())
+            && !internal
+            && labels.is_empty()
+            && name.is_none()
+            && extensions.is_empty()
+    }
+}
+
 /// [`Network`] driver.
 ///
 /// Default and available values are platform specific.
@@ -195,6 +243,45 @@ pub struct Ipam {
     pub extensions: Extensions,
 }
 
+impl Ipam {
+    /// Returns `true` if all fields are [`None`] or empty.
+    ///
+    /// The `config` field counts as empty if all [`IpamConfig`]s are
+    /// [empty](IpamConfig::is_empty()) or if the [`Vec`] is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use compose_spec::network::{Ipam, IpamConfig};
+    ///
+    /// let mut ipam = Ipam::default();
+    /// assert!(ipam.is_empty());
+    ///
+    /// ipam.config.push(IpamConfig::default());
+    /// assert!(ipam.is_empty());
+    ///
+    /// ipam.config.push(IpamConfig {
+    ///     subnet: Some("10.0.0.0/24".parse().unwrap()),
+    ///     ..IpamConfig::default()
+    /// });
+    /// assert!(!ipam.is_empty());
+    /// ```
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            driver,
+            config,
+            options,
+            extensions,
+        } = self;
+
+        driver.is_none()
+            && config.iter().all(IpamConfig::is_empty)
+            && options.is_empty()
+            && extensions.is_empty()
+    }
+}
+
 /// [`Ipam`] configuration.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/06-networks.md#ipam)
@@ -222,4 +309,24 @@ pub struct IpamConfig {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl IpamConfig {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            subnet,
+            ip_range,
+            gateway,
+            aux_addresses,
+            extensions,
+        } = self;
+
+        subnet.is_none()
+            && ip_range.is_none()
+            && gateway.is_none()
+            && aux_addresses.is_empty()
+            && extensions.is_empty()
+    }
 }

@@ -40,6 +40,47 @@ pub struct Resources {
     pub extensions: Extensions,
 }
 
+impl Resources {
+    /// Returns `true` if all fields are [`None`] or empty.
+    ///
+    /// The `limits` field counts as empty if it is [`None`] or [empty](Limits::is_empty()).
+    ///
+    /// The `reservations` field counts as empty if it is [`None`] or
+    /// [empty](Reservations::is_empty()).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use compose_spec::service::deploy::{Resources, resources::Limits};
+    ///
+    /// let mut resources = Resources::default();
+    /// assert!(resources.is_empty());
+    ///
+    /// resources.limits = Some(Limits::default());
+    /// assert!(resources.is_empty());
+    ///
+    /// resources.limits = Some(Limits {
+    ///     pids: Some(100),
+    ///     ..Limits::default()
+    /// });
+    /// assert!(!resources.is_empty());
+    /// ```
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            limits,
+            reservations,
+            extensions,
+        } = self;
+
+        !limits.as_ref().is_some_and(|limits| !limits.is_empty())
+            && !reservations
+                .as_ref()
+                .is_some_and(|reservations| !reservations.is_empty())
+            && extensions.is_empty()
+    }
+}
+
 /// Limits on [`Resources`] a container may allocate.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#resources)
@@ -68,6 +109,21 @@ pub struct Limits {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl Limits {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            cpus,
+            memory,
+            pids,
+            extensions,
+        } = self;
+
+        cpus.is_none() && memory.is_none() && pids.is_none() && extensions.is_empty()
+    }
 }
 
 /// [`Resources`] the platform must guarantee the container can allocate.
@@ -102,6 +158,47 @@ pub struct Reservations {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl Reservations {
+    /// Returns `true` if all fields are [`None`] or empty.
+    ///
+    /// The `devices` field counts as empty if all [`Device`]s are [empty](Device::is_empty()) or
+    /// the [`Vec`] is empty.
+    ///
+    /// The `generic_resources` field counts as empty if all [`GenericResource`]s are
+    /// [empty](GenericResource::is_empty()) or the [`Vec`] is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use compose_spec::service::deploy::resources::{Device, Reservations};
+    ///
+    /// let mut reservations = Reservations::default();
+    /// assert!(reservations.is_empty());
+    ///
+    /// reservations.devices.push(Device::default());
+    /// assert!(reservations.is_empty());
+    ///
+    /// reservations.devices.push(Device::new(["capability"]));
+    /// assert!(!reservations.is_empty());
+    /// ```
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            cpus,
+            memory,
+            devices,
+            generic_resources,
+            extensions,
+        } = self;
+
+        cpus.is_none()
+            && memory.is_none()
+            && devices.iter().all(Device::is_empty)
+            && generic_resources.iter().all(GenericResource::is_empty)
+            && extensions.is_empty()
+    }
 }
 
 /// How much of the available CPU resources, as number of cores, a container reserves for use.
@@ -234,7 +331,7 @@ impl<'de> Visitor<'de> for CpusVisitor {
 /// A device a container may [reserve](Reservations).
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#devices)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Device {
     /// Generic and driver specific device capabilities.
     ///
@@ -291,6 +388,26 @@ impl Device {
             options: ListOrMap::default(),
             extensions: Extensions::new(),
         }
+    }
+
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            capabilities,
+            driver,
+            count,
+            device_ids,
+            options,
+            extensions,
+        } = self;
+
+        capabilities.is_empty()
+            && driver.is_none()
+            && count.is_none()
+            && device_ids.is_empty()
+            && options.is_empty()
+            && extensions.is_empty()
     }
 }
 
@@ -487,6 +604,43 @@ pub struct GenericResource {
     pub extensions: Extensions,
 }
 
+impl GenericResource {
+    /// Returns `true` if all fields are [`None`] or empty.
+    ///
+    /// The `discrete_resource_spec` field counts as empty if it is [`None`] or
+    /// [empty](DiscreteResourceSpec::is_empty()).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use compose_spec::service::deploy::resources::{DiscreteResourceSpec, GenericResource};
+    ///
+    /// let mut resource = GenericResource::default();
+    /// assert!(resource.is_empty());
+    ///
+    /// resource.discrete_resource_spec = Some(DiscreteResourceSpec::default());
+    /// assert!(resource.is_empty());
+    ///
+    /// resource.discrete_resource_spec = Some(DiscreteResourceSpec {
+    ///     kind: Some("kind".to_owned()),
+    ///     ..DiscreteResourceSpec::default()
+    /// });
+    /// assert!(!resource.is_empty());
+    /// ```
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            discrete_resource_spec,
+            extensions,
+        } = self;
+
+        !discrete_resource_spec
+            .as_ref()
+            .is_some_and(|discrete_resource_spec| !discrete_resource_spec.is_empty())
+            && extensions.is_empty()
+    }
+}
+
 /// Discrete resource spec.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct DiscreteResourceSpec {
@@ -503,4 +657,18 @@ pub struct DiscreteResourceSpec {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl DiscreteResourceSpec {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            kind,
+            value,
+            extensions,
+        } = self;
+
+        kind.is_none() && value.is_none() && extensions.is_empty()
+    }
 }

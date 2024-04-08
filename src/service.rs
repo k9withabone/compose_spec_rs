@@ -1215,6 +1215,20 @@ pub struct Logging {
     pub extensions: Extensions,
 }
 
+impl Logging {
+    /// Returns `true` if all fields are [`None`] or empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            driver,
+            options,
+            extensions,
+        } = self;
+
+        driver.is_none() && options.is_empty() && extensions.is_empty()
+    }
+}
+
 /// Preference for a [`Service`] container to be killed by the platform in the case of memory
 /// starvation.
 ///
