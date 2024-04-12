@@ -14,7 +14,7 @@ mod expose;
 pub mod healthcheck;
 mod hostname;
 pub mod image;
-mod memswap_limit;
+mod limit;
 pub mod network_config;
 pub mod platform;
 pub mod ports;
@@ -62,7 +62,7 @@ pub use self::{
     healthcheck::Healthcheck,
     hostname::{Hostname, InvalidHostnameError},
     image::Image,
-    memswap_limit::MemswapLimit,
+    limit::Limit,
     network_config::{MacAddress, NetworkConfig},
     platform::Platform,
     ports::Ports,
@@ -470,7 +470,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#memswap_limit)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub memswap_limit: Option<MemswapLimit>,
+    pub memswap_limit: Option<Limit<ByteValue>>,
 
     /// Whether to disable the OOM killer for the container.
     ///
@@ -498,7 +498,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#pids_limit)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pids_limit: Option<u32>,
+    pub pids_limit: Option<Limit<u32>>,
 
     /// Target platform for the container to run on.
     ///

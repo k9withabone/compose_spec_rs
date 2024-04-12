@@ -17,7 +17,10 @@ use serde::{
 use thiserror::Error;
 
 use crate::{
-    impl_from_str, impl_try_from, serde::forward_visitor, service::ByteValue, Extensions, ListOrMap,
+    impl_from_str, impl_try_from,
+    serde::forward_visitor,
+    service::{ByteValue, Limit},
+    Extensions, ListOrMap,
 };
 
 /// Physical resource constraints for the service container to run on the platform.
@@ -102,7 +105,7 @@ pub struct Limits {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/deploy.md#pids)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pids: Option<u32>,
+    pub pids: Option<Limit<u32>>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

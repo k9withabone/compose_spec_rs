@@ -96,7 +96,7 @@ serde_yaml = "0.9"
 
 [package]
 name = "compose_spec"
-version = "0.1.1-beta.1"
+version = "0.2.0-alpha.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
