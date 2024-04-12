@@ -26,6 +26,12 @@ pub enum Healthcheck {
     Disable,
 }
 
+impl Default for Healthcheck {
+    fn default() -> Self {
+        Command::default().into()
+    }
+}
+
 impl From<Command> for Healthcheck {
     fn from(value: Command) -> Self {
         Self::Command(value)
