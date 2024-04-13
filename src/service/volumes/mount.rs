@@ -188,34 +188,8 @@ impl Mount {
     /// Returns ownership if this long syntax cannot be represented as the short syntax.
     pub fn into_short(self) -> Result<ShortVolume, Self> {
         match self {
-            Self::Volume(Volume {
-                source,
-                volume: None,
-                common,
-            }) if common.is_short_compatible() => Ok(ShortVolume {
-                container_path: common.target,
-                options: source.map(|source| ShortOptions {
-                    source: source.into(),
-                    read_only: common.read_only,
-                    selinux: None,
-                }),
-            }),
-            Self::Bind(Bind {
-                source,
-                bind,
-                common,
-            }) if bind.as_ref().map_or(true, BindOptions::is_short_compatible)
-                && common.is_short_compatible() =>
-            {
-                Ok(ShortVolume {
-                    container_path: common.target,
-                    options: Some(ShortOptions {
-                        source: source.into(),
-                        read_only: common.read_only,
-                        selinux: bind.and_then(|bind| bind.selinux),
-                    }),
-                })
-            }
+            Self::Volume(volume) => volume.into_short().map_err(Self::Volume),
+            Self::Bind(bind) => bind.into_short().map_err(Self::Bind),
             _ => Err(self),
         }
     }
@@ -287,6 +261,37 @@ impl Volume {
             source: None,
             volume: None,
             common,
+        }
+    }
+
+    /// Convert into the [`ShortVolume`] syntax if possible.
+    ///
+    /// # Errors
+    ///
+    /// Returns ownership if this long syntax cannot be represented as the short syntax.
+    pub fn into_short(self) -> Result<ShortVolume, Self> {
+        match self {
+            Self {
+                source,
+                volume,
+                common:
+                    Common {
+                        target: container_path,
+                        read_only,
+                        consistency: None,
+                        extensions,
+                    },
+            } if volume.as_ref().map_or(true, VolumeOptions::is_empty) && extensions.is_empty() => {
+                Ok(ShortVolume {
+                    container_path,
+                    options: source.map(|source| ShortOptions {
+                        source: source.into(),
+                        read_only,
+                        selinux: None,
+                    }),
+                })
+            }
+            _ => Err(self),
         }
     }
 }
@@ -388,6 +393,49 @@ impl Bind {
             common,
         }
     }
+
+    /// Convert into the [`ShortVolume`] syntax if possible.
+    ///
+    /// # Errors
+    ///
+    /// Returns ownership if this long syntax cannot be represented as the short syntax.
+    pub fn into_short(self) -> Result<ShortVolume, Self> {
+        match self {
+            Self {
+                source,
+                bind,
+                common:
+                    Common {
+                        target: container_path,
+                        read_only,
+                        consistency: None,
+                        extensions,
+                    },
+            } if bind.as_ref().map_or(
+                true,
+                |BindOptions {
+                     propagation,
+                     create_host_path,
+                     selinux: _,
+                     extensions,
+                 }| {
+                    propagation.is_none() && *create_host_path && extensions.is_empty()
+                },
+            ) && extensions.is_empty() =>
+            {
+                Ok(ShortVolume {
+                    container_path,
+                    options: Some(ShortOptions {
+                        source: source.into(),
+                        read_only,
+                        selinux: bind.and_then(|options| options.selinux),
+                    }),
+                })
+            }
+
+            _ => Err(self),
+        }
+    }
 }
 
 impl From<(HostPath, Common)> for Bind {
@@ -453,20 +501,6 @@ impl From<SELinux> for BindOptions {
 }
 
 impl BindOptions {
-    /// Returns `true` if these bind [`Mount`] options are compatible with the [`ShortVolume`]
-    /// syntax.
-    #[must_use]
-    fn is_short_compatible(&self) -> bool {
-        let Self {
-            propagation,
-            create_host_path,
-            selinux: _,
-            extensions,
-        } = self;
-
-        propagation.is_none() && *create_host_path && extensions.is_empty()
-    }
-
     /// Returns `true` if all fields are [`None`], `false`, or empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
@@ -745,13 +779,6 @@ impl Common {
             consistency: None,
             extensions: Extensions::default(),
         }
-    }
-
-    /// Returns `true` if these common [`Mount`] options are compatible with the [`ShortVolume`]
-    /// syntax.
-    #[must_use]
-    fn is_short_compatible(&self) -> bool {
-        self.consistency.is_none() && self.extensions.is_empty()
     }
 }
 
