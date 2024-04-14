@@ -96,6 +96,15 @@ impl Display for UserOrGroup {
     }
 }
 
+impl From<UserOrGroup> for String {
+    fn from(value: UserOrGroup) -> Self {
+        match value {
+            UserOrGroup::Id(id) => id.to_string(),
+            UserOrGroup::Name(name) => name.into(),
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for UserOrGroup {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         deserializer.deserialize_any(Visitor)
