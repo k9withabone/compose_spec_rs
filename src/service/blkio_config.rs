@@ -2,6 +2,7 @@
 
 use std::{
     convert::Infallible,
+    fmt::{self, Display, Formatter},
     num::{NonZeroU16, TryFromIntError},
     path::PathBuf,
 };
@@ -174,6 +175,12 @@ impl Default for Weight {
     /// Default [`Weight`] value, 500.
     fn default() -> Self {
         Self::DEFAULT
+    }
+}
+
+impl Display for Weight {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(&self.0, f)
     }
 }
 
