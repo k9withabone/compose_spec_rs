@@ -216,6 +216,18 @@ macro_rules! key_impls {
                 }
             }
 
+            impl ::std::cmp::PartialEq<str> for $Ty {
+                fn eq(&self, other: &str) -> bool {
+                    self.as_str().eq(other)
+                }
+            }
+
+            impl ::std::cmp::PartialEq<&str> for $Ty {
+                fn eq(&self, other: &&str) -> bool {
+                    self.as_str().eq(*other)
+                }
+            }
+
             impl ::std::fmt::Display for $Ty {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     f.write_str(self.as_str())
