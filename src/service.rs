@@ -68,7 +68,7 @@ pub use self::{
     ports::Ports,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
     user_or_group::UserOrGroup,
-    volumes::Volumes,
+    volumes::{AbsolutePath, Volumes},
 };
 
 /// A service is an abstract definition of a computing resource within an application which can be
@@ -629,7 +629,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#tmpfs)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tmpfs: Option<ItemOrList<PathBuf>>,
+    pub tmpfs: Option<ItemOrList<AbsolutePath>>,
 
     /// Whether to run the container with a TTY.
     ///
@@ -679,7 +679,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#working_dir)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub working_dir: Option<PathBuf>,
+    pub working_dir: Option<AbsolutePath>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

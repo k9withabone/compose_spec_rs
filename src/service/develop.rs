@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::Extensions;
 
+use super::AbsolutePath;
+
 /// Development constraints and workflows for maintaining a container in sync with source.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/develop.md)
@@ -48,7 +50,7 @@ pub struct WatchRule {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/develop.md#target)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub target: Option<PathBuf>,
+    pub target: Option<AbsolutePath>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

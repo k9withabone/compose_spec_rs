@@ -93,20 +93,20 @@ services:
   blkio_config:
     blkio_config:
       device_read_bps:
-        - path: path
+        - path: /path
           rate: 1kb
       device_read_iops:
-        - path: path
+        - path: /path
           rate: 100
       device_write_bps:
-        - path: path
+        - path: /path
           rate: 1mb
       device_write_iops:
-        - path: path
+        - path: /path
           rate: 100
       weight: 10
       weight_device:
-        - path: path
+        - path: /path
           weight: 1000
 
   cgroup-host:
@@ -271,7 +271,7 @@ services:
           ignore:
             - ignore
           path: path
-          target: target
+          target: /target
           x-test: test
 
   dns-string:
@@ -426,11 +426,11 @@ services:
       key: value
 
   tmpfs-string:
-    tmpfs: tmpfs
+    tmpfs: /tmpfs
 
   tmpfs-list:
     tmpfs:
-      - tmpfs
+      - /tmpfs
 
   other:
     attach: false
@@ -463,8 +463,8 @@ services:
       - b 2:2 m
       - a 3:3 rwm
     devices:
-      - host:container
-      - host:container:rwm
+      - host:/container
+      - host:/container:rwm
     dns_opt:
       - opt
     domainname: domainname
@@ -613,7 +613,7 @@ services:
       - service
       - container:container
       - container:container:ro
-    working_dir: working_dir
+    working_dir: /working_dir
     x-test: test
 
 networks:

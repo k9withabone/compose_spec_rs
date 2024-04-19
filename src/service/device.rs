@@ -11,19 +11,21 @@ use std::{
 use compose_spec_macros::{DeserializeFromStr, SerializeDisplay};
 use thiserror::Error;
 
+use super::{volumes::AbsolutePathError, AbsolutePath};
+
 /// Device mapping from the host to the [`Service`](super::Service) container.
 ///
 /// (De)serializes from/to a string in the format `{host_path}:{container_path}[:{permissions}]`
 /// e.g. `/host:/container:rwm`.
 ///
-/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#device)
-#[derive(SerializeDisplay, DeserializeFromStr, Debug, Default, Clone, PartialEq, Eq, Hash)]
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#devices)
+#[derive(SerializeDisplay, DeserializeFromStr, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Device {
     /// Path on the host of the device.
     pub host_path: PathBuf,
 
     /// Path inside the container to bind mount the device to.
-    pub container_path: PathBuf,
+    pub container_path: AbsolutePath,
 
     /// Device cgroup permissions.
     pub permissions: Permissions,
@@ -40,7 +42,7 @@ impl FromStr for Device {
         let container_path = split
             .next()
             .ok_or(ParseDeviceError::ContainerPathMissing)?
-            .into();
+            .parse()?;
         let permissions = split.next().unwrap_or_default().parse()?;
 
         Ok(Self {
@@ -70,6 +72,10 @@ pub enum ParseDeviceError {
     #[error("device must have a container path")]
     ContainerPathMissing,
 
+    /// Device container path was not absolute.
+    #[error("device container path must be absolute")]
+    ContainerPathAbsolute(#[from] AbsolutePathError),
+
     /// Error parsing [`Permissions`].
     #[error("error parsing device permissions")]
     Permissions(#[from] ParsePermissionsError),
@@ -83,7 +89,12 @@ impl Display for Device {
             permissions,
         } = self;
 
-        write!(f, "{}:{}", host_path.display(), container_path.display())?;
+        write!(
+            f,
+            "{}:{}",
+            host_path.display(),
+            container_path.as_path().display(),
+        )?;
 
         if permissions.any() {
             write!(f, ":{permissions}")?;
@@ -430,7 +441,7 @@ mod tests {
         fn from_str() {
             let device = Device {
                 host_path: "/host".into(),
-                container_path: "/container".into(),
+                container_path: "/container".parse().unwrap(),
                 permissions: Permissions {
                     read: true,
                     write: true,
@@ -444,7 +455,7 @@ mod tests {
         fn display() {
             let device = Device {
                 host_path: "/host".into(),
-                container_path: "/container".into(),
+                container_path: "/container".parse().unwrap(),
                 permissions: Permissions {
                     read: true,
                     write: true,
@@ -474,7 +485,7 @@ mod tests {
         prop_compose! {
             fn device()(
                 host_path in path_no_colon(),
-                container_path in path_no_colon(),
+                container_path: AbsolutePath,
                 permissions in permissions()
             ) -> Device {
                 Device { host_path, container_path, permissions }

@@ -4,13 +4,12 @@ use std::{
     convert::Infallible,
     fmt::{self, Display, Formatter},
     num::{NonZeroU16, TryFromIntError},
-    path::PathBuf,
 };
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::ByteValue;
+use super::{AbsolutePath, ByteValue};
 
 /// Configuration options to set block IO limits for a [`Service`](super::Service).
 ///
@@ -82,7 +81,7 @@ impl BlkioConfig {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BpsLimit {
     /// Symbolic path to the affected device.
-    pub path: PathBuf,
+    pub path: AbsolutePath,
 
     /// Bytes per second rate limit.
     pub rate: ByteValue,
@@ -94,7 +93,7 @@ pub struct BpsLimit {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IopsLimit {
     /// Symbolic path to the affected device.
-    pub path: PathBuf,
+    pub path: AbsolutePath,
 
     /// Operations per second rate limit.
     pub rate: u64,
@@ -106,7 +105,7 @@ pub struct IopsLimit {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct WeightDevice {
     /// Symbolic path to the affected device.
-    pub path: PathBuf,
+    pub path: AbsolutePath,
 
     /// Proportion of bandwidth allocated to the device.
     pub weight: Weight,
