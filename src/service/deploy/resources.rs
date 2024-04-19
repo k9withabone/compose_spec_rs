@@ -54,7 +54,7 @@ impl Resources {
     /// # Examples
     ///
     /// ```
-    /// use compose_spec::service::deploy::{Resources, resources::Limits};
+    /// use compose_spec::service::{deploy::{Resources, resources::Limits}, Limit};
     ///
     /// let mut resources = Resources::default();
     /// assert!(resources.is_empty());
@@ -63,7 +63,7 @@ impl Resources {
     /// assert!(resources.is_empty());
     ///
     /// resources.limits = Some(Limits {
-    ///     pids: Some(100),
+    ///     pids: Some(Limit::Value(100)),
     ///     ..Limits::default()
     /// });
     /// assert!(!resources.is_empty());
