@@ -628,11 +628,23 @@ impl Tmpfs {
             common,
         }
     }
+
+    /// Create a [`Tmpfs`] [`Mount`] from the `target` path within the container.
+    #[must_use]
+    pub fn from_target(target: AbsolutePath) -> Self {
+        Self::new(Common::new(target))
+    }
 }
 
 impl From<Common> for Tmpfs {
     fn from(common: Common) -> Self {
         Self::new(common)
+    }
+}
+
+impl From<AbsolutePath> for Tmpfs {
+    fn from(target: AbsolutePath) -> Self {
+        Self::from_target(target)
     }
 }
 
