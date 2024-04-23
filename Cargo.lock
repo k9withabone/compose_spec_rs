@@ -37,7 +37,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "compose_spec"
-version = "0.2.0-alpha.1"
+version = "0.2.0"
 dependencies = [
  "compose_spec_macros",
  "indexmap",
