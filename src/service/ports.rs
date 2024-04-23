@@ -1031,16 +1031,21 @@ pub(super) mod tests {
         }
     }
 
-    prop_compose! {
-        fn short_ranges()(range in range())(
-            range in Just(range),
-            offset in ..u16::MAX - range.end.unwrap_or(range.start)
-        ) -> ShortRanges {
-            ShortRanges {
+    fn short_ranges() -> impl Strategy<Value = ShortRanges> {
+        range()
+            .prop_flat_map(|range| {
+                let range_end = range.end.unwrap_or(range.start);
+                let offset = if range_end == u16::MAX {
+                    Just(0).boxed()
+                } else {
+                    (..u16::MAX - range_end).boxed()
+                };
+                (Just(range), offset)
+            })
+            .prop_map(|(range, offset)| ShortRanges {
                 host: (offset != 0).then(|| range + offset),
                 container: range,
-            }
-        }
+            })
     }
 
     pub(in super::super) fn range() -> impl Strategy<Value = Range> {
