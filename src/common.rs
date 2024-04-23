@@ -188,7 +188,7 @@ impl ListOrMap {
     /// like so `{key}={value}`. If the value is [`None`], the key is put into the list as is.
     ///
     /// All places [`ListOrMap`] is used within [`Compose`](super::Compose) support the use of the
-    // `{key}={value}` syntax.
+    /// `{key}={value}` syntax.
     #[must_use]
     pub fn into_list(self) -> IndexSet<String> {
         match self {
