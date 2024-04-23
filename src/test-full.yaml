@@ -52,6 +52,9 @@ services:
       additional_contexts:
         additional_context: https://example.com/
         additional_context2: /path
+      entitlements:
+        - network.host
+        - security.insecure
       extra_hosts:
         host4: 127.0.0.1
         host6: ::1
