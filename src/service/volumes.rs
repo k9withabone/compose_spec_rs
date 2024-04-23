@@ -24,7 +24,7 @@ use thiserror::Error;
 use crate::{impl_try_from, Identifier, InvalidIdentifierError, ShortOrLong};
 
 pub use self::mount::Mount;
-use self::mount::{Bind, Common, Volume};
+use self::mount::{Bind, BindOptions, Common, Volume};
 
 /// [`Volume`](crate::Volume)s to mount within a [`Service`](super::Service) container.
 ///
@@ -101,7 +101,11 @@ impl ShortVolume {
             match source {
                 Source::HostPath(source) => Mount::Bind(Bind {
                     source,
-                    bind: selinux.map(Into::into),
+                    bind: Some(BindOptions {
+                        create_host_path: true,
+                        selinux,
+                        ..BindOptions::default()
+                    }),
                     common,
                 }),
                 Source::Volume(source) => Mount::Volume(Volume {
