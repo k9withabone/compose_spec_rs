@@ -24,7 +24,7 @@ use thiserror::Error;
 use crate::{impl_try_from, Identifier, InvalidIdentifierError, ShortOrLong};
 
 pub use self::mount::Mount;
-use self::mount::{Bind, Common, Volume};
+use self::mount::{Bind, BindOptions, Common, Volume};
 
 /// [`Volume`](crate::Volume)s to mount within a [`Service`](super::Service) container.
 ///
@@ -101,7 +101,11 @@ impl ShortVolume {
             match source {
                 Source::HostPath(source) => Mount::Bind(Bind {
                     source,
-                    bind: selinux.map(Into::into),
+                    bind: Some(BindOptions {
+                        create_host_path: true,
+                        selinux,
+                        ..BindOptions::default()
+                    }),
                     common,
                 }),
                 Source::Volume(source) => Mount::Volume(Volume {
@@ -710,14 +714,32 @@ impl<'de> Deserialize<'de> for SELinux {
 #[cfg(test)]
 mod tests {
     use proptest::{
-        arbitrary::any,
+        arbitrary::{any, Arbitrary},
         option, prop_assert_eq, prop_compose, prop_oneof, proptest,
-        strategy::{Just, Strategy},
+        strategy::{BoxedStrategy, Just, Strategy},
     };
 
     use crate::service::tests::path_no_colon;
 
     use super::*;
+
+    impl Arbitrary for AbsolutePath {
+        type Parameters = ();
+
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary_with((): Self::Parameters) -> Self::Strategy {
+            path_no_colon()
+                .prop_map(|path| {
+                    if path.is_absolute() {
+                        Self(path)
+                    } else {
+                        Self(Path::new("/").join(path))
+                    }
+                })
+                .boxed()
+        }
+    }
 
     mod short_volume {
         use super::*;
@@ -737,7 +759,7 @@ mod tests {
 
     prop_compose! {
         fn short_volume()(
-            container_path in absolute_path(),
+            container_path: AbsolutePath,
             options in option::of(short_options()),
         ) -> ShortVolume {
             ShortVolume {
@@ -772,16 +794,6 @@ mod tests {
         path_no_colon().prop_flat_map(|path| {
             prop_oneof![Just("/"), Just("."), Just("..")]
                 .prop_map(move |prefix| HostPath(Path::new(prefix).join(&path)))
-        })
-    }
-
-    fn absolute_path() -> impl Strategy<Value = AbsolutePath> {
-        path_no_colon().prop_map(|path| {
-            if path.is_absolute() {
-                AbsolutePath(path)
-            } else {
-                AbsolutePath(Path::new("/").join(path))
-            }
         })
     }
 

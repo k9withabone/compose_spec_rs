@@ -84,6 +84,14 @@ pub struct Build {
     )]
     pub additional_contexts: IndexMap<MapKey, Context>,
 
+    /// Extra privileged entitlements to be allowed during the build.
+    ///
+    /// Available values are platform specific.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#entitlements)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub entitlements: Vec<String>,
+
     /// Add hostname mappings at build-time.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/build.md#extra_hosts)
@@ -200,6 +208,7 @@ impl Build {
             cache_from,
             cache_to,
             additional_contexts,
+            entitlements,
             extra_hosts,
             isolation,
             privileged,
@@ -223,6 +232,7 @@ impl Build {
             && cache_from.is_empty()
             && cache_to.is_empty()
             && additional_contexts.is_empty()
+            && entitlements.is_empty()
             && extra_hosts.is_empty()
             && isolation.is_none()
             && !privileged
