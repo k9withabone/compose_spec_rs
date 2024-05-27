@@ -102,6 +102,17 @@ where
     }
 }
 
+impl<K, V> ShortOrLong<IndexSet<K>, IndexMap<K, V>> {
+    /// Returns an [`Iterator`] of items in the list of the [`Short`](Self::Short) syntax or the
+    /// keys in the map of the [`Long`](Self::Long) syntax.
+    pub(crate) fn keys(&self) -> impl Iterator<Item = &K> {
+        match self {
+            Self::Short(set) => ShortOrLong::Short(set.iter()),
+            Self::Long(map) => ShortOrLong::Long(map.keys()),
+        }
+    }
+}
+
 /// Trait for types that represent a long syntax which could also be represented in a short syntax.
 pub trait AsShort {
     /// The short syntax type, returned from [`as_short()`](AsShort::as_short()).

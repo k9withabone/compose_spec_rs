@@ -76,7 +76,11 @@ mod serde;
 pub mod service;
 mod volume;
 
-use std::path::PathBuf;
+use std::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+    path::PathBuf,
+};
 
 use ::serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
@@ -186,6 +190,87 @@ pub struct Compose {
     pub extensions: Extensions,
 }
 
+impl Compose {
+    /// Ensure that the networks used in each [`Service`] are defined in the `networks` field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a [`Service`] uses an [`Identifier`] for a [`Network`] not defined in
+    /// the `networks` field.
+    ///
+    /// Only the first undefined network is listed in the error's [`Display`] output.
+    pub fn validate_networks(&self) -> Result<(), ValidationError> {
+        for (name, service) in &self.services {
+            service
+                .validate_networks(&self.networks)
+                .map_err(|resource| ValidationError {
+                    service: Some(name.clone()),
+                    resource,
+                    kind: ResourceKind::Network,
+                })?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Error returned when validation of a [`Compose`] file fails.
+///
+/// Occurs when a [`Service`] uses a [`Resource`] which is not defined in the corresponding
+/// field in the [`Compose`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidationError {
+    /// Name of the [`Service`] which uses the invalid `resource`.
+    service: Option<Identifier>,
+    /// Name of the resource which is not defined by the [`Compose`] file.
+    resource: Identifier,
+    /// The kind of the `resource`.
+    kind: ResourceKind,
+}
+
+impl Display for ValidationError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let Self {
+            service,
+            resource,
+            kind,
+        } = self;
+
+        write!(f, "{kind} `{resource}` ")?;
+
+        if let Some(service) = service {
+            write!(f, "(used in the `{service}` service) ")?;
+        }
+
+        write!(f, "is not defined in the top-level `{kind}s` field")
+    }
+}
+
+impl Error for ValidationError {}
+
+/// Kinds of [`Resource`]s that may be used in a [`ValidationError`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResourceKind {
+    /// Network resource kind.
+    Network,
+}
+
+impl ResourceKind {
+    /// Resource kind as a static string slice.
+    #[must_use]
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Network => "network",
+        }
+    }
+}
+
+impl Display for ResourceKind {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Implement [`From`] for `Ty` using `f`.
 macro_rules! impl_from {
     ($Ty:ident::$f:ident, $($From:ty),+ $(,)?) => {
@@ -276,6 +361,8 @@ use impl_from_str;
 
 #[cfg(test)]
 mod tests {
+    use indexmap::{indexmap, indexset};
+
     use super::*;
 
     #[test]
@@ -288,6 +375,39 @@ mod tests {
             serde_yaml::from_str::<serde_yaml::Value>(yaml)?,
             serde_yaml::to_value(compose)?,
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_networks() -> Result<(), InvalidIdentifierError> {
+        let test = Identifier::new("test")?;
+        let network = Identifier::new("network")?;
+
+        let service = Service {
+            network_config: Some(service::NetworkConfig::Networks(
+                indexset![network.clone()].into(),
+            )),
+            ..Service::default()
+        };
+
+        let mut compose = Compose {
+            services: indexmap! {
+                test.clone() => service,
+            },
+            ..Compose::default()
+        };
+        assert_eq!(
+            compose.validate_networks(),
+            Err(ValidationError {
+                service: Some(test),
+                resource: network.clone(),
+                kind: ResourceKind::Network
+            })
+        );
+
+        compose.networks.insert(network, None);
+        assert_eq!(compose.validate_networks(), Ok(()));
 
         Ok(())
     }
