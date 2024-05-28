@@ -77,6 +77,7 @@ pub mod service;
 mod volume;
 
 use std::{
+    collections::{hash_map::Entry, HashMap},
     error::Error,
     fmt::{self, Display, Formatter},
     path::PathBuf,
@@ -212,6 +213,43 @@ impl Compose {
 
         Ok(())
     }
+
+    /// Ensure that named volumes used across multiple [`Service`]s are defined in the `volumes`
+    /// field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an  error if a named volume [`Identifier`] is used across multiple [`Service`]s is
+    /// not defined in the `volumes` field.
+    ///
+    /// Only the first undefined named volume is listed in the error's [`Display`] output.
+    pub fn validate_volumes(&self) -> Result<(), ValidationError> {
+        let volumes = self
+            .services
+            .values()
+            .flat_map(|service| service::volumes::named_volumes_iter(&service.volumes));
+
+        let mut seen_volumes = HashMap::new();
+        for volume in volumes {
+            match seen_volumes.entry(volume) {
+                Entry::Occupied(mut entry) => {
+                    if !entry.get() && !self.volumes.contains_key(volume) {
+                        return Err(ValidationError {
+                            service: None,
+                            resource: volume.clone(),
+                            kind: ResourceKind::Volume,
+                        });
+                    }
+                    *entry.get_mut() = true;
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(false);
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Error returned when validation of a [`Compose`] file fails.
@@ -242,6 +280,10 @@ impl Display for ValidationError {
             write!(f, "(used in the `{service}` service) ")?;
         }
 
+        if matches!(kind, ResourceKind::Volume) {
+            write!(f, "is used across multiple services and ")?;
+        }
+
         write!(f, "is not defined in the top-level `{kind}s` field")
     }
 }
@@ -251,8 +293,10 @@ impl Error for ValidationError {}
 /// Kinds of [`Resource`]s that may be used in a [`ValidationError`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ResourceKind {
-    /// Network resource kind.
+    /// [`Network`] resource kind.
     Network,
+    /// [`Volume`] resource kind.
+    Volume,
 }
 
 impl ResourceKind {
@@ -261,6 +305,7 @@ impl ResourceKind {
     const fn as_str(self) -> &'static str {
         match self {
             Self::Network => "network",
+            Self::Volume => "volume",
         }
     }
 }
@@ -363,6 +408,8 @@ use impl_from_str;
 mod tests {
     use indexmap::{indexmap, indexset};
 
+    use self::service::volumes::{ShortOptions, ShortVolume};
+
     use super::*;
 
     #[test]
@@ -410,5 +457,47 @@ mod tests {
         assert_eq!(compose.validate_networks(), Ok(()));
 
         Ok(())
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, clippy::indexing_slicing)]
+    fn validate_volumes() {
+        let volume_id = Identifier::new("volume").unwrap();
+        let volume = ShortVolume {
+            container_path: PathBuf::from("/container").try_into().unwrap(),
+            options: Some(ShortOptions::new(volume_id.clone().into())),
+        };
+        let service = Service {
+            volumes: indexset![volume.into()],
+            ..Service::default()
+        };
+
+        let mut compose = Compose {
+            services: indexmap! {
+                Identifier::new("one").unwrap() => service.clone(),
+            },
+            ..Compose::default()
+        };
+
+        assert_eq!(compose.validate_volumes(), Ok(()));
+
+        compose
+            .services
+            .insert(Identifier::new("two").unwrap(), service);
+        let error = Err(ValidationError {
+            service: None,
+            resource: volume_id.clone(),
+            kind: ResourceKind::Volume,
+        });
+        assert_eq!(compose.validate_volumes(), error);
+
+        let volume = compose.services[1].volumes.pop().unwrap();
+        compose.services[1]
+            .volumes
+            .insert(volume.into_long().into());
+        assert_eq!(compose.validate_volumes(), error);
+
+        compose.volumes.insert(volume_id, None);
+        assert_eq!(compose.validate_volumes(), Ok(()));
     }
 }

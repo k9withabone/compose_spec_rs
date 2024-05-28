@@ -47,6 +47,22 @@ pub fn into_long_iter(volumes: Volumes) -> impl Iterator<Item = Mount> {
     volumes.into_iter().map(Into::into)
 }
 
+/// Return an [`Iterator`] of [`Identifier`]s for named volumes used as sources in the [`Volumes`].
+pub(crate) fn named_volumes_iter(volumes: &Volumes) -> impl Iterator<Item = &Identifier> {
+    volumes.iter().filter_map(|volume| match volume {
+        ShortOrLong::Short(ShortVolume {
+            options:
+                Some(ShortOptions {
+                    source: Source::Volume(volume),
+                    ..
+                }),
+            ..
+        }) => Some(volume),
+        ShortOrLong::Long(Mount::Volume(Volume { source, .. })) => source.as_ref(),
+        _ => None,
+    })
+}
+
 /// Short [`Service`](super::Service) container volume syntax.
 ///
 /// (De)serializes from/to a string in the format `[{source}:]{container_path}[:{options}]`, where
