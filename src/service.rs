@@ -43,7 +43,7 @@ use crate::{
         ItemOrListVisitor,
     },
     AsShortIter, Configs, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap,
-    Map, MapKey, Networks, ShortOrLong, StringOrNumber, Value,
+    Map, MapKey, Networks, Secrets, ShortOrLong, StringOrNumber, Value,
 };
 
 use self::build::Context;
@@ -714,10 +714,28 @@ impl Service {
     ///
     /// Returns the first config [`Identifier`] which is not in the given [`Configs`] as an error.
     pub(crate) fn validate_configs(&self, configs: &Configs) -> Result<(), Identifier> {
-        for config in &self.configs {
-            let (ShortOrLong::Short(source) | ShortOrLong::Long(ConfigOrSecret { source, .. })) =
-                config;
+        for ShortOrLong::Short(source) | ShortOrLong::Long(ConfigOrSecret { source, .. }) in
+            &self.configs
+        {
             if !configs.contains_key(source) {
+                return Err(source.clone());
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Ensure that all secrets used by the service are defined in the top-level `secrets` field of
+    /// the [`Compose`](crate::Compose) file.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first secret [`Identifier`] which is not in the given [`Secrets`] as an error.
+    pub(crate) fn validate_secrets(&self, secrets: &Secrets) -> Result<(), Identifier> {
+        for ShortOrLong::Short(source) | ShortOrLong::Long(ConfigOrSecret { source, .. }) in
+            &self.secrets
+        {
+            if !secrets.contains_key(source) {
                 return Err(source.clone());
             }
         }

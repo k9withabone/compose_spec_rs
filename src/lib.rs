@@ -272,6 +272,28 @@ impl Compose {
 
         Ok(())
     }
+
+    /// Ensure that the secrets used in each [`Service`] are defined in the `secrets` field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a [`Service`] uses an [`Identifier`] for a [`Secret`] not defined in
+    /// the `secrets` field.
+    ///
+    /// Only the first undefined secret is listed in the error's [`Display`] output.
+    pub fn validate_secrets(&self) -> Result<(), ValidationError> {
+        for (name, service) in &self.services {
+            service
+                .validate_secrets(&self.secrets)
+                .map_err(|resource| ValidationError {
+                    service: Some(name.clone()),
+                    resource,
+                    kind: ResourceKind::Secret,
+                })?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Error returned when validation of a [`Compose`] file fails.
@@ -321,6 +343,8 @@ enum ResourceKind {
     Volume,
     /// [`Config`] resource kind.
     Config,
+    /// [`Secret`] resource kind.
+    Secret,
 }
 
 impl ResourceKind {
@@ -331,6 +355,7 @@ impl ResourceKind {
             Self::Network => "network",
             Self::Volume => "volume",
             Self::Config => "config",
+            Self::Secret => "secret",
         }
     }
 }
@@ -553,6 +578,37 @@ mod tests {
             .configs
             .insert(config, Resource::External { name: None });
         assert_eq!(compose.validate_configs(), Ok(()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_secrets() -> Result<(), InvalidIdentifierError> {
+        let secret = Identifier::new("secret")?;
+        let service = Identifier::new("service")?;
+
+        let mut compose = Compose {
+            services: indexmap! {
+                service.clone() => Service {
+                    secrets: vec![secret.clone().into()],
+                    ..Service::default()
+                },
+            },
+            ..Compose::default()
+        };
+        assert_eq!(
+            compose.validate_secrets(),
+            Err(ValidationError {
+                service: Some(service),
+                resource: secret.clone(),
+                kind: ResourceKind::Secret
+            })
+        );
+
+        compose
+            .secrets
+            .insert(secret, Resource::External { name: None });
+        assert_eq!(compose.validate_secrets(), Ok(()));
 
         Ok(())
     }
