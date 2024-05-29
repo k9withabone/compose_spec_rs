@@ -192,6 +192,26 @@ pub struct Compose {
 }
 
 impl Compose {
+    /// Ensure that all [`Resource`]s ([`Network`]s, [`Volume`]s, [`Config`]s, and [`Secret`]s) used
+    /// in each [`Service`] are defined in the appropriate top-level field.
+    ///
+    /// Runs, in order, [`validate_networks()`](Self::validate_networks()),
+    /// [`validate_volumes()`](Self::validate_volumes()),
+    /// [`validate_configs()`](Self::validate_configs()), and
+    /// [`validate_secrets()`](Self::validate_secrets()).
+    ///
+    /// # Errors
+    ///
+    /// Returns the first error encountered, meaning an [`Identifier`] for a [`Resource`] was used
+    /// in a [`Service`] which is not defined in the appropriate top-level field.
+    pub fn validate_all(&self) -> Result<(), ValidationError> {
+        self.validate_networks()?;
+        self.validate_volumes()?;
+        self.validate_configs()?;
+        self.validate_secrets()?;
+        Ok(())
+    }
+
     /// Ensure that the networks used in each [`Service`] are defined in the `networks` field.
     ///
     /// # Errors
