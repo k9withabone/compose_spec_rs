@@ -250,6 +250,28 @@ impl Compose {
 
         Ok(())
     }
+
+    /// Ensure that the configs used in each [`Service`] are defined in the `configs` field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a [`Service`] uses an [`Identifier`] for a [`Config`] not defined in
+    /// the `configs` field.
+    ///
+    /// Only the first undefined config is listed in the error's [`Display`] output.
+    pub fn validate_configs(&self) -> Result<(), ValidationError> {
+        for (name, service) in &self.services {
+            service
+                .validate_configs(&self.configs)
+                .map_err(|resource| ValidationError {
+                    service: Some(name.clone()),
+                    resource,
+                    kind: ResourceKind::Config,
+                })?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Error returned when validation of a [`Compose`] file fails.
@@ -297,6 +319,8 @@ enum ResourceKind {
     Network,
     /// [`Volume`] resource kind.
     Volume,
+    /// [`Config`] resource kind.
+    Config,
 }
 
 impl ResourceKind {
@@ -306,6 +330,7 @@ impl ResourceKind {
         match self {
             Self::Network => "network",
             Self::Volume => "volume",
+            Self::Config => "config",
         }
     }
 }
@@ -499,5 +524,36 @@ mod tests {
 
         compose.volumes.insert(volume_id, None);
         assert_eq!(compose.validate_volumes(), Ok(()));
+    }
+
+    #[test]
+    fn validate_configs() -> Result<(), InvalidIdentifierError> {
+        let config = Identifier::new("config")?;
+        let service = Identifier::new("service")?;
+
+        let mut compose = Compose {
+            services: indexmap! {
+                service.clone() => Service {
+                    configs: vec![config.clone().into()],
+                    ..Service::default()
+                },
+            },
+            ..Compose::default()
+        };
+        assert_eq!(
+            compose.validate_configs(),
+            Err(ValidationError {
+                service: Some(service),
+                resource: config.clone(),
+                kind: ResourceKind::Config
+            })
+        );
+
+        compose
+            .configs
+            .insert(config, Resource::External { name: None });
+        assert_eq!(compose.validate_configs(), Ok(()));
+
+        Ok(())
     }
 }

@@ -42,8 +42,8 @@ use crate::{
         default_true, display_from_str_option, duration_option, duration_us_option, skip_true,
         ItemOrListVisitor,
     },
-    AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, Map,
-    MapKey, Networks, ShortOrLong, StringOrNumber, Value,
+    AsShortIter, Configs, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap,
+    Map, MapKey, Networks, ShortOrLong, StringOrNumber, Value,
 };
 
 use self::build::Context;
@@ -701,6 +701,24 @@ impl Service {
                 if !networks.contains_key(network) {
                     return Err(network.clone());
                 }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Ensure that all configs used by the service are defined in the top-level `configs` field of
+    /// the [`Compose`](crate::Compose) file.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first config [`Identifier`] which is not in the given [`Configs`] as an error.
+    pub(crate) fn validate_configs(&self, configs: &Configs) -> Result<(), Identifier> {
+        for config in &self.configs {
+            let (ShortOrLong::Short(source) | ShortOrLong::Long(ConfigOrSecret { source, .. })) =
+                config;
+            if !configs.contains_key(source) {
+                return Err(source.clone());
             }
         }
 
