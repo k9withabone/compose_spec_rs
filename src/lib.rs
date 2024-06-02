@@ -76,7 +76,12 @@ mod serde;
 pub mod service;
 mod volume;
 
-use std::path::PathBuf;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    error::Error,
+    fmt::{self, Display, Formatter},
+    path::PathBuf,
+};
 
 use ::serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
@@ -186,6 +191,201 @@ pub struct Compose {
     pub extensions: Extensions,
 }
 
+impl Compose {
+    /// Ensure that all [`Resource`]s ([`Network`]s, [`Volume`]s, [`Config`]s, and [`Secret`]s) used
+    /// in each [`Service`] are defined in the appropriate top-level field.
+    ///
+    /// Runs, in order, [`validate_networks()`](Self::validate_networks()),
+    /// [`validate_volumes()`](Self::validate_volumes()),
+    /// [`validate_configs()`](Self::validate_configs()), and
+    /// [`validate_secrets()`](Self::validate_secrets()).
+    ///
+    /// # Errors
+    ///
+    /// Returns the first error encountered, meaning an [`Identifier`] for a [`Resource`] was used
+    /// in a [`Service`] which is not defined in the appropriate top-level field.
+    pub fn validate_all(&self) -> Result<(), ValidationError> {
+        self.validate_networks()?;
+        self.validate_volumes()?;
+        self.validate_configs()?;
+        self.validate_secrets()?;
+        Ok(())
+    }
+
+    /// Ensure that the networks used in each [`Service`] are defined in the `networks` field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a [`Service`] uses an [`Identifier`] for a [`Network`] not defined in
+    /// the `networks` field.
+    ///
+    /// Only the first undefined network is listed in the error's [`Display`] output.
+    pub fn validate_networks(&self) -> Result<(), ValidationError> {
+        for (name, service) in &self.services {
+            service
+                .validate_networks(&self.networks)
+                .map_err(|resource| ValidationError {
+                    service: Some(name.clone()),
+                    resource,
+                    kind: ResourceKind::Network,
+                })?;
+        }
+
+        Ok(())
+    }
+
+    /// Ensure that named volumes used across multiple [`Service`]s are defined in the `volumes`
+    /// field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an  error if a named volume [`Identifier`] is used across multiple [`Service`]s is
+    /// not defined in the `volumes` field.
+    ///
+    /// Only the first undefined named volume is listed in the error's [`Display`] output.
+    pub fn validate_volumes(&self) -> Result<(), ValidationError> {
+        let volumes = self
+            .services
+            .values()
+            .flat_map(|service| service::volumes::named_volumes_iter(&service.volumes));
+
+        let mut seen_volumes = HashMap::new();
+        for volume in volumes {
+            match seen_volumes.entry(volume) {
+                Entry::Occupied(mut entry) => {
+                    if !entry.get() && !self.volumes.contains_key(volume) {
+                        return Err(ValidationError {
+                            service: None,
+                            resource: volume.clone(),
+                            kind: ResourceKind::Volume,
+                        });
+                    }
+                    *entry.get_mut() = true;
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(false);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Ensure that the configs used in each [`Service`] are defined in the `configs` field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a [`Service`] uses an [`Identifier`] for a [`Config`] not defined in
+    /// the `configs` field.
+    ///
+    /// Only the first undefined config is listed in the error's [`Display`] output.
+    pub fn validate_configs(&self) -> Result<(), ValidationError> {
+        for (name, service) in &self.services {
+            service
+                .validate_configs(&self.configs)
+                .map_err(|resource| ValidationError {
+                    service: Some(name.clone()),
+                    resource,
+                    kind: ResourceKind::Config,
+                })?;
+        }
+
+        Ok(())
+    }
+
+    /// Ensure that the secrets used in each [`Service`] are defined in the `secrets` field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a [`Service`] uses an [`Identifier`] for a [`Secret`] not defined in
+    /// the `secrets` field.
+    ///
+    /// Only the first undefined secret is listed in the error's [`Display`] output.
+    pub fn validate_secrets(&self) -> Result<(), ValidationError> {
+        for (name, service) in &self.services {
+            service
+                .validate_secrets(&self.secrets)
+                .map_err(|resource| ValidationError {
+                    service: Some(name.clone()),
+                    resource,
+                    kind: ResourceKind::Secret,
+                })?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Error returned when validation of a [`Compose`] file fails.
+///
+/// Occurs when a [`Service`] uses a [`Resource`] which is not defined in the corresponding
+/// field in the [`Compose`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidationError {
+    /// Name of the [`Service`] which uses the invalid `resource`.
+    service: Option<Identifier>,
+    /// Name of the resource which is not defined by the [`Compose`] file.
+    resource: Identifier,
+    /// The kind of the `resource`.
+    kind: ResourceKind,
+}
+
+impl Display for ValidationError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let Self {
+            service,
+            resource,
+            kind,
+        } = self;
+
+        write!(f, "{kind} `{resource}` ")?;
+
+        if let Some(service) = service {
+            write!(f, "(used in the `{service}` service) ")?;
+        }
+
+        if matches!(kind, ResourceKind::Volume) {
+            write!(f, "is used across multiple services and ")?;
+        }
+
+        write!(f, "is not defined in the top-level `{kind}s` field")
+    }
+}
+
+impl Error for ValidationError {}
+
+/// Kinds of [`Resource`]s that may be used in a [`ValidationError`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResourceKind {
+    /// [`Network`] resource kind.
+    Network,
+    /// [`Volume`] resource kind.
+    Volume,
+    /// [`Config`] resource kind.
+    Config,
+    /// [`Secret`] resource kind.
+    Secret,
+}
+
+impl ResourceKind {
+    /// Resource kind as a static string slice.
+    #[must_use]
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Network => "network",
+            Self::Volume => "volume",
+            Self::Config => "config",
+            Self::Secret => "secret",
+        }
+    }
+}
+
+impl Display for ResourceKind {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Implement [`From`] for `Ty` using `f`.
 macro_rules! impl_from {
     ($Ty:ident::$f:ident, $($From:ty),+ $(,)?) => {
@@ -276,6 +476,10 @@ use impl_from_str;
 
 #[cfg(test)]
 mod tests {
+    use indexmap::{indexmap, indexset};
+
+    use self::service::volumes::{ShortOptions, ShortVolume};
+
     use super::*;
 
     #[test]
@@ -288,6 +492,143 @@ mod tests {
             serde_yaml::from_str::<serde_yaml::Value>(yaml)?,
             serde_yaml::to_value(compose)?,
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_networks() -> Result<(), InvalidIdentifierError> {
+        let test = Identifier::new("test")?;
+        let network = Identifier::new("network")?;
+
+        let service = Service {
+            network_config: Some(service::NetworkConfig::Networks(
+                indexset![network.clone()].into(),
+            )),
+            ..Service::default()
+        };
+
+        let mut compose = Compose {
+            services: indexmap! {
+                test.clone() => service,
+            },
+            ..Compose::default()
+        };
+        assert_eq!(
+            compose.validate_networks(),
+            Err(ValidationError {
+                service: Some(test),
+                resource: network.clone(),
+                kind: ResourceKind::Network
+            })
+        );
+
+        compose.networks.insert(network, None);
+        assert_eq!(compose.validate_networks(), Ok(()));
+
+        Ok(())
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, clippy::indexing_slicing)]
+    fn validate_volumes() {
+        let volume_id = Identifier::new("volume").unwrap();
+        let volume = ShortVolume {
+            container_path: PathBuf::from("/container").try_into().unwrap(),
+            options: Some(ShortOptions::new(volume_id.clone().into())),
+        };
+        let service = Service {
+            volumes: indexset![volume.into()],
+            ..Service::default()
+        };
+
+        let mut compose = Compose {
+            services: indexmap! {
+                Identifier::new("one").unwrap() => service.clone(),
+            },
+            ..Compose::default()
+        };
+
+        assert_eq!(compose.validate_volumes(), Ok(()));
+
+        compose
+            .services
+            .insert(Identifier::new("two").unwrap(), service);
+        let error = Err(ValidationError {
+            service: None,
+            resource: volume_id.clone(),
+            kind: ResourceKind::Volume,
+        });
+        assert_eq!(compose.validate_volumes(), error);
+
+        let volume = compose.services[1].volumes.pop().unwrap();
+        compose.services[1]
+            .volumes
+            .insert(volume.into_long().into());
+        assert_eq!(compose.validate_volumes(), error);
+
+        compose.volumes.insert(volume_id, None);
+        assert_eq!(compose.validate_volumes(), Ok(()));
+    }
+
+    #[test]
+    fn validate_configs() -> Result<(), InvalidIdentifierError> {
+        let config = Identifier::new("config")?;
+        let service = Identifier::new("service")?;
+
+        let mut compose = Compose {
+            services: indexmap! {
+                service.clone() => Service {
+                    configs: vec![config.clone().into()],
+                    ..Service::default()
+                },
+            },
+            ..Compose::default()
+        };
+        assert_eq!(
+            compose.validate_configs(),
+            Err(ValidationError {
+                service: Some(service),
+                resource: config.clone(),
+                kind: ResourceKind::Config
+            })
+        );
+
+        compose
+            .configs
+            .insert(config, Resource::External { name: None });
+        assert_eq!(compose.validate_configs(), Ok(()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_secrets() -> Result<(), InvalidIdentifierError> {
+        let secret = Identifier::new("secret")?;
+        let service = Identifier::new("service")?;
+
+        let mut compose = Compose {
+            services: indexmap! {
+                service.clone() => Service {
+                    secrets: vec![secret.clone().into()],
+                    ..Service::default()
+                },
+            },
+            ..Compose::default()
+        };
+        assert_eq!(
+            compose.validate_secrets(),
+            Err(ValidationError {
+                service: Some(service),
+                resource: secret.clone(),
+                kind: ResourceKind::Secret
+            })
+        );
+
+        compose
+            .secrets
+            .insert(secret, Resource::External { name: None });
+        assert_eq!(compose.validate_secrets(), Ok(()));
 
         Ok(())
     }

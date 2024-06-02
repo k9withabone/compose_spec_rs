@@ -25,7 +25,6 @@ pub enum Context {
     /// This path must be a directory and must contain a `Dockerfile`/`Containerfile`.
     Path(PathBuf),
 
-    #[allow(rustdoc::bare_urls)]
     /// A URL context.
     ///
     /// Git URLs accept context configuration in their fragment section, separated by a colon (:).
@@ -38,6 +37,7 @@ pub enum Context {
     /// Other types of contexts can be defined in the `additional_contexts` field of the
     /// long [`Build`](super::Build) syntax by using alternative schemes such as `docker-image://`
     /// or `oci-layout://`.
+    #[allow(rustdoc::bare_urls, clippy::doc_markdown)]
     Url(Url),
 }
 

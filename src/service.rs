@@ -42,8 +42,8 @@ use crate::{
         default_true, display_from_str_option, duration_option, duration_us_option, skip_true,
         ItemOrListVisitor,
     },
-    AsShortIter, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap, Map,
-    MapKey, ShortOrLong, StringOrNumber, Value,
+    AsShortIter, Configs, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap,
+    Map, MapKey, Networks, Secrets, ShortOrLong, StringOrNumber, Value,
 };
 
 use self::build::Context;
@@ -686,6 +686,62 @@ pub struct Service {
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
     #[serde(flatten)]
     pub extensions: Extensions,
+}
+
+impl Service {
+    /// Ensure that all networks used in the `network_config` of the service are defined in the
+    /// top-level `networks` field of the [`Compose`](crate::Compose) file.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first network [`Identifier`] which is not in the given [`Networks`] as an error.
+    pub(crate) fn validate_networks(&self, networks: &Networks) -> Result<(), Identifier> {
+        if let Some(NetworkConfig::Networks(service_networks)) = &self.network_config {
+            for network in service_networks.keys() {
+                if !networks.contains_key(network) {
+                    return Err(network.clone());
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Ensure that all configs used by the service are defined in the top-level `configs` field of
+    /// the [`Compose`](crate::Compose) file.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first config [`Identifier`] which is not in the given [`Configs`] as an error.
+    pub(crate) fn validate_configs(&self, configs: &Configs) -> Result<(), Identifier> {
+        for ShortOrLong::Short(source) | ShortOrLong::Long(ConfigOrSecret { source, .. }) in
+            &self.configs
+        {
+            if !configs.contains_key(source) {
+                return Err(source.clone());
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Ensure that all secrets used by the service are defined in the top-level `secrets` field of
+    /// the [`Compose`](crate::Compose) file.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first secret [`Identifier`] which is not in the given [`Secrets`] as an error.
+    pub(crate) fn validate_secrets(&self, secrets: &Secrets) -> Result<(), Identifier> {
+        for ShortOrLong::Short(source) | ShortOrLong::Long(ConfigOrSecret { source, .. }) in
+            &self.secrets
+        {
+            if !secrets.contains_key(source) {
+                return Err(source.clone());
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// A percentage, must be between 0 and 100, inclusive.
@@ -1509,6 +1565,7 @@ impl From<VolumesFromSource> for String {
 
 #[cfg(test)]
 mod tests {
+    use indexmap::{indexmap, indexset};
     use proptest::{
         arbitrary::{any, Arbitrary},
         path::PathParams,
@@ -1551,5 +1608,25 @@ mod tests {
                 )
             })
             .prop_map(|(source, read_only)| VolumesFrom { source, read_only })
+    }
+
+    #[test]
+    fn validate_networks() -> Result<(), InvalidIdentifierError> {
+        let network = Identifier::new("network")?;
+        let service = Service {
+            network_config: Some(NetworkConfig::Networks(indexset![network.clone()].into())),
+            ..Service::default()
+        };
+
+        assert_eq!(
+            service.validate_networks(&IndexMap::new()).as_ref(),
+            Err(&network)
+        );
+        assert_eq!(
+            service.validate_networks(&indexmap! { network => None }),
+            Ok(())
+        );
+
+        Ok(())
     }
 }
