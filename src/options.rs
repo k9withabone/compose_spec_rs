@@ -18,7 +18,7 @@ impl Options {
     /// ```
     /// use compose_spec::Compose;
     ///
-    /// let yaml = "
+    /// let yaml = "\
     /// services:
     ///   one:
     ///     environment: &env
