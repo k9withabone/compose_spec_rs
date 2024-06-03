@@ -71,6 +71,7 @@ pub mod duration;
 mod include;
 mod name;
 pub mod network;
+mod options;
 pub mod secret;
 mod serde;
 pub mod service;
@@ -97,6 +98,7 @@ pub use self::{
     include::Include,
     name::{InvalidNameError, Name},
     network::Network,
+    options::Options,
     secret::Secret,
     service::Service,
     volume::Volume,
@@ -192,6 +194,29 @@ pub struct Compose {
 }
 
 impl Compose {
+    /// Builder for options to apply when deserializing a Compose file.
+    ///
+    /// Alias for [`Options::default()`].
+    ///
+    /// ```
+    /// use compose_spec::Compose;
+    ///
+    /// let yaml = "\
+    /// services:
+    ///   hello:
+    ///     image: quay.io/podman/hello:latest
+    /// ";
+    ///
+    /// let compose = Compose::options()
+    ///     // ... add deserialization options
+    ///     .from_yaml_str(yaml)?;
+    /// # Ok::<(), serde_yaml::Error>(())
+    /// ```
+    #[must_use]
+    pub fn options() -> Options {
+        Options::default()
+    }
+
     /// Ensure that all [`Resource`]s ([`Network`]s, [`Volume`]s, [`Config`]s, and [`Secret`]s) used
     /// in each [`Service`] are defined in the appropriate top-level field.
     ///
