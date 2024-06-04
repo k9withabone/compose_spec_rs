@@ -61,6 +61,36 @@
 //! syntax types which may be represented directly as the [`Short`] syntax type if additional
 //! options are not set.
 //!
+//! # [Fragments](https://github.com/compose-spec/compose-spec/blob/master/10-fragments.md)
+//!
+//! [`serde_yaml`] does use YAML anchors and aliases during deserialization. However, it does not
+//! automatically merge the [YAML merge type](https://yaml.org/type/merge.html) (`<<` keys). You
+//! can use [`serde_yaml::Value::apply_merge()`] to merge `<<` keys into the surrounding mapping.
+//! [`Options::apply_merge()`] is available to do this for you.
+//!
+//! ```
+//! use compose_spec::Compose;
+//!
+//! let yaml = "\
+//! services:
+//!   one:
+//!     environment: &env
+//!       FOO: foo
+//!       BAR: bar
+//!   two:
+//!     environment: *env
+//!   three:
+//!     environment:
+//!       <<: *env
+//!       BAR: baz
+//! ";
+//!
+//! let compose = Compose::options()
+//!     .apply_merge(true)
+//!     .from_yaml_str(yaml)?;
+//! # Ok::<(), serde_yaml::Error>(())
+//! ```
+//!
 //! [Compose specification]: https://github.com/compose-spec/compose-spec
 //! [`Short`]: ShortOrLong::Short
 //! [`Long`]: ShortOrLong::Long
@@ -71,6 +101,7 @@ pub mod duration;
 mod include;
 mod name;
 pub mod network;
+mod options;
 pub mod secret;
 mod serde;
 pub mod service;
@@ -97,6 +128,7 @@ pub use self::{
     include::Include,
     name::{InvalidNameError, Name},
     network::Network,
+    options::Options,
     secret::Secret,
     service::Service,
     volume::Volume,
@@ -192,6 +224,29 @@ pub struct Compose {
 }
 
 impl Compose {
+    /// Builder for options to apply when deserializing a Compose file.
+    ///
+    /// Alias for [`Options::default()`].
+    ///
+    /// ```
+    /// use compose_spec::Compose;
+    ///
+    /// let yaml = "\
+    /// services:
+    ///   hello:
+    ///     image: quay.io/podman/hello:latest
+    /// ";
+    ///
+    /// let compose = Compose::options()
+    ///     // ... add deserialization options
+    ///     .from_yaml_str(yaml)?;
+    /// # Ok::<(), serde_yaml::Error>(())
+    /// ```
+    #[must_use]
+    pub fn options() -> Options {
+        Options::default()
+    }
+
     /// Ensure that all [`Resource`]s ([`Network`]s, [`Volume`]s, [`Config`]s, and [`Secret`]s) used
     /// in each [`Service`] are defined in the appropriate top-level field.
     ///
