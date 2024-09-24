@@ -5,6 +5,7 @@ use std::{
     cmp::Ordering,
     fmt::{self, Display, Formatter},
     hash::{Hash, Hasher},
+    num::ParseIntError,
 };
 
 use thiserror::Error;
@@ -14,12 +15,11 @@ use super::char_is_alnum;
 /// Validated name for a container [`Image`](super::Image).
 ///
 /// A name may or may not contain a registry. Some container engines, like
-/// docker, use a default registry (e.g. "docker.io") or can be configured with one. It is often
+/// Docker, use a default registry (e.g. "docker.io") or can be configured with one. It is often
 /// recommended to use a full name with a registry for both performance reasons and clarity.
 ///
 /// When validating a name, it is split into parts by splitting on slash (/) characters, then each
-/// part is validated. If the name contains more than one part, and first part contains a dot (.)
-/// character, it is treated as the registry.
+/// part is validated. If the first part contains a dot (.) character, it is treated as the registry.
 ///
 /// Image name parts must:
 ///
@@ -28,6 +28,8 @@ use super::char_is_alnum;
 ///   or underscores (_).
 /// - Not be empty.
 /// - Start and end with a lowercase ASCII letter (a-z) or digit (0-9).
+///
+/// Additionally, registries may contain a colon (:) that denote a port number.
 #[derive(Debug, Clone, Copy, Eq)]
 pub struct Name<'a> {
     /// Inner string slice.
@@ -41,14 +43,15 @@ impl<'a> Name<'a> {
     /// Validate a [`Name`].
     ///
     /// The name is split into parts by splitting on slash (/) characters, then each part is
-    /// validated. If the name contains more than one part, and first part contains a dot (.)
-    /// character, it is treated as the registry.
+    /// validated. If the first part contains a dot (.) character, it is treated as the registry.
     ///
     /// # Errors
     ///
     /// Returns an error if:
     ///
     /// - The part has more than one separator (., _, __, any number of -) in a row.
+    /// - The part is not the registry and contains a colon (:).
+    /// - The registry's port is not a valid port number.
     /// - The part contains a character other than a lowercase ASCII letter (a-z), digit (0-9),
     ///   dash (-), dot (.), or underscore (_).
     /// - The part is empty.
@@ -67,6 +70,10 @@ impl<'a> Name<'a> {
     /// let name = Name::new("quay.io/podman/hello").unwrap();
     /// assert_eq!(name.registry().unwrap(), "quay.io");
     ///
+    /// // Registry with a port.
+    /// let name = Name::new("quay.io:443/podman/hello").unwrap();
+    /// assert_eq!(name.registry().unwrap(), "quay.io:443");
+    ///
     /// // Non-ASCII characters are not allowed in image names.
     /// assert!(Name::new("cliché").is_err());
     /// ```
@@ -74,14 +81,21 @@ impl<'a> Name<'a> {
         let mut split = name.split('/');
 
         let mut registry_end = None;
-        if let Some(first) = split.next() {
-            validate_part(first)?;
-            if let Some(second) = split.next() {
-                validate_part(second)?;
-                if first.contains('.') {
-                    registry_end = Some(first.len());
+        if let Some(mut first) = split.next() {
+            if first.contains('.') {
+                // First part is a registry, check port.
+                registry_end = Some(first.len());
+                if let Some((host, port)) = first.split_once(':') {
+                    port.parse::<u16>()
+                        .map_err(|source| InvalidNamePartError::RegistryPort {
+                            source,
+                            port: port.to_owned(),
+                        })?;
+                    first = host;
                 }
             }
+
+            validate_part(first)?;
         }
 
         for part in split {
@@ -235,6 +249,15 @@ pub enum InvalidNamePartError {
     /// Name parts must end with a lowercase ASCII letter (a-z) or a digit (0-9).
     #[error("image name parts must end with a lowercase ASCII letter (a-z) or a digit (0-9)")]
     End,
+
+    /// Registry ports must be a [`u16`].
+    #[error("image registry port `{port}` is not a valid port number")]
+    RegistryPort {
+        /// Source of the error.
+        source: ParseIntError,
+        /// The string that was attempted to parse as a port.
+        port: String,
+    },
 }
 
 impl<'a> AsRef<str> for Name<'a> {
@@ -301,6 +324,8 @@ impl<'a> Display for Name<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Write;
+
     use pomsky_macro::pomsky;
     use proptest::{prop_assert_eq, proptest};
 
@@ -341,7 +366,10 @@ mod tests {
         /// Test `registry_end` is accurately parsed.
         #[test]
         #[ignore]
-        fn registry(registry in REGISTRY, rest in NAME) {
+        fn registry(mut registry in REGISTRY, port: Option<u16>, rest in NAME) {
+            if let Some(port) = port {
+                write!(registry, ":{port}")?;
+            }
             let name = format!("{registry}/{rest}");
             let name = Name::new(&name)?;
             prop_assert_eq!(name.registry(), Some(registry.as_str()));

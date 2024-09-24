@@ -89,19 +89,19 @@ impl Image {
     fn parse_impl(
         image: &str,
     ) -> Result<(Option<usize>, Option<TagOrDigestStart>), InvalidImageError> {
-        let (image, digest_start) = if let Some((image, digest)) = image.split_once('@') {
-            Digest::new(digest)?;
-            (image, Some(image.len() + 1))
-        } else {
-            (image, None)
-        };
+        let (image, digest_start) = image
+            .split_once('@')
+            .map_or(Ok((image, None)), |(image, digest)| {
+                Digest::new(digest).map(|_| (image, Some(image.len() + 1)))
+            })?;
 
-        let (image, tag_start) = if let Some((image, tag)) = image.split_once(':') {
-            Tag::new(tag)?;
-            (image, Some(image.len() + 1))
-        } else {
-            (image, None)
-        };
+        let (image, tag_start) = image
+            .rsplit_once(':')
+            // If tag contains '/', then image has a registry with a port and no tag.
+            .filter(|(_, tag)| !tag.contains('/'))
+            .map_or(Ok((image, None)), |(image, tag)| {
+                Tag::new(tag).map(|_| (image, Some(image.len() + 1)))
+            })?;
 
         let tag_or_digest = match (digest_start, tag_start) {
             (None, None) => None,
@@ -713,7 +713,6 @@ const fn char_is_alnum(char: char) -> bool {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -732,8 +731,8 @@ mod tests {
     }
 
     #[test]
-    fn registry() {
-        let mut image = Image::parse("quay.io/podman/hello:latest").unwrap();
+    fn registry() -> Result<(), InvalidImageError> {
+        let mut image = Image::parse("quay.io/podman/hello:latest")?;
         assert_parts_eq(
             &image,
             Some("quay.io"),
@@ -742,7 +741,7 @@ mod tests {
         );
 
         // Replace registry
-        image.set_registry(Some(Name::new("docker.io").unwrap()));
+        image.set_registry(Some(Name::new("docker.io")?));
         assert_parts_eq(
             &image,
             Some("docker.io"),
@@ -755,18 +754,38 @@ mod tests {
         assert_parts_eq(&image, None, "podman/hello", Some("latest"));
 
         // Add registry
-        image.set_registry(Some(Name::new("quay.io").unwrap()));
+        image.set_registry(Some(Name::new("quay.io")?));
         assert_parts_eq(
             &image,
             Some("quay.io"),
             "quay.io/podman/hello",
             Some("latest"),
         );
+
+        // Registry with port
+        let image = Image::parse("quay.io:443/podman/hello")?;
+        assert_parts_eq(
+            &image,
+            Some("quay.io:443"),
+            "quay.io:443/podman/hello",
+            None,
+        );
+
+        // Registry with port and tag
+        let image = Image::parse("quay.io:443/podman/hello:latest")?;
+        assert_parts_eq(
+            &image,
+            Some("quay.io:443"),
+            "quay.io:443/podman/hello",
+            Some("latest"),
+        );
+
+        Ok(())
     }
 
     #[test]
-    fn name() {
-        let mut image = Image::parse("quay.io/podman/hello:latest").unwrap();
+    fn name() -> Result<(), InvalidImageError> {
+        let mut image = Image::parse("quay.io/podman/hello:latest")?;
         assert_parts_eq(
             &image,
             Some("quay.io"),
@@ -775,7 +794,7 @@ mod tests {
         );
         assert_eq!(image.as_name(), "quay.io/podman/hello");
 
-        image.set_name(Name::new("docker.io/library/busybox").unwrap());
+        image.set_name(Name::new("docker.io/library/busybox")?);
         assert_parts_eq(
             &image,
             Some("docker.io"),
@@ -783,21 +802,23 @@ mod tests {
             Some("latest"),
         );
         assert_eq!(image.as_name(), "docker.io/library/busybox");
+
+        Ok(())
     }
 
     #[test]
-    fn tag_and_digest() {
-        let mut image = Image::parse("quay.io/podman/hello:latest").unwrap();
+    fn tag_and_digest() -> Result<(), InvalidImageError> {
+        let mut image = Image::parse("quay.io/podman/hello:latest")?;
         assert_parts_eq(
             &image,
             Some("quay.io"),
             "quay.io/podman/hello",
             Some("latest"),
         );
-        assert_eq!(image.as_tag().unwrap(), "latest");
+        assert_eq!(image.as_tag().map(Tag::into_inner), Some("latest"));
 
         // Replace tag
-        image.set_tag(Some(Tag::new("test").unwrap()));
+        image.set_tag(Some(Tag::new("test")?));
         assert_parts_eq(
             &image,
             Some("quay.io"),
@@ -807,17 +828,18 @@ mod tests {
 
         // Replace tag with digest
         let digest = "sha256:075975296016084fc66b59c35c9d4504765d95aadcd5469f28d2b75750348fc5";
-        image.set_digest(Some(Digest::new(digest).unwrap()));
+        image.set_digest(Some(Digest::new(digest)?));
         assert_parts_eq(
             &image,
             Some("quay.io"),
             "quay.io/podman/hello",
             Some(digest),
         );
-        assert_eq!(image.as_digest().unwrap(), digest);
+        assert_eq!(image.as_digest().map(Digest::into_inner), Some(digest));
+        assert_eq!(image, format!("quay.io/podman/hello@{digest}").as_str());
 
         // Replace digest
-        image.set_digest(Some(Digest::new("algo:data").unwrap()));
+        image.set_digest(Some(Digest::new("algo:data")?));
         assert_parts_eq(
             &image,
             Some("quay.io"),
@@ -830,12 +852,14 @@ mod tests {
         assert_parts_eq(&image, Some("quay.io"), "quay.io/podman/hello", None);
 
         // Add tag back
-        image.set_tag(Some(Tag::new("latest").unwrap()));
+        image.set_tag(Some(Tag::new("latest")?));
         assert_parts_eq(
             &image,
             Some("quay.io"),
             "quay.io/podman/hello",
             Some("latest"),
         );
+
+        Ok(())
     }
 }
