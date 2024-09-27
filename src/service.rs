@@ -1078,16 +1078,23 @@ where
                 de::Error::custom("extra host value must be a string representing an IP address")
             })?;
 
-            // Remove brackets possibly surrounding IP address, e.g. `[::1]`
-            let value = value.strip_prefix('[').unwrap_or(value);
-            let value = value.strip_suffix(']').unwrap_or(value);
-
             Ok((
                 Hostname::new(key).map_err(de::Error::custom)?,
-                value.parse().map_err(de::Error::custom)?,
+                strip_brackets(value).parse().map_err(de::Error::custom)?,
             ))
         })
         .collect()
+}
+
+/// Remove surrounding square brackets from a string slice.
+///
+/// If the brackets are not in a pair, then the string is returned unchanged.
+///
+/// For example, an IPv6 address may be in brackets, `[::1]` to `::1`.
+fn strip_brackets(s: &str) -> &str {
+    s.strip_prefix('[')
+        .and_then(|s| s.strip_suffix(']'))
+        .unwrap_or(s)
 }
 
 /// IPC isolation mode for a [`Service`] container.
