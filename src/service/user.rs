@@ -1,6 +1,7 @@
-//! Provides [`UserOrGroup`] for the `user` and `group_add` fields of [`Service`](super::Service).
+//! Provides [`User`] and [`IdOrName`] for the `user` and `group_add` fields of
+//! [`Service`](super::Service).
 
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Display, Formatter, Write};
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use serde::{de, Deserialize, Deserializer, Serialize};
@@ -10,32 +11,160 @@ use crate::{common::key_impls, serde::forward_visitor};
 
 use crate::impl_from_str;
 
-/// User or group inside a [`Service`](super::Service) container.
+/// User and optional group used to run a [`Service`](super::Service) container's process.
+///
+/// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#user)
+#[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct User {
+    /// The UID or user [`Name`].
+    pub user: IdOrName,
+
+    /// Optional primary GID or group [`Name`] for the user.
+    pub group: Option<IdOrName>,
+}
+
+impl User {
+    /// Parse a [`User`] from a string in the format `{user}[:{group}]`.
+    ///
+    /// Users and groups may be a UID/GID ([`u32`]) or a [`Name`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a user or group [`Name`] is not valid, see [`Name::new()`].
+    pub fn parse<T>(user: T) -> Result<Self, InvalidNameError>
+    where
+        T: AsRef<str> + TryInto<IdOrName>,
+        T::Error: Into<InvalidNameError>,
+    {
+        if let Some((user, group)) = user.as_ref().split_once(':') {
+            Ok(Self {
+                user: user.parse()?,
+                group: Some(group.parse()?),
+            })
+        } else {
+            user.try_into().map(Into::into).map_err(Into::into)
+        }
+    }
+}
+
+impl From<IdOrName> for User {
+    fn from(user: IdOrName) -> Self {
+        Self { user, group: None }
+    }
+}
+
+impl From<u32> for User {
+    fn from(user: u32) -> Self {
+        Self::from(IdOrName::from(user))
+    }
+}
+
+impl From<Name> for User {
+    fn from(user: Name) -> Self {
+        Self::from(IdOrName::from(user))
+    }
+}
+
+impl From<(IdOrName, IdOrName)> for User {
+    fn from((user, group): (IdOrName, IdOrName)) -> Self {
+        Self {
+            user,
+            group: Some(group),
+        }
+    }
+}
+
+impl From<(u32, u32)> for User {
+    fn from((user, group): (u32, u32)) -> Self {
+        Self {
+            user: IdOrName::from(user),
+            group: Some(IdOrName::from(group)),
+        }
+    }
+}
+
+impl From<(Name, u32)> for User {
+    fn from((user, group): (Name, u32)) -> Self {
+        Self {
+            user: IdOrName::from(user),
+            group: Some(IdOrName::from(group)),
+        }
+    }
+}
+
+impl From<(u32, Name)> for User {
+    fn from((user, group): (u32, Name)) -> Self {
+        Self {
+            user: IdOrName::from(user),
+            group: Some(IdOrName::from(group)),
+        }
+    }
+}
+
+impl From<(Name, Name)> for User {
+    fn from((user, group): (Name, Name)) -> Self {
+        Self {
+            user: IdOrName::from(user),
+            group: Some(IdOrName::from(group)),
+        }
+    }
+}
+
+impl_from_str!(User => InvalidNameError);
+
+impl Display for User {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let Self { user, group } = self;
+
+        // Format is `{user}[:{group}]`.
+
+        Display::fmt(user, f)?;
+
+        if let Some(group) = group {
+            f.write_char(':')?;
+            Display::fmt(group, f)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl From<User> for String {
+    fn from(value: User) -> Self {
+        if value.group.is_some() {
+            value.to_string()
+        } else {
+            value.user.into()
+        }
+    }
+}
+
+/// [`User`] or group ID (UID/GID) or name inside a [`Service`](super::Service) container.
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(untagged)]
-pub enum UserOrGroup {
-    /// User Id (UID) or Group Id (GID).
+pub enum IdOrName {
+    /// A user ID (UID) or group ID (GID).
     Id(u32),
 
     /// A named user or group.
     Name(Name),
 }
 
-impl UserOrGroup {
-    /// Parse a [`UserOrGroup`] from a string.
+impl IdOrName {
+    /// Parse a [`IdOrName`] from a string.
     ///
-    /// If an unsigned integer, the string is parsed into an [`Id`](Self::Id), otherwise it is converted into
-    /// a [`Name`].
+    /// If an unsigned integer, the string is parsed into an [`Id`](Self::Id), otherwise it is
+    /// converted into a [`Name`].
     ///
     /// # Errors
     ///
     /// Returns an error if not an unsigned integer and the conversion into a [`Name`] fails.
-    pub fn parse<T>(user_or_group: T) -> Result<Self, T::Error>
+    pub fn parse<T>(id_or_name: T) -> Result<Self, T::Error>
     where
         T: AsRef<str> + TryInto<Name>,
     {
-        user_or_group.as_ref().parse().map_or_else(
-            |_| user_or_group.try_into().map(Self::Name),
+        id_or_name.as_ref().parse().map_or_else(
+            |_| id_or_name.try_into().map(Self::Name),
             |id| Ok(Self::Id(id)),
         )
     }
@@ -73,21 +202,21 @@ impl UserOrGroup {
     }
 }
 
-impl From<u32> for UserOrGroup {
+impl From<u32> for IdOrName {
     fn from(value: u32) -> Self {
         Self::Id(value)
     }
 }
 
-impl From<Name> for UserOrGroup {
+impl From<Name> for IdOrName {
     fn from(value: Name) -> Self {
         Self::Name(value)
     }
 }
 
-impl_from_str!(UserOrGroup => InvalidNameError);
+impl_from_str!(IdOrName => InvalidNameError);
 
-impl Display for UserOrGroup {
+impl Display for IdOrName {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Id(id) => Display::fmt(id, f),
@@ -96,26 +225,26 @@ impl Display for UserOrGroup {
     }
 }
 
-impl From<UserOrGroup> for String {
-    fn from(value: UserOrGroup) -> Self {
+impl From<IdOrName> for String {
+    fn from(value: IdOrName) -> Self {
         match value {
-            UserOrGroup::Id(id) => id.to_string(),
-            UserOrGroup::Name(name) => name.into(),
+            IdOrName::Id(id) => id.to_string(),
+            IdOrName::Name(name) => name.into(),
         }
     }
 }
 
-impl<'de> Deserialize<'de> for UserOrGroup {
+impl<'de> Deserialize<'de> for IdOrName {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         deserializer.deserialize_any(Visitor)
     }
 }
 
-/// [`de::Visitor`] for deserializing [`UserOrGroup`].
+/// [`de::Visitor`] for deserializing [`IdOrName`].
 struct Visitor;
 
 impl<'de> de::Visitor<'de> for Visitor {
-    type Value = UserOrGroup;
+    type Value = IdOrName;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
         formatter.write_str("an integer or string")
@@ -139,15 +268,15 @@ impl<'de> de::Visitor<'de> for Visitor {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        v.parse().map(UserOrGroup::Name).map_err(E::custom)
+        v.parse().map_err(E::custom)
     }
 
     fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-        v.try_into().map(UserOrGroup::Name).map_err(E::custom)
+        v.try_into().map_err(E::custom)
     }
 }
 
-/// [`UserOrGroup`] name.
+/// A user or group name.
 ///
 /// User and group names must:
 ///

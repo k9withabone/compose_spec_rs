@@ -19,7 +19,7 @@ pub mod network_config;
 pub mod platform;
 pub mod ports;
 mod ulimit;
-pub mod user_or_group;
+pub mod user;
 pub mod volumes;
 
 use std::{
@@ -38,10 +38,7 @@ use thiserror::Error;
 
 use crate::{
     impl_from_str,
-    serde::{
-        default_true, display_from_str_option, duration_option, duration_us_option, skip_true,
-        ItemOrListVisitor,
-    },
+    serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
     AsShortIter, Configs, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap,
     Map, MapKey, Networks, Secrets, ShortOrLong, StringOrNumber, Value,
 };
@@ -67,7 +64,7 @@ pub use self::{
     platform::Platform,
     ports::Ports,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
-    user_or_group::UserOrGroup,
+    user::{IdOrName, User},
     volumes::{AbsolutePath, Volumes},
 };
 
@@ -351,7 +348,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#group_add)
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
-    pub group_add: IndexSet<UserOrGroup>,
+    pub group_add: IndexSet<IdOrName>,
 
     /// A check that is run to determine whether the service container is "healthy".
     ///
@@ -648,12 +645,8 @@ pub struct Service {
     /// The default is set by the image or is `root`.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#user)
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        serialize_with = "display_from_str_option::serialize"
-    )]
-    pub user: Option<UserOrGroup>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<User>,
 
     /// User namespace mode for the container.
     ///
