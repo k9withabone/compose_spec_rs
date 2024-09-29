@@ -20,6 +20,8 @@ use thiserror::Error;
 
 use crate::{impl_from_str, serde::FromStrOrU16Visitor, Extensions, ShortOrLong};
 
+use super::strip_brackets;
+
 /// [`Service`](super::Service) container ports to publish to the host.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#ports)
@@ -308,7 +310,7 @@ impl FromStr for ShortPort {
             })
             .map(|(host_ip, rest)| {
                 s = rest;
-                host_ip
+                strip_brackets(host_ip)
                     .parse()
                     .map_err(|source| ParseShortPortError::IpAddr {
                         source,
@@ -973,6 +975,8 @@ pub(super) mod tests {
     use super::*;
 
     mod short_port {
+        use std::net::Ipv6Addr;
+
         use super::*;
 
         proptest! {
@@ -985,6 +989,22 @@ pub(super) mod tests {
             fn round_trip(port in short_port()) {
                 prop_assert_eq!(&port, &port.to_string().parse()?);
             }
+        }
+
+        #[test]
+        fn host_ip_brackets() -> Result<(), ParseShortPortError> {
+            let port = ShortPort {
+                host_ip: Some(IpAddr::V6(Ipv6Addr::LOCALHOST)),
+                ranges: ShortRanges {
+                    host: Some(80.into()),
+                    container: 80.into(),
+                },
+                protocol: None,
+            };
+            assert_eq!("[::1]:80:80".parse::<ShortPort>()?, port);
+            assert_eq!("::1:80:80".parse::<ShortPort>()?, port);
+
+            Ok(())
         }
     }
 
