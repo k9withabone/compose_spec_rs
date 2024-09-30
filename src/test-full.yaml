@@ -392,6 +392,9 @@ services:
           - 127.0.0.1
           - ::1
         mac_address: 92:d0:c6:0a:29:33
+        driver_opts:
+          foo: "bar"
+          baz: 1
         priority: 100
         x-test: test
 
