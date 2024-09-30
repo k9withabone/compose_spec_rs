@@ -564,7 +564,7 @@ services:
         soft: 100
         hard: 200
         x-test: test
-    user: user
+    user: user:group
     userns_mode: userns_mode
     volumes:
       - /container
