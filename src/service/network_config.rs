@@ -15,7 +15,8 @@ use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Seri
 use thiserror::Error;
 
 use crate::{
-    impl_from_str, AsShortIter, Extensions, Identifier, InvalidIdentifierError, ShortOrLong,
+    impl_from_str, AsShortIter, Extensions, Identifier, InvalidIdentifierError, MapKey,
+    ShortOrLong, StringOrNumber,
 };
 
 use super::Hostname;
@@ -31,7 +32,7 @@ pub type Networks = ShortOrLong<IndexSet<Identifier>, IndexMap<Identifier, Optio
 /// flattened into [`Service`].
 ///
 /// [`Service`]: super::Service
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NetworkConfig {
     /// [`Service`](super::Service) container's network mode.
     ///
@@ -336,7 +337,7 @@ impl From<NetworkMode> for Cow<'static, str> {
 /// How a [`Service`](super::Service) container should connect to a [`Network`](crate::Network).
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#networks)
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Network {
     /// Alternative hostnames for the service on the network.
     ///
@@ -378,6 +379,12 @@ pub struct Network {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mac_address: Option<MacAddress>,
 
+    /// Driver-dependent options.
+    ///
+    /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#driver_opts)
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub driver_opts: IndexMap<MapKey, StringOrNumber>,
+
     /// Indicates the order in which the service container will connect to the network.
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#priority)
@@ -401,6 +408,7 @@ impl Network {
             ipv6_address,
             link_local_ips,
             mac_address,
+            driver_opts,
             priority,
             extensions,
         } = self;
@@ -410,6 +418,7 @@ impl Network {
             && ipv6_address.is_none()
             && link_local_ips.is_empty()
             && mac_address.is_none()
+            && driver_opts.is_empty()
             && priority.is_none()
             && priority.is_none()
             && extensions.is_empty()
