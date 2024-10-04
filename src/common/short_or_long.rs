@@ -27,7 +27,7 @@ use crate::{
         env_file,
         ports::{Port, ShortPort},
         volumes::{Mount, ShortVolume},
-        Build, ConfigOrSecret, Ulimit,
+        Build, ConfigOrSecret, Limit, Ulimit,
     },
     Identifier, Include,
 };
@@ -246,6 +246,18 @@ impl_from_short! {
 impl<L> From<String> for ShortOrLong<PathBuf, L> {
     fn from(value: String) -> Self {
         Self::Short(value.into())
+    }
+}
+
+impl<T, L> From<Limit<T>> for ShortOrLong<Limit<T>, L> {
+    fn from(value: Limit<T>) -> Self {
+        Self::Short(value)
+    }
+}
+
+impl<L> From<u64> for ShortOrLong<Limit<u64>, L> {
+    fn from(value: u64) -> Self {
+        Limit::Value(value).into()
     }
 }
 

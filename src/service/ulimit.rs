@@ -8,13 +8,15 @@ use thiserror::Error;
 
 use crate::{common::key_impls, AsShort, Extensions, ShortOrLong};
 
+use super::Limit;
+
 /// Override the default ulimits for a [`Service`](super::Service) container.
 ///
-/// Ulimits are defined as map from a [`Resource`] to either a singe limit ([`u64`]) or a mapping
-/// of a soft and hard limit ([`Ulimit`]).
+/// Ulimits are defined as map from a [`Resource`] to either a singe limit ([`Limit<u64>`]) or a
+/// mapping of a soft and hard limit ([`Ulimit`]).
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#ulimits)
-pub type Ulimits = IndexMap<Resource, ShortOrLong<u64, Ulimit>>;
+pub type Ulimits = IndexMap<Resource, ShortOrLong<Limit<u64>, Ulimit>>;
 
 /// [`Ulimit`] resource name (e.g. "nofile").
 ///
@@ -77,10 +79,10 @@ key_impls!(Resource => InvalidResourceError);
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Ulimit {
     /// Soft limit.
-    pub soft: u64,
+    pub soft: Limit<u64>,
 
     /// Hard limit.
-    pub hard: u64,
+    pub hard: Limit<u64>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
@@ -90,7 +92,7 @@ pub struct Ulimit {
 }
 
 impl AsShort for Ulimit {
-    type Short = u64;
+    type Short = Limit<u64>;
 
     fn as_short(&self) -> Option<&Self::Short> {
         let Self {
@@ -105,6 +107,12 @@ impl AsShort for Ulimit {
 
 impl From<u64> for Ulimit {
     fn from(value: u64) -> Self {
+        Limit::Value(value).into()
+    }
+}
+
+impl From<Limit<u64>> for Ulimit {
+    fn from(value: Limit<u64>) -> Self {
         Self {
             soft: value,
             hard: value,

@@ -32,6 +32,12 @@ impl From<u32> for Limit<u32> {
     }
 }
 
+impl From<u64> for Limit<u64> {
+    fn from(value: u64) -> Self {
+        Self::Value(value)
+    }
+}
+
 impl From<ByteValue> for Limit<ByteValue> {
     fn from(value: ByteValue) -> Self {
         Self::Value(value)

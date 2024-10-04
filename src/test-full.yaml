@@ -84,6 +84,10 @@ services:
           soft: 100
           hard: 200
           x-test: test
+        unlimited: -1
+        unlimitedlong:
+            soft: -1
+            hard: -1
       platforms:
         - linux/amd64
         - linux/arm
@@ -567,6 +571,10 @@ services:
         soft: 100
         hard: 200
         x-test: test
+      unlimited: -1
+      unlimitedlong:
+          soft: -1
+          hard: -1
     user: user:group
     userns_mode: userns_mode
     volumes:
