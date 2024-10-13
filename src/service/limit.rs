@@ -2,8 +2,9 @@
 //! [`Service`](super::Service).
 
 use std::{
-    fmt::{self, Formatter},
+    fmt::{self, Display, Formatter},
     marker::PhantomData,
+    str::FromStr,
 };
 
 use serde::{
@@ -41,6 +42,27 @@ impl From<u64> for Limit<u64> {
 impl From<ByteValue> for Limit<ByteValue> {
     fn from(value: ByteValue) -> Self {
         Self::Value(value)
+    }
+}
+
+impl<T: Display> Display for Limit<T> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Value(value) => value.fmt(f),
+            Self::Unlimited => f.write_str("-1"),
+        }
+    }
+}
+
+impl<T: FromStr> FromStr for Limit<T> {
+    type Err = T::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "-1" {
+            Ok(Self::Unlimited)
+        } else {
+            s.parse().map(Self::Value)
+        }
     }
 }
 
@@ -88,10 +110,18 @@ impl<'de, T: Deserialize<'de>> de::Visitor<'de> for Visitor<T> {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        T::deserialize(v.into_deserializer()).map(Limit::Value)
+        if v == "-1" {
+            Ok(Limit::Unlimited)
+        } else {
+            T::deserialize(v.into_deserializer()).map(Limit::Value)
+        }
     }
 
     fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
-        T::deserialize(v.into_deserializer()).map(Limit::Value)
+        if v == "-1" {
+            Ok(Limit::Unlimited)
+        } else {
+            T::deserialize(v.into_deserializer()).map(Limit::Value)
+        }
     }
 }
