@@ -90,7 +90,7 @@ unwrap_used = "warn"
 use_debug = "warn"
 
 [workspace.dependencies]
-compose_spec_macros = { version = "=0.1.0", path = "compose_spec_macros" }
+compose_spec_macros = { version = "=0.1.1", path = "compose_spec_macros" }
 serde = "1.0.147"
 serde_yaml = "0.9"
 
@@ -227,7 +227,7 @@ sort_commits = "oldest"
 
 [package]
 name = "compose_spec"
-version = "0.3.0-alpha.3"
+version = "0.3.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
