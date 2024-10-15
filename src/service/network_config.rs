@@ -203,6 +203,9 @@ pub enum NetworkMode {
     /// Gives the container access to the specified service only.
     Service(Identifier),
 
+    /// Gives the service container access to the specified container.
+    Container(Identifier),
+
     /// Other network mode.
     Other(String),
 }
@@ -216,6 +219,9 @@ impl NetworkMode {
 
     /// [`Self::Service`] string prefix.
     const SERVICE_PREFIX: &'static str = "service:";
+
+    /// [`Self::Container`] string prefix.
+    const CONTAINER_PREFIX: &'static str = "container:";
 
     /// Parse a [`NetworkMode`] from a string.
     ///
@@ -234,6 +240,8 @@ impl NetworkMode {
             Ok(Self::Host)
         } else if let Some(service) = s.strip_prefix(Self::SERVICE_PREFIX) {
             service.parse().map(Self::Service).map_err(Into::into)
+        } else if let Some(container) = s.strip_prefix(Self::CONTAINER_PREFIX) {
+            container.parse().map(Self::Container).map_err(Into::into)
         } else {
             Ok(Self::Other(network_mode.into()))
         }
@@ -275,6 +283,26 @@ impl NetworkMode {
         }
     }
 
+    /// Returns `true` if the network mode is [`Container`].
+    ///
+    /// [`Container`]: NetworkMode::Container
+    #[must_use]
+    pub const fn is_container(&self) -> bool {
+        matches!(self, Self::Container(..))
+    }
+
+    /// Returns [`Some`] if the network mode is [`Container`].
+    ///
+    /// [`Container`]: NetworkMode::Container
+    #[must_use]
+    pub const fn as_container(&self) -> Option<&Identifier> {
+        if let Self::Container(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
     /// Returns `true` if the network mode is [`Other`].
     ///
     /// [`Other`]: NetworkMode::Other
@@ -298,7 +326,7 @@ impl NetworkMode {
 
 /// Error returned when [parsing](NetworkMode::parse()) a [`NetworkMode`] from a string.
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
-#[error("error parsing service network mode")]
+#[error("error parsing service or container network mode")]
 pub struct ParseNetworkModeError(#[from] InvalidIdentifierError);
 
 impl_from_str!(NetworkMode => ParseNetworkModeError);
@@ -309,6 +337,7 @@ impl Display for NetworkMode {
             Self::None => f.write_str(Self::NONE),
             Self::Host => f.write_str(Self::HOST),
             Self::Service(service) => write!(f, "{}{service}", Self::SERVICE_PREFIX),
+            Self::Container(container) => write!(f, "{}{container}", Self::CONTAINER_PREFIX),
             Self::Other(other) => f.write_str(other),
         }
     }

@@ -378,6 +378,9 @@ services:
   network_mode-service:
     network_mode: service:service
 
+  network_mode-container:
+    network_mode: container:container
+
   network_mode-other:
     network_mode: other
 
