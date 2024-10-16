@@ -90,7 +90,7 @@ unwrap_used = "warn"
 use_debug = "warn"
 
 [workspace.dependencies]
-compose_spec_macros = { version = "=0.1.0", path = "compose_spec_macros" }
+compose_spec_macros = { version = "=0.1.1", path = "compose_spec_macros" }
 serde = "1.0.147"
 serde_yaml = "0.9"
 
@@ -133,12 +133,12 @@ body = """
     - {% if commit.breaking %}**BREAKING** {% endif -%}
       {% if commit.scope %}*({{ commit.scope }})* {% endif -%}
       {{ commit.message | upper_first | trim }}\
-      {% if commit.github.username and commit.github.username != remote.github.owner %} by \
-        [@{{ commit.github.username }}](https://github.com/{{ commit.github.username }})\
+      {% if commit.remote.username and commit.remote.username != remote.github.owner %} by \
+        [@{{ commit.remote.username }}](https://github.com/{{ commit.remote.username }})\
       {%- endif -%}
-      {% if commit.github.pr_number %} in \
-        [#{{ commit.github.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.github.pr_number }})\
-      {%- endif -%}
+      {% if commit.remote.pr_number %} in \
+        [#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }})\
+      {%- endif -%}.
       {%- set fixes = commit.footers | filter(attribute="token", value="Fixes") -%}
       {%- set closes = commit.footers | filter(attribute="token", value="Closes") -%}
       {% for footer in fixes | concat(with=closes) -%}
@@ -175,13 +175,14 @@ footer = """
     {% if release.previous.version -%}
       [{{ release.version | trim_start_matches(pat="v") }}]: \
         {{ self::remote_url() }}/compare/{{ release.previous.version }}...{{ release.version }}
-    {% endif -%}
+    {%- else %}
+      {#- compare against the initial commit for the first version #}
+      [0.1.0]: {{ self::remote_url() }}/compare/51a31d82c34c13cf8881bf8a9cbda74a6b6aa9b6...v0.1.0
+    {%- endif -%}
   {% else -%}
     [Unreleased]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...HEAD
   {% endif -%}
 {%- endfor -%}
-{#- compare against the initial commit for the first version -#}
-[0.1.0]: {{ self::remote_url() }}/compare/51a31d82c34c13cf8881bf8a9cbda74a6b6aa9b6...v0.1.0
 """
 # remove the leading and trailing whitespace from the templates
 trim = true
@@ -226,7 +227,7 @@ sort_commits = "oldest"
 
 [package]
 name = "compose_spec"
-version = "0.3.0-alpha.3"
+version = "0.3.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
