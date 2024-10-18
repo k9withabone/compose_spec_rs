@@ -157,6 +157,7 @@ impl Port {
     /// # Errors
     ///
     /// Returns ownership if this long syntax cannot be represented as the short syntax.
+    #[allow(clippy::result_large_err)]
     pub fn into_short(self) -> Result<ShortPort, Self> {
         if self.name.is_none()
             && self.app_protocol.is_none()
