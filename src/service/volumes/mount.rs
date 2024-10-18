@@ -186,6 +186,7 @@ impl Mount {
     /// # Errors
     ///
     /// Returns ownership if this long syntax cannot be represented as the short syntax.
+    #[allow(clippy::result_large_err)]
     pub fn into_short(self) -> Result<ShortVolume, Self> {
         match self {
             Self::Volume(volume) => volume.into_short().map_err(Self::Volume),
@@ -269,6 +270,7 @@ impl Volume {
     /// # Errors
     ///
     /// Returns ownership if this long syntax cannot be represented as the short syntax.
+    #[allow(clippy::result_large_err)]
     pub fn into_short(self) -> Result<ShortVolume, Self> {
         match self {
             Self {
@@ -399,6 +401,7 @@ impl Bind {
     /// # Errors
     ///
     /// Returns ownership if this long syntax cannot be represented as the short syntax.
+    #[allow(clippy::result_large_err)]
     pub fn into_short(self) -> Result<ShortVolume, Self> {
         match self {
             Self {
