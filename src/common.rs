@@ -41,6 +41,7 @@ pub use self::{
 /// [anchors and aliases](https://github.com/compose-spec/compose-spec/blob/master/10-fragments.md).
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/11-extension.md)
+#[allow(clippy::too_long_first_doc_paragraph)] // false positive, see https://github.com/rust-lang/rust-clippy/issues/13315
 pub type Extensions = IndexMap<ExtensionKey, YamlValue>;
 
 /// A single item or a list of unique items.
