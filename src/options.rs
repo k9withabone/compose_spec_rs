@@ -1,8 +1,11 @@
 //! [`Options`] builder for deserialization options for a [`Compose`] file.
 
-use std::io::Read;
+use std::{collections::HashMap, io::Read};
 
-use crate::{Compose, YamlValue};
+use crate::{
+    variable_interpolation::{yaml_walk::interpolate_value, VariableResolver},
+    Compose, YamlValue,
+};
 
 /// Deserialization options builder for a [`Compose`] file.
 #[allow(missing_copy_implementations)] // Will include interpolation vars as a HashMap.
@@ -10,6 +13,8 @@ use crate::{Compose, YamlValue};
 pub struct Options {
     /// Whether to perform merging of `<<` keys.
     apply_merge: bool,
+    /// the variables to perform environment variable interpolation on, if any
+    interpolate_vars: Option<VariableResolver>,
 }
 
 impl Options {
@@ -49,10 +54,58 @@ impl Options {
         self
     }
 
+    /// Add a map of values to interpolate variable placeholders in YAML before constructing the `Compose`
+    /// instance.
+    /// The given `HashMap` could be sourced from dotenv files or the processes' environment, or both.
+    /// Can be called multiple times to merge different variable sources.
+    /// The last mapping for any given variable name wins.
+    ///
+    /// ```
+    /// use compose_spec::Compose;
+    /// use std::collections::HashMap;
+    ///
+    /// let yaml = "\
+    /// services:
+    ///   one:
+    ///     environment:
+    ///       FOO: $FOO               # simple variable without default
+    ///       BAR: ${BAR-Bar-Default} # braced variable with default value
+    ///       BAZ: $$ESCAPED          # double-$ to write a literal $
+    /// ";
+    ///
+    /// let vars = HashMap::from([
+    ///    ("FOO".into(), "Foo-Value".into())
+    /// ]);
+    ///
+    /// let compose = Compose::options()
+    ///     .interpolate_vars(vars)
+    ///     .from_yaml_str(yaml)
+    ///     .unwrap();
+    ///
+    /// let one_env = compose.services["one"]
+    ///     .environment
+    ///     .clone()
+    ///     .into_map()
+    ///     .unwrap();
+    ///
+    /// assert_eq!(one_env["FOO"].as_ref().unwrap().as_string().unwrap(), "Foo-Value");
+    /// assert_eq!(one_env["BAR"].as_ref().unwrap().as_string().unwrap(), "Bar-Default");
+    /// assert_eq!(one_env["BAZ"].as_ref().unwrap().as_string().unwrap(), "$ESCAPED");
+    /// ```
+    pub fn interpolate_vars(&mut self, vars: HashMap<String, String>) -> &mut Self {
+        let mut resolver = self.interpolate_vars.take().unwrap_or_default();
+        resolver.add_vars(vars);
+        let _ = self.interpolate_vars.replace(resolver);
+        self
+    }
+
     /// Return `true` if any options are set.
     const fn any(&self) -> bool {
-        let Self { apply_merge } = *self;
-        apply_merge
+        let Self {
+            apply_merge,
+            interpolate_vars,
+        } = self;
+        *apply_merge || interpolate_vars.is_some()
     }
 
     /// Use the set options to deserialize a [`Compose`] file from a string slice of YAML.
@@ -103,6 +156,11 @@ impl Options {
         if self.apply_merge {
             value.apply_merge()?;
         }
+
+        if let Some(vars) = &self.interpolate_vars {
+            interpolate_value(vars, &mut value)?;
+        }
+
         serde_yaml::from_value(value)
     }
 }

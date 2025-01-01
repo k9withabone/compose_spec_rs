@@ -105,6 +105,7 @@ mod options;
 pub mod secret;
 mod serde;
 pub mod service;
+mod variable_interpolation;
 mod volume;
 
 use std::{
