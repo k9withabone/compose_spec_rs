@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{service::ByteValue, Extensions, Identifier};
 
-use super::{AbsolutePath, HostPath, SELinux, ShortOptions, ShortVolume};
+use super::{HostPath, PosixAbsolutePath, SELinux, ShortOptions, ShortVolume};
 
 /// Long volume mount syntax for a [`Service`](crate::Service) container.
 ///
@@ -634,7 +634,7 @@ impl Tmpfs {
 
     /// Create a [`Tmpfs`] [`Mount`] from the `target` path within the container.
     #[must_use]
-    pub fn from_target(target: AbsolutePath) -> Self {
+    pub fn from_target(target: PosixAbsolutePath) -> Self {
         Self::new(Common::new(target))
     }
 }
@@ -645,8 +645,8 @@ impl From<Common> for Tmpfs {
     }
 }
 
-impl From<AbsolutePath> for Tmpfs {
-    fn from(target: AbsolutePath) -> Self {
+impl From<PosixAbsolutePath> for Tmpfs {
+    fn from(target: PosixAbsolutePath) -> Self {
         Self::from_target(target)
     }
 }
@@ -765,7 +765,7 @@ impl From<(String, Common)> for Cluster {
 #[derive(Serialize, Deserialize, Debug, Clone, Eq)]
 pub struct Common {
     /// Path within the container of the mount.
-    pub target: AbsolutePath,
+    pub target: PosixAbsolutePath,
 
     /// Whether the mount is set as read-only.
     #[serde(default, skip_serializing_if = "Not::not")]
@@ -787,7 +787,7 @@ pub struct Common {
 impl Common {
     /// Create new [`Common`] [`Mount`] options from a `target`.
     #[must_use]
-    pub fn new(target: AbsolutePath) -> Self {
+    pub fn new(target: PosixAbsolutePath) -> Self {
         Self {
             target,
             read_only: false,
@@ -829,8 +829,8 @@ impl Hash for Common {
     }
 }
 
-impl From<AbsolutePath> for Common {
-    fn from(target: AbsolutePath) -> Self {
+impl From<PosixAbsolutePath> for Common {
+    fn from(target: PosixAbsolutePath) -> Self {
         Self::new(target)
     }
 }

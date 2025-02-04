@@ -65,7 +65,7 @@ pub use self::{
     ports::Ports,
     ulimit::{InvalidResourceError, Resource, Ulimit, Ulimits},
     user::{IdOrName, User},
-    volumes::{AbsolutePath, Volumes},
+    volumes::{PosixAbsolutePath, Volumes},
 };
 
 /// A service is an abstract definition of a computing resource within an application which can be
@@ -626,7 +626,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#tmpfs)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tmpfs: Option<ItemOrList<AbsolutePath>>,
+    pub tmpfs: Option<ItemOrList<PosixAbsolutePath>>,
 
     /// Whether to run the container with a TTY.
     ///
@@ -672,7 +672,7 @@ pub struct Service {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#working_dir)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub working_dir: Option<AbsolutePath>,
+    pub working_dir: Option<PosixAbsolutePath>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///
@@ -1565,19 +1565,19 @@ impl From<VolumesFromSource> for String {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use indexmap::{indexmap, indexset};
+    use proptest::prelude::prop;
     use proptest::{
-        arbitrary::{any, Arbitrary},
-        path::PathParams,
+        arbitrary::any,
         prop_assert_eq, prop_oneof, proptest,
         strategy::{Just, Strategy},
     };
 
-    use super::*;
-
     /// [`Strategy`] for generating [`PathBuf`]s that do not contain colons.
     pub(super) fn path_no_colon() -> impl Strategy<Value = PathBuf> {
-        PathBuf::arbitrary_with(PathParams::default().with_component_regex("[^:]*"))
+        prop::collection::vec("[^:/]+", 1..5) // Generate path components
+            .prop_map(|components| PathBuf::from(components.join("/"))) // Join with "/"
     }
 
     mod volumes_from {

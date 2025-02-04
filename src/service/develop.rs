@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Extensions;
 
-use super::AbsolutePath;
+use super::PosixAbsolutePath;
 
 /// Development constraints and workflows for maintaining a container in sync with source.
 ///
@@ -50,7 +50,7 @@ pub struct WatchRule {
     ///
     /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/develop.md#target)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub target: Option<AbsolutePath>,
+    pub target: Option<PosixAbsolutePath>,
 
     /// Extension values, which are (de)serialized via flattening.
     ///

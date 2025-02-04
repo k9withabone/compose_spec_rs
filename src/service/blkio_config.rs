@@ -9,7 +9,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::{AbsolutePath, ByteValue};
+use super::{ByteValue, PosixAbsolutePath};
 
 /// Configuration options to set block IO limits for a [`Service`](super::Service).
 ///
@@ -81,7 +81,7 @@ impl BlkioConfig {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BpsLimit {
     /// Symbolic path to the affected device.
-    pub path: AbsolutePath,
+    pub path: PosixAbsolutePath,
 
     /// Bytes per second rate limit.
     pub rate: ByteValue,
@@ -93,7 +93,7 @@ pub struct BpsLimit {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct IopsLimit {
     /// Symbolic path to the affected device.
-    pub path: AbsolutePath,
+    pub path: PosixAbsolutePath,
 
     /// Operations per second rate limit.
     pub rate: u64,
@@ -105,7 +105,7 @@ pub struct IopsLimit {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct WeightDevice {
     /// Symbolic path to the affected device.
-    pub path: AbsolutePath,
+    pub path: PosixAbsolutePath,
 
     /// Proportion of bandwidth allocated to the device.
     pub weight: Weight,
