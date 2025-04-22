@@ -261,15 +261,12 @@ impl<'s> Parser<'s> {
             _ => ModifierCondition::WhenUnset,
         };
 
-        let mut mod_val = String::new();
         let modifier: Modifier = match self.rest.next() {
             Some('-') => {
-                self.parse_modifier_value(&mut mod_val)?;
-                DefaultValue(cond, mod_val)
+                DefaultValue(cond, self.parse_modifier_value()?)
             }
             Some('?') => {
-                self.parse_modifier_value(&mut mod_val)?;
-                ErrorMessage(cond, mod_val)
+                ErrorMessage(cond, self.parse_modifier_value()?)
             }
             Some(character) => terminate!(self, "expected one of ? or -, got {}", character),
             None => terminate!(self, "input ended unexpectedly"),
@@ -279,7 +276,8 @@ impl<'s> Parser<'s> {
     }
 
     /// parse the contents of the error message or default value of a braced variable
-    fn parse_modifier_value(&mut self, output: &mut String) -> Result {
+    fn parse_modifier_value(&mut self) -> std::result::Result<String, ParseError> {
+        let mut output = String::new();
         loop {
             match self.rest.peek() {
                 Some('}') => {
@@ -294,7 +292,7 @@ impl<'s> Parser<'s> {
                 None => terminate!(self, "input ended unexpectedly"),
             }
         }
-        Ok(())
+        Ok(output)
     }
 }
 
