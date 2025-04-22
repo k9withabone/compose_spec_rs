@@ -172,16 +172,31 @@ impl<'s> Parser<'s> {
                     break;
                 }
                 Some(':' | '?' | '-') => {
-                    self.consume_whitespace();
                     modifier.replace(self.parse_modifier()?);
                     break;
                 }
-                Some(character) if character.is_whitespace() => {
-                    let _ = self.rest.next();
-                    break;
+                Some(whitespace_char) if whitespace_char.is_whitespace() => {
+                    self.rest.next();
+                    // Whitespace marks end of variable name
+                    // Proceed forward until some variable-name terminator is found
+                    self.consume_whitespace();
+                    match self.rest.peek() {
+                        Some('}') => {
+                            self.rest.next();
+                            break;
+                        }
+                        Some(':' | '?' | '-') => {
+                            modifier.replace(self.parse_modifier()?);
+                            break;
+                        }
+                        Some(&c) => {
+                            terminate!(self, "expected one of }}:?- , got {}", c);
+                        }
+                        None => terminate!(self, "input ended unexpectedly"),
+                    }
                 }
-                Some(character) => {
-                    name.push(*character);
+                Some(c) => {
+                    name.push(*c);
                     let _ = self.rest.next();
                 }
                 None => terminate!(self, "input ended unexpectedly"),
@@ -223,13 +238,11 @@ impl<'s> Parser<'s> {
 
     /// consume characters from source until the first non-whitespace character is encountered
     fn consume_whitespace(&mut self) {
-        while let Some(character) = self.rest.peek() {
-            if character.is_whitespace() {
-                let _ = self.rest.next();
-            } else {
-                break;
-            }
-        }
+        while self
+            .rest
+            .next_if(|c: &char| char::is_whitespace(*c))
+            .is_some()
+        {}
     }
 
     /// check for a modifier or default value. these can contain nested variables.
@@ -319,6 +332,14 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_end_braces_with_whitespace() {
+        let mut res = VariableResolver::default();
+        res.add_vars(HashMap::from([("KEY".into(), "VALUE".into())]));
+        Parser::start(&res, "${KEY ")
+            .expect_err("Closed '{' with a whitespace. Input: \"${KEY \"; got");
+    }
+    
     #[test]
     fn with_unterminated_brace() {
         let res = VariableResolver::default();
