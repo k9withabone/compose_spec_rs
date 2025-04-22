@@ -43,7 +43,7 @@ enum ModifierCondition {
 }
 
 impl<'s> Parser<'s> {
-    /// parse the given `String` and return a new `String`, replacing  any encountered
+    /// parse the given `String` and return a new `String`, replacing any encountered
     /// variables with the value returned by `vars`
     pub(super) fn start(vars: &'s VariableResolver, source: &'s str) -> serde_yaml::Result<String> {
         let mut parser = Self {
@@ -78,7 +78,7 @@ impl<'s> Parser<'s> {
         // check that the iterator points to a $ and consume it
         match self.rest.peek() {
             Some('$') => {
-                let _ = self.rest.next();
+                self.rest.next();
             }
             _ => return Ok(()),
         }
@@ -87,7 +87,7 @@ impl<'s> Parser<'s> {
         // if not, continue with a braced or non-braced variable.
         match self.rest.peek() {
             Some('$') => {
-                let _ = self.rest.next();
+                self.rest.next();
                 self.output.push('$');
                 Ok(())
             }
@@ -102,7 +102,7 @@ impl<'s> Parser<'s> {
             Some('$') | None => (),
             Some(character) => {
                 self.output.push(*character);
-                let _ = self.rest.next();
+                self.rest.next();
             }
         }
     }
@@ -133,10 +133,10 @@ impl<'s> Parser<'s> {
             None => terminate!(self, "input ended unexpectedly"),
         }
 
-        // consume & push until we know the variable name ended.
+        // consume and push until we know the variable name ended.
         while let Some(character @ ('a'..='z' | 'A'..='Z' | '0'..='9' | '_')) = self.rest.peek() {
             name.push(*character);
-            let _ = self.rest.next();
+            self.rest.next();
         }
 
         if let Some(value) = self.env.get(&name) {
@@ -163,12 +163,12 @@ impl<'s> Parser<'s> {
             None => terminate!(self, "input ended unexpectedly"),
         }
 
-        // consume & push until we know the variable name ended.
+        // consume and push until we know the variable name ended.
         let mut modifier: Option<Modifier> = None;
         loop {
             match self.rest.peek() {
                 Some('}') => {
-                    let _ = self.rest.next();
+                    self.rest.next();
                     break;
                 }
                 Some(':' | '?' | '-') => {
@@ -177,7 +177,7 @@ impl<'s> Parser<'s> {
                 }
                 Some(whitespace_char) if whitespace_char.is_whitespace() => {
                     self.rest.next();
-                    // Whitespace marks end of variable name
+                    // Whitespace marks the end of variable name
                     // Proceed forward until some variable-name terminator is found
                     self.consume_whitespace();
                     match self.rest.peek() {
@@ -197,37 +197,40 @@ impl<'s> Parser<'s> {
                 }
                 Some(c) => {
                     name.push(*c);
-                    let _ = self.rest.next();
+                    self.rest.next();
                 }
                 None => terminate!(self, "input ended unexpectedly"),
             }
         }
 
-        let value: &str = if let Some(value) = self.env.get(&name) {
-            if value.is_empty() {
+        let value: &str = match self.env.get(&name) {
+            Some(value) => {
+                if value.is_empty() {
+                    use Modifier::{DefaultValue, ErrorMessage};
+                    use ModifierCondition::{WhenUnset, WhenUnsetOrEmpty};
+
+                    match modifier {
+                        Some(DefaultValue(WhenUnsetOrEmpty, ref default)) => default,
+                        Some(ErrorMessage(WhenUnsetOrEmpty, err_msg)) => {
+                            terminate!(self, "empty variable: {} ({})", name, err_msg)
+                        }
+                        Some(DefaultValue(WhenUnset, _) | ErrorMessage(WhenUnset, _)) | None => "",
+                    }
+                } else {
+                    value
+                }
+            }
+            None => {
                 use Modifier::{DefaultValue, ErrorMessage};
                 use ModifierCondition::{WhenUnset, WhenUnsetOrEmpty};
-
                 match modifier {
-                    Some(DefaultValue(WhenUnsetOrEmpty, ref default)) => default,
-                    Some(ErrorMessage(WhenUnsetOrEmpty, err_msg)) => {
-                        terminate!(self, "empty variable: {} ({})", name, err_msg)
+                    Some(DefaultValue(WhenUnset | WhenUnsetOrEmpty, ref default)) => default,
+                    Some(ErrorMessage(WhenUnset | WhenUnsetOrEmpty, err_msg)) => {
+                        terminate!(self, "unbound variable: {} ({})", name, err_msg)
                     }
-                    Some(DefaultValue(WhenUnset, _) | ErrorMessage(WhenUnset, _)) | None => "",
-                }
-            } else {
-                value
-            }
-        } else {
-            use Modifier::{DefaultValue, ErrorMessage};
-            use ModifierCondition::{WhenUnset, WhenUnsetOrEmpty};
-            match modifier {
-                Some(DefaultValue(WhenUnset | WhenUnsetOrEmpty, ref default)) => default,
-                Some(ErrorMessage(WhenUnset | WhenUnsetOrEmpty, err_msg)) => {
-                    terminate!(self, "unbound variable: {} ({})", name, err_msg)
-                }
-                None => {
-                    terminate!(self, "unbound variable: {}", name)
+                    None => {
+                        terminate!(self, "unbound variable: {}", name)
+                    }
                 }
             }
         };
@@ -251,7 +254,7 @@ impl<'s> Parser<'s> {
 
         let cond = match self.rest.peek() {
             Some(':') => {
-                let _ = self.rest.next();
+                self.rest.next();
                 ModifierCondition::WhenUnsetOrEmpty
             }
             // error cases (EOF, missing ? or -) are handled below.
@@ -280,13 +283,13 @@ impl<'s> Parser<'s> {
         loop {
             match self.rest.peek() {
                 Some('}') => {
-                    let _ = self.rest.next();
+                    self.rest.next();
                     break;
                 }
                 Some('$') => self.parse_variable_start()?,
                 Some(character) => {
                     output.push(*character);
-                    let _ = self.rest.next();
+                    self.rest.next();
                 }
                 None => terminate!(self, "input ended unexpectedly"),
             }
@@ -339,7 +342,7 @@ mod tests {
         Parser::start(&res, "${KEY ")
             .expect_err("Closed '{' with a whitespace. Input: \"${KEY \"; got");
     }
-    
+
     #[test]
     fn with_unterminated_brace() {
         let res = VariableResolver::default();
