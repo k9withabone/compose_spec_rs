@@ -5,7 +5,7 @@ use super::VariableResolver;
 use std::{iter::Peekable, str::Chars};
 
 /// the result type for the parser
-type Result = std::result::Result<(), ParseError>;
+type Result<T> = std::result::Result<T, ParseError>;
 
 #[derive(Debug, Clone)]
 /// the struct containing the state of the parser during the parsing process
@@ -59,7 +59,7 @@ impl<'s> Parser<'s> {
 
     /// entry point into the parsing logic. after this returns Ok, self.output
     /// contains the interpolated input string.
-    fn parse_string(&mut self) -> Result {
+    fn parse_string(&mut self) -> Result<()> {
         loop {
             if self.rest.peek().is_none() {
                 // nothing to parse anymore, we're done
@@ -74,7 +74,7 @@ impl<'s> Parser<'s> {
     }
 
     /// parse either the start of a variable name ($) or an escaped dollar sign ($$)
-    fn parse_variable_start(&mut self) -> Result {
+    fn parse_variable_start(&mut self) -> Result<()> {
         // check that the iterator points to a $ and consume it
         match self.rest.peek() {
             Some('$') => {
@@ -108,7 +108,7 @@ impl<'s> Parser<'s> {
     }
 
     /// parse a braced variable: `{NAME}`
-    fn parse_braced_variable_start(&mut self) -> Result {
+    fn parse_braced_variable_start(&mut self) -> Result<()> {
         // check that the iterator points to a `{`
         match self.rest.next() {
             Some('{') => {}
@@ -119,7 +119,7 @@ impl<'s> Parser<'s> {
     }
 
     /// parse the name of an unbraced variable and replace it with its value
-    fn parse_variable_name(&mut self) -> Result {
+    fn parse_variable_name(&mut self) -> Result<()> {
         let mut name = String::new();
         match self.rest.next() {
             Some(character @ ('_' | 'a'..='z' | 'A'..='Z')) => name.push(character),
@@ -149,7 +149,7 @@ impl<'s> Parser<'s> {
     }
 
     /// parse a braced variable name and push the associated value into `output`
-    fn parse_braced_variable_name(&mut self) -> Result {
+    fn parse_braced_variable_name(&mut self) -> Result<()> {
         let mut name = String::new();
         self.consume_whitespace();
         // the next character should be the start of a variable name.
@@ -249,7 +249,7 @@ impl<'s> Parser<'s> {
     }
 
     /// check for a modifier or default value. these can contain nested variables.
-    fn parse_modifier(&mut self) -> std::result::Result<Modifier, ParseError> {
+    fn parse_modifier(&mut self) -> Result<Modifier> {
         use Modifier::{DefaultValue, ErrorMessage};
 
         let cond = match self.rest.peek() {
@@ -276,7 +276,7 @@ impl<'s> Parser<'s> {
     }
 
     /// parse the contents of the error message or default value of a braced variable
-    fn parse_modifier_value(&mut self) -> std::result::Result<String, ParseError> {
+    fn parse_modifier_value(&mut self) -> Result<String> {
         let mut output = String::new();
         loop {
             match self.rest.peek() {
