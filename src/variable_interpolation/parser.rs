@@ -25,7 +25,7 @@ pub(super) struct Parser<'s> {
 /// - "NAME-DEFAULT": use DEFAULT if variable NAME is not set
 /// - "NAME:-DEFAULT": use DEFAULT if variable NAME is not set or empty
 /// - "NAME?MESSAGE": fail with MESSAGE if variable NAME is not set
-/// - "NAME:?MESSAGE": fail with MESSAGE if variabele NAME is not set or empty
+/// - "NAME:?MESSAGE": fail with MESSAGE if variable NAME is not set or empty
 enum Modifier {
     /// if the condition matches, replace the failure with the error message
     ErrorMessage(ModifierCondition, String),
@@ -262,12 +262,8 @@ impl<'s> Parser<'s> {
         };
 
         let modifier: Modifier = match self.rest.next() {
-            Some('-') => {
-                DefaultValue(cond, self.parse_modifier_value()?)
-            }
-            Some('?') => {
-                ErrorMessage(cond, self.parse_modifier_value()?)
-            }
+            Some('-') => DefaultValue(cond, self.parse_modifier_value()?),
+            Some('?') => ErrorMessage(cond, self.parse_modifier_value()?),
             Some(character) => terminate!(self, "expected one of ? or -, got {}", character),
             None => terminate!(self, "input ended unexpectedly"),
         };
@@ -346,6 +342,15 @@ mod tests {
         let res = VariableResolver::default();
         let result = Parser::start(&res, "${").expect_err("did not fail");
         assert!(result.to_string().contains("input ended unexpectedly"));
+    }
+
+    #[test]
+    fn with_illegal_name_unbraced_variable() {
+        let res = VariableResolver::default();
+        let result = Parser::start(&res, "$1abc").expect_err("did not fail");
+        assert!(result
+            .to_string()
+            .contains("expected one of $, {, _, a-z, A-Z, got 1"));
     }
 
     #[test]
