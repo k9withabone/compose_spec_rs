@@ -1,6 +1,6 @@
 //! contains the error type used by the variable interpolation parser
 //!
-//! since the calling code expects the error type to be serde_yaml::Error,
+//! since the calling code expects the error type to be `serde_yaml::Error`,
 //! `ParseError` can be converted to that type, using the error information
 //! to construct a custom error message
 

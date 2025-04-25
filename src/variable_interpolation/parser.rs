@@ -284,9 +284,10 @@ impl<'s> Parser<'s> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
+    // false positive: variable placeholders look a lot like rust formatting args
+    #![allow(clippy::literal_string_with_formatting_args)]
     use crate::variable_interpolation::{parser::Parser, VariableResolver};
+    use std::collections::HashMap;
 
     #[test]
     fn blank_strings() {
