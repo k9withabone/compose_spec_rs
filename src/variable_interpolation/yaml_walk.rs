@@ -1,7 +1,7 @@
 //! recursively walk a `YamlValue` and find the strings to apply variable interpolation to
 use serde_yaml::{Mapping, Sequence};
 
-use super::{parser::Parser, VariableResolver};
+use super::{VariableResolver, parser::Parser};
 use crate::common::YamlValue;
 
 /// recursively interpolate all nested YAML strings containing variables.
@@ -18,7 +18,7 @@ pub(crate) fn interpolate_value(
         YamlValue::Sequence(sequence) => interpolate_sequence(vars, sequence)?,
         YamlValue::Mapping(mapping) => interpolate_mapping(vars, mapping)?,
         _ => {}
-    };
+    }
     Ok(())
 }
 

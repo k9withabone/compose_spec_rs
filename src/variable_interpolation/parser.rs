@@ -1,7 +1,7 @@
 //! the parsing and interpolation logic being applied to the yaml strings
-use super::error::terminate;
-use super::error::ParseError;
 use super::VariableResolver;
+use super::error::ParseError;
+use super::error::terminate;
 use std::{iter::Peekable, str::Chars};
 
 /// the result type for the parser
@@ -189,20 +189,21 @@ impl<'s> Parser<'s> {
                             modifier.replace(self.parse_modifier()?);
                             break;
                         }
-                        Some(&c) => {
-                            terminate!(self, "expected one of }}:?- , got {}", c);
+                        Some(&char) => {
+                            terminate!(self, "expected one of }}:?- , got {}", char);
                         }
                         None => terminate!(self, "input ended unexpectedly"),
                     }
                 }
-                Some(c) => {
-                    name.push(*c);
+                Some(char) => {
+                    name.push(*char);
                     self.rest.next();
                 }
                 None => terminate!(self, "input ended unexpectedly"),
             }
         }
 
+        #[allow(clippy::single_match_else)]
         let value: &str = match self.env.get(&name) {
             Some(value) => {
                 if value.is_empty() {
@@ -243,7 +244,7 @@ impl<'s> Parser<'s> {
     fn consume_whitespace(&mut self) {
         while self
             .rest
-            .next_if(|c: &char| char::is_whitespace(*c))
+            .next_if(|char: &char| char::is_whitespace(*char))
             .is_some()
         {}
     }
@@ -296,7 +297,7 @@ impl<'s> Parser<'s> {
 mod tests {
     // false positive: variable placeholders look a lot like rust formatting args
     #![allow(clippy::literal_string_with_formatting_args)]
-    use crate::variable_interpolation::{parser::Parser, VariableResolver};
+    use crate::variable_interpolation::{VariableResolver, parser::Parser};
     use std::collections::HashMap;
 
     #[test]
@@ -348,9 +349,11 @@ mod tests {
     fn with_illegal_name_unbraced_variable() {
         let res = VariableResolver::default();
         let result = Parser::start(&res, "$1abc").expect_err("did not fail");
-        assert!(result
-            .to_string()
-            .contains("expected one of $, {, _, a-z, A-Z, got 1"));
+        assert!(
+            result
+                .to_string()
+                .contains("expected one of $, {, _, a-z, A-Z, got 1")
+        );
     }
 
     #[test]

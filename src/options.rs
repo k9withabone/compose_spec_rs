@@ -3,8 +3,8 @@
 use std::{collections::HashMap, io::Read};
 
 use crate::{
-    variable_interpolation::{yaml_walk::interpolate_value, VariableResolver},
     Compose, YamlValue,
+    variable_interpolation::{VariableResolver, yaml_walk::interpolate_value},
 };
 
 /// Deserialization options builder for a [`Compose`] file.
