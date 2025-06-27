@@ -290,7 +290,9 @@ impl Display for ShortVolume {
     }
 }
 
-/// An [absolute](Path::is_absolute()) path.
+/// A path starting with a `/`.
+/// Note: this is not using [Path::is_absolute](Path::is_absolute()) because parsing volumes would break on
+/// non-Unix systems, i.e. when targetting `wasm`.
 #[derive(
     Serialize, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
@@ -307,7 +309,7 @@ impl AbsolutePath {
     where
         T: AsRef<Path> + Into<PathBuf>,
     {
-        if path.as_ref().is_absolute() {
+        if path.as_ref().starts_with("/") {
             Ok(Self(path.into()))
         } else {
             Err(AbsolutePathError)
@@ -326,7 +328,7 @@ impl AbsolutePath {
 
 /// Error returned when creating an [`AbsolutePath`].
 ///
-/// Occurs if the path is not [absolute](Path::is_absolute()).
+/// Occurs if the path is not starting with a `/`.
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("path is not absolute")]
 pub struct AbsolutePathError;
@@ -477,7 +479,7 @@ impl Source {
         <T as TryInto<HostPath>>::Error: Into<ParseSourceError>,
         <T as TryInto<Identifier>>::Error: Into<ParseSourceError>,
     {
-        if source.as_ref().starts_with('.') || Path::new(source.as_ref()).is_absolute() {
+        if source.as_ref().starts_with('.') || Path::new(source.as_ref()).starts_with("/") {
             source.try_into().map(Self::HostPath).map_err(Into::into)
         } else {
             source.try_into().map(Self::Volume).map_err(Into::into)
@@ -582,7 +584,7 @@ impl Display for Source {
 
 /// A path on the host.
 ///
-/// Host paths must start with `.` or `..`,  or be [absolute](Path::is_absolute()).
+/// Host paths must start with `.`, `..` or `/`.
 #[derive(
     Serialize, DeserializeTryFromString, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
@@ -594,13 +596,12 @@ impl HostPath {
     ///
     /// # Errors
     ///
-    /// Returns an error if the path does not start with `.` or `..`,  or is not
-    /// [absolute](Path::is_absolute()).
+    /// Returns an error if the path does not start with `.`, `..` or `/`.
     pub fn new<T>(path: T) -> Result<Self, HostPathError>
     where
         T: AsRef<Path> + Into<PathBuf>,
     {
-        if path.as_ref().is_absolute()
+        if path.as_ref().starts_with("/")
             || path.as_ref().components().next().is_some_and(|component| {
                 matches!(component, Component::CurDir | Component::ParentDir)
             })
@@ -646,7 +647,7 @@ impl HostPath {
 
 /// Error returned when creating a [`HostPath`].
 ///
-/// Occurs if the path does not start with '.' or '..', or is not [absolute](Path::is_absolute()).
+/// Occurs if the path does not start with '.', '..' or `/`.
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("volume host paths must start with `.` or `..`, or be absolute")]
 pub struct HostPathError;
@@ -747,7 +748,7 @@ mod tests {
         fn arbitrary_with((): Self::Parameters) -> Self::Strategy {
             path_no_colon()
                 .prop_map(|path| {
-                    if path.is_absolute() {
+                    if path.starts_with("/") {
                         Self(path)
                     } else {
                         Self(Path::new("/").join(path))
