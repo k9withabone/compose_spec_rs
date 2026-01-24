@@ -32,15 +32,14 @@ use std::{
 };
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
-use indexmap::{map::Keys, IndexMap, IndexSet};
-use serde::{de, Deserialize, Deserializer, Serialize};
+use indexmap::{IndexMap, IndexSet, map::Keys};
+use serde::{Deserialize, Deserializer, Serialize, de};
 use thiserror::Error;
 
 use crate::{
-    impl_from_str,
-    serde::{default_true, duration_option, duration_us_option, skip_true, ItemOrListVisitor},
     AsShortIter, Configs, Extensions, Identifier, InvalidIdentifierError, ItemOrList, ListOrMap,
-    Map, MapKey, Networks, Secrets, ShortOrLong, StringOrNumber, Value,
+    Map, MapKey, Networks, Secrets, ShortOrLong, StringOrNumber, Value, impl_from_str,
+    serde::{ItemOrListVisitor, default_true, duration_option, duration_us_option, skip_true},
 };
 
 use self::build::Context;
@@ -51,7 +50,7 @@ pub use self::{
     config_or_secret::ConfigOrSecret,
     cpuset::{CpuSet, ParseCpuSetError},
     credential_spec::{CredentialSpec, Kind as CredentialSpecKind},
-    deploy::{resources::Cpus, Deploy},
+    deploy::{Deploy, resources::Cpus},
     develop::Develop,
     device::Device,
     env_file::EnvFile,
@@ -1567,7 +1566,7 @@ impl From<VolumesFromSource> for String {
 mod tests {
     use indexmap::{indexmap, indexset};
     use proptest::{
-        arbitrary::{any, Arbitrary},
+        arbitrary::{Arbitrary, any},
         path::PathParams,
         prop_assert_eq, prop_oneof, proptest,
         strategy::{Just, Strategy},

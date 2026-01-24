@@ -11,7 +11,7 @@ use std::{
 use compose_spec_macros::{DeserializeFromStr, SerializeDisplay};
 use thiserror::Error;
 
-use super::{volumes::AbsolutePathError, AbsolutePath};
+use super::{AbsolutePath, volumes::AbsolutePathError};
 
 /// Device mapping from the host to the [`Service`](super::Service) container.
 ///

@@ -11,16 +11,15 @@ use std::{
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 use indexmap::IndexSet;
 use serde::{
-    de::{self, Unexpected, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
+    de::{self, Unexpected, Visitor},
 };
 use thiserror::Error;
 
 use crate::{
-    impl_from_str, impl_try_from,
+    Extensions, ListOrMap, impl_from_str, impl_try_from,
     serde::forward_visitor,
     service::{ByteValue, Limit},
-    Extensions, ListOrMap,
 };
 
 /// Physical resource constraints for the service container to run on the platform.

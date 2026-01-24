@@ -108,7 +108,7 @@ pub mod service;
 mod volume;
 
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     error::Error,
     fmt::{self, Display, Formatter},
     path::PathBuf,

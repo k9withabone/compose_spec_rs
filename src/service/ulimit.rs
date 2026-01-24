@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{common::key_impls, AsShort, Extensions, ShortOrLong};
+use crate::{AsShort, Extensions, ShortOrLong, common::key_impls};
 
 use super::Limit;
 

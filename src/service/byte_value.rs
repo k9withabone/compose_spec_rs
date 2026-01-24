@@ -7,7 +7,7 @@ use std::{
 };
 
 use compose_spec_macros::SerializeDisplay;
-use serde::{de, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de};
 use thiserror::Error;
 
 use crate::serde::error_chain;

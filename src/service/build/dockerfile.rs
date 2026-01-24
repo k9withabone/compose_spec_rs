@@ -8,7 +8,7 @@ use std::{
     path::PathBuf,
 };
 
-use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser::SerializeStruct};
 
 /// Represents either the `dockerfile` or `dockerfile_inline` fields of the long [`Build`] syntax.
 ///
@@ -116,7 +116,7 @@ impl<'de> Deserialize<'de> for Dockerfile {
 pub(super) mod option {
     use std::path::PathBuf;
 
-    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
     use super::{Dockerfile, Field};
 
@@ -196,20 +196,22 @@ mod tests {
 
     #[test]
     fn missing_err() {
-        assert!(serde_yaml::from_str::<Dockerfile>("{}")
-            .unwrap_err()
-            .to_string()
-            .contains("missing"));
+        assert!(
+            serde_yaml::from_str::<Dockerfile>("{}")
+                .unwrap_err()
+                .to_string()
+                .contains("missing")
+        );
     }
 
     #[test]
     fn both_err() {
-        assert!(serde_yaml::from_str::<Dockerfile>(
-            "{ dockerfile: file, dockerfile_inline: inline }"
-        )
-        .unwrap_err()
-        .to_string()
-        .contains("both"));
+        assert!(
+            serde_yaml::from_str::<Dockerfile>("{ dockerfile: file, dockerfile_inline: inline }")
+                .unwrap_err()
+                .to_string()
+                .contains("both")
+        );
     }
 
     #[derive(Deserialize, Debug)]

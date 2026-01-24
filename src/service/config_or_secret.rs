@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use compose_spec_macros::{AsShort, FromShort};
 use serde::{Deserialize, Serialize};
 
-use crate::{serde::display_from_str_option, Extensions, Identifier};
+use crate::{Extensions, Identifier, serde::display_from_str_option};
 
 /// Long syntax config or secret configuration.
 ///

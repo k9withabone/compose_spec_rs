@@ -3,7 +3,7 @@
 //! [`DeserializeTryFromString`](super::deserialize_try_from_string()) derive macros.
 
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::{Attribute, DeriveInput, Generics, Ident, Lifetime, LifetimeParam, LitStr, Result};
 
 /// [`SerializeDisplay`](super::serialize_display()) derive macro input.

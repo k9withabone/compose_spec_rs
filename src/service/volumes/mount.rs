@@ -12,7 +12,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::{service::ByteValue, Extensions, Identifier};
+use crate::{Extensions, Identifier, service::ByteValue};
 
 use super::{AbsolutePath, HostPath, SELinux, ShortOptions, ShortVolume};
 

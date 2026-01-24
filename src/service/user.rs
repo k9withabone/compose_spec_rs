@@ -4,7 +4,7 @@
 use std::fmt::{self, Display, Formatter, Write};
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 use thiserror::Error;
 
 use crate::{common::key_impls, serde::forward_visitor};

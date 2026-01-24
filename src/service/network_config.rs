@@ -10,13 +10,13 @@ use std::{
 };
 
 use compose_spec_macros::{DeserializeFromStr, DeserializeTryFromString, SerializeDisplay};
-use indexmap::{map::Keys, IndexMap, IndexSet};
-use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+use indexmap::{IndexMap, IndexSet, map::Keys};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser::SerializeStruct};
 use thiserror::Error;
 
 use crate::{
-    impl_from_str, AsShortIter, Extensions, Identifier, InvalidIdentifierError, MapKey,
-    ShortOrLong, StringOrNumber,
+    AsShortIter, Extensions, Identifier, InvalidIdentifierError, MapKey, ShortOrLong,
+    StringOrNumber, impl_from_str,
 };
 
 use super::Hostname;
@@ -129,7 +129,7 @@ impl<'de> Deserialize<'de> for NetworkConfig {
 /// - `Err(_)`, if both fields are present.
 /// - `Err(_)`, if there is an error deserializing either field value.
 pub(super) mod option {
-    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
     use super::{Field, NetworkConfig, NetworkMode, Networks};
 
@@ -595,10 +595,12 @@ mod tests {
 
     #[test]
     fn missing_err() {
-        assert!(serde_yaml::from_str::<NetworkConfig>("{}")
-            .unwrap_err()
-            .to_string()
-            .contains("missing"));
+        assert!(
+            serde_yaml::from_str::<NetworkConfig>("{}")
+                .unwrap_err()
+                .to_string()
+                .contains("missing")
+        );
     }
 
     #[test]

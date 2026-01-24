@@ -5,14 +5,13 @@ use std::iter;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    braced, bracketed,
+    Attribute, Ident, LitStr, Result, Token, Type, Visibility, braced, bracketed,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::{Brace, Bracket},
-    Attribute, Ident, LitStr, Result, Token, Type, Visibility,
 };
 
-use super::{impl_traits, kw, prefix::Prefix, ArchMap, Platform};
+use super::{ArchMap, Platform, impl_traits, kw, prefix::Prefix};
 
 /// Definition of platform operating systems and their architectures.
 ///

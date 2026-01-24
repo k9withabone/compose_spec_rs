@@ -3,8 +3,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
-    spanned::Spanned, Data, DataStruct, DeriveInput, Error, Expr, Fields, FieldsNamed, Generics,
-    Ident, Result,
+    Data, DataStruct, DeriveInput, Error, Expr, Fields, FieldsNamed, Generics, Ident, Result,
+    spanned::Spanned,
 };
 
 /// [`Default`](super::default()) derive macro input.

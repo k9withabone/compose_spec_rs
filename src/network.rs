@@ -13,7 +13,7 @@ use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    impl_from_str, service::Hostname, Extensions, ListOrMap, MapKey, Resource, StringOrNumber,
+    Extensions, ListOrMap, MapKey, Resource, StringOrNumber, impl_from_str, service::Hostname,
 };
 
 impl Resource<Network> {

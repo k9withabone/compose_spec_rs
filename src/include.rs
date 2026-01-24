@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{common::ItemOrList, AsShort};
+use crate::{AsShort, common::ItemOrList};
 
 /// A Compose sub-project to include.
 ///

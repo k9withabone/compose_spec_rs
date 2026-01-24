@@ -2,11 +2,11 @@
 //! derive macros.
 
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::{
-    parse::ParseStream, spanned::Spanned, AngleBracketedGenericArguments, Data, DataStruct,
-    DeriveInput, Error, Expr, Fields, FieldsNamed, GenericArgument, Generics, LitStr,
-    PathArguments, Result, Type, TypePath,
+    AngleBracketedGenericArguments, Data, DataStruct, DeriveInput, Error, Expr, Fields,
+    FieldsNamed, GenericArgument, Generics, LitStr, PathArguments, Result, Type, TypePath,
+    parse::ParseStream, spanned::Spanned,
 };
 
 /// [`AsShort`](super::as_short()) and [`FromShort`](super::from_short()) derive macro input.

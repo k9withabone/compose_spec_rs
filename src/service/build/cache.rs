@@ -10,7 +10,7 @@ use thiserror::Error;
 use crate::{
     common::key_impls,
     impl_from_str,
-    service::{image::InvalidImageError, Image},
+    service::{Image, image::InvalidImageError},
 };
 
 /// Cache options for the `cache_from` and `cache_to` fields of the long [`Build`](super::Build)

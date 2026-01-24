@@ -6,8 +6,8 @@ use std::{
 };
 
 use serde::{
-    de::{self, MapAccess},
     Deserialize, Deserializer, Serialize,
+    de::{self, MapAccess},
 };
 
 use crate::{ExtensionKey, Extensions, Identifier};

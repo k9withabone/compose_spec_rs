@@ -12,15 +12,14 @@ use std::{
     str::FromStr,
 };
 
-use indexmap::{indexset, IndexMap, IndexSet};
+use indexmap::{IndexMap, IndexSet, indexset};
 use serde::{
+    Deserialize, Deserializer, Serialize, Serializer,
     de::{
-        self,
+        self, IntoDeserializer, MapAccess, SeqAccess, Visitor,
         value::{MapAccessDeserializer, SeqAccessDeserializer},
-        IntoDeserializer, MapAccess, SeqAccess, Visitor,
     },
     ser::SerializeMap,
-    Deserialize, Deserializer, Serialize, Serializer,
 };
 pub use serde_yaml::Value as YamlValue;
 use thiserror::Error;

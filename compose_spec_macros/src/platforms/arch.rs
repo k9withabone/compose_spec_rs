@@ -3,13 +3,12 @@
 use std::{collections::HashMap, iter};
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
-    braced, bracketed,
+    Attribute, Error, Ident, LitStr, Result, Token, Type, Visibility, braced, bracketed,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::{Brace, Bracket},
-    Attribute, Error, Ident, LitStr, Result, Token, Type, Visibility,
 };
 
 use super::{concat, impl_traits, kw, prefix::Prefix};

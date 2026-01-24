@@ -12,8 +12,8 @@ use std::{
 };
 
 use serde::{
-    de::{self, value::SeqAccessDeserializer, IntoDeserializer, SeqAccess, Visitor},
     Deserialize, Deserializer,
+    de::{self, IntoDeserializer, SeqAccess, Visitor, value::SeqAccessDeserializer},
 };
 
 /// Return `true`, for use in `#[serde(default = "default_true")]`.

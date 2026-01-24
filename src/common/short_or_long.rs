@@ -10,26 +10,25 @@ use std::{
 
 use indexmap::{IndexMap, IndexSet};
 use serde::{
+    Deserialize, Deserializer, Serialize,
     de::{
-        self,
+        self, EnumAccess, MapAccess, SeqAccess,
         value::{
             BorrowedBytesDeserializer, BorrowedStrDeserializer, EnumAccessDeserializer,
             MapAccessDeserializer, SeqAccessDeserializer, UnitDeserializer,
         },
-        EnumAccess, MapAccess, SeqAccess,
     },
-    Deserialize, Deserializer, Serialize,
 };
 
 use crate::{
+    Identifier, Include,
     service::{
+        Build, ConfigOrSecret, Limit, Ulimit,
         build::Context,
         env_file,
         ports::{Port, ShortPort},
         volumes::{Mount, ShortVolume},
-        Build, ConfigOrSecret, Limit, Ulimit,
     },
-    Identifier, Include,
 };
 
 /// Wrapper for types which may be represented as a [`Short`] or [`Long`] syntax.

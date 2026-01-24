@@ -7,12 +7,12 @@ use std::{
 };
 
 use serde::{
-    de::{self, value::SeqAccessDeserializer, DeserializeSeed, MapAccess, SeqAccess},
-    ser::SerializeMap,
     Deserialize, Deserializer, Serialize, Serializer,
+    de::{self, DeserializeSeed, MapAccess, SeqAccess, value::SeqAccessDeserializer},
+    ser::SerializeMap,
 };
 
-use crate::{serde::duration_option, ExtensionKey, Extensions};
+use crate::{ExtensionKey, Extensions, serde::duration_option};
 
 /// A check that is run to determine whether the [`Service`](super::Service) container is "healthy".
 ///
@@ -470,10 +470,12 @@ mod tests {
         );
         assert_eq!(healthcheck, serde_yaml::from_str("test: test").unwrap(),);
 
-        assert!(serde_yaml::from_str::<Healthcheck>("test: [CMD-SHELL]")
-            .unwrap_err()
-            .to_string()
-            .contains('1'));
+        assert!(
+            serde_yaml::from_str::<Healthcheck>("test: [CMD-SHELL]")
+                .unwrap_err()
+                .to_string()
+                .contains('1')
+        );
 
         assert!(
             serde_yaml::from_str::<Healthcheck>("test: [CMD-SHELL, test, test]")

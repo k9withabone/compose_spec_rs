@@ -15,13 +15,13 @@ mod kw {
 }
 
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, quote};
 use syn::{
+    AttrStyle, Attribute, Error, Ident, LitChar, Result, Token, Type, Visibility,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     spanned::Spanned,
     token::Bracket,
-    AttrStyle, Attribute, Error, Ident, LitChar, Result, Token, Type, Visibility,
 };
 
 use self::{

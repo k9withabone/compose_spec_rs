@@ -1,8 +1,8 @@
 //! [`Prefix`] parsing helper.
 
 use syn::{
-    parse::{Parse, ParseStream},
     Attribute, Error, Ident, Result, Token, Visibility,
+    parse::{Parse, ParseStream},
 };
 
 /// Enum definition prefix, e.g. `#[doc = "Platform docs"] pub enum Platform`.

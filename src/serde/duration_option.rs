@@ -9,8 +9,8 @@ use std::{
 };
 
 use serde::{
-    de::{self},
     Deserializer, Serialize, Serializer,
+    de::{self},
 };
 
 use super::forward_visitor;

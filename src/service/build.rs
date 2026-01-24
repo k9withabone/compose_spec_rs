@@ -10,7 +10,7 @@ use std::{net::IpAddr, ops::Not};
 
 use compose_spec_macros::{AsShort, FromShort};
 use indexmap::{IndexMap, IndexSet};
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 
 use crate::{Extensions, Identifier, ListOrMap, MapKey, ShortOrLong};
 
@@ -22,7 +22,7 @@ pub use self::{
     ssh_auth::{Id as SshAuthId, IdError as SshAuthIdError, SshAuth},
 };
 
-use super::{extra_hosts, ByteValue, ConfigOrSecret, Hostname, Image, Platform, Ulimits};
+use super::{ByteValue, ConfigOrSecret, Hostname, Image, Platform, Ulimits, extra_hosts};
 
 /// Long syntax build configuration for creating a container image from source.
 ///

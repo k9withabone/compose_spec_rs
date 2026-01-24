@@ -145,9 +145,7 @@ pub enum InvalidDigestError {
     AlgorithmStart,
 
     /// Digest algorithms must end with a lowercase ASCII letter (a-z) or a digit (0-9).
-    #[error(
-        "image digest algorithm must end with a lowercase ASCII letter (a-z) or a digit (0-9)"
-    )]
+    #[error("image digest algorithm must end with a lowercase ASCII letter (a-z) or a digit (0-9)")]
     AlgorithmEnd,
 
     /// Data encoded in digest was missing.

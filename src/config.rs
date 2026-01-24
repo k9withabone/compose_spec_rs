@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser::SerializeStruct};
 
 use crate::{Extensions, ListOrMap, Resource};
 

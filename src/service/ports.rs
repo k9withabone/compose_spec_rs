@@ -18,7 +18,7 @@ use indexmap::IndexSet;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
-use crate::{impl_from_str, serde::FromStrOrU16Visitor, Extensions, ShortOrLong};
+use crate::{Extensions, ShortOrLong, impl_from_str, serde::FromStrOrU16Visitor};
 
 use super::strip_brackets;
 

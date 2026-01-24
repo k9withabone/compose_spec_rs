@@ -10,7 +10,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::{serde::duration_option, Extensions, ListOrMap};
+use crate::{Extensions, ListOrMap, serde::duration_option};
 
 pub use self::{endpoint_mode::EndpointMode, resources::Resources};
 

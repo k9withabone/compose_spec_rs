@@ -1,7 +1,7 @@
 //! Provides [`Platform`] for the `platform` field of [`Service`](super::Service) and the
 //! `platforms` field of the long [`Build`](super::Build) syntax.
 
-use compose_spec_macros::{platforms, DeserializeFromStr, SerializeDisplay};
+use compose_spec_macros::{DeserializeFromStr, SerializeDisplay, platforms};
 use thiserror::Error;
 
 platforms! {

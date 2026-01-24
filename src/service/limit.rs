@@ -8,8 +8,8 @@ use std::{
 };
 
 use serde::{
-    de::{self, IntoDeserializer, Unexpected},
     Deserialize, Deserializer, Serialize, Serializer,
+    de::{self, IntoDeserializer, Unexpected},
 };
 
 use super::ByteValue;
