@@ -5,6 +5,7 @@ use std::time::Duration;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Serialize an [`Option<Duration>`] as microseconds.
+#[expect(clippy::ref_option, reason = "required for `serialize_with`")]
 pub(crate) fn serialize<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

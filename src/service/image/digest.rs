@@ -153,13 +153,13 @@ pub enum InvalidDigestError {
     EncodeEmpty,
 }
 
-impl<'a> AsRef<str> for Digest<'a> {
+impl AsRef<str> for Digest<'_> {
     fn as_ref(&self) -> &str {
         self.0
     }
 }
 
-impl<'a> Borrow<str> for Digest<'a> {
+impl Borrow<str> for Digest<'_> {
     fn borrow(&self) -> &str {
         self.0
     }
@@ -173,19 +173,19 @@ impl<'a> TryFrom<&'a str> for Digest<'a> {
     }
 }
 
-impl<'a> PartialEq<str> for Digest<'a> {
+impl PartialEq<str> for Digest<'_> {
     fn eq(&self, other: &str) -> bool {
         self.0 == other
     }
 }
 
-impl<'a> PartialEq<&str> for Digest<'a> {
+impl PartialEq<&str> for Digest<'_> {
     fn eq(&self, other: &&str) -> bool {
         self.0 == *other
     }
 }
 
-impl<'a> Display for Digest<'a> {
+impl Display for Digest<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str(self.0)
     }

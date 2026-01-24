@@ -125,6 +125,7 @@ pub(super) mod option {
     /// # Errors
     ///
     /// Returns an error if the `serializer` does while serializing.
+    #[expect(clippy::ref_option, reason = "required for `serialize_with`")]
     pub(in super::super) fn serialize<S: Serializer>(
         value: &Option<Dockerfile>,
         serializer: S,

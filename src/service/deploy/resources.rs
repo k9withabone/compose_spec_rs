@@ -75,10 +75,8 @@ impl Resources {
             extensions,
         } = self;
 
-        !limits.as_ref().is_some_and(|limits| !limits.is_empty())
-            && !reservations
-                .as_ref()
-                .is_some_and(|reservations| !reservations.is_empty())
+        limits.as_ref().is_none_or(Limits::is_empty)
+            && reservations.as_ref().is_none_or(Reservations::is_empty)
             && extensions.is_empty()
     }
 }
@@ -295,7 +293,7 @@ impl<'de> Deserialize<'de> for Cpus {
 /// [`Visitor`] for deserializing [`Cpus`].
 struct CpusVisitor;
 
-impl<'de> Visitor<'de> for CpusVisitor {
+impl Visitor<'_> for CpusVisitor {
     type Value = Cpus;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -572,7 +570,7 @@ impl<'de> Deserialize<'de> for Count {
 /// [`Visitor`] for deserializing [`Count`].
 struct CountVisitor;
 
-impl<'de> Visitor<'de> for CountVisitor {
+impl Visitor<'_> for CountVisitor {
     type Value = Count;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -636,9 +634,9 @@ impl GenericResource {
             extensions,
         } = self;
 
-        !discrete_resource_spec
+        discrete_resource_spec
             .as_ref()
-            .is_some_and(|discrete_resource_spec| !discrete_resource_spec.is_empty())
+            .is_none_or(DiscreteResourceSpec::is_empty)
             && extensions.is_empty()
     }
 }

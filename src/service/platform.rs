@@ -54,6 +54,7 @@ platforms! {
         },
 
         /// DragonFly BSD
+        #[expect(clippy::doc_markdown, reason = "OS name")]
         DragonFly => "dragonfly" {
             /// [`DragonFly` BSD](Platform::DragonFly) architectures.
             arch: ["amd64"],
@@ -148,6 +149,7 @@ platforms! {
         _386 => "386",
 
         /// x86_64 / 64-bit x86
+        #[expect(clippy::doc_markdown, reason = "arch name")]
         Amd64 => "amd64",
 
         /// 32-bit ARM
@@ -157,26 +159,32 @@ platforms! {
             /// [OCI Image Index Specification](https://github.com/opencontainers/image-spec/blob/main/image-index.md#platform-variants)
             variants: [
                 /// ARMv6
+                #[expect(clippy::doc_markdown, reason = "arch variant name")]
                 V6 => "v6",
                 /// ARMv7
+                #[expect(clippy::doc_markdown, reason = "arch variant name")]
                 V7 => "v7",
                 /// ARMv8
+                #[expect(clippy::doc_markdown, reason = "arch variant name")]
                 V8 => "v8",
             ],
         },
 
         /// AArch64 / 64-bit ARM
+        #[expect(clippy::doc_markdown, reason = "arch name")]
         Arm64 => "arm64" {
             /// [`Arm64`](Arch::Arm64) Variants
             ///
             /// [OCI Image Index Specification](https://github.com/opencontainers/image-spec/blob/main/image-index.md#platform-variants)
             variants: [
                 /// ARMv8
+                #[expect(clippy::doc_markdown, reason = "arch variant name")]
                 V8 => "v8",
             ],
         },
 
         /// 64-bit LoongArch
+        #[expect(clippy::doc_markdown, reason = "arch name")]
         Loong64 => "loong64",
 
         /// MIPS 32-bit, big-endian

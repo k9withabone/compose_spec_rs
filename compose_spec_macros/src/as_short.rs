@@ -281,6 +281,7 @@ struct Field<'a> {
 }
 
 /// `as_short` helper attribute.
+#[expect(clippy::large_enum_variant, reason = "performance impact negligible")]
 enum Attribute {
     /// `#[as_short(short)]`
     Short(Span),

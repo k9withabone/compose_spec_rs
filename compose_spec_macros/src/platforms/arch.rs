@@ -57,7 +57,7 @@ impl Arch {
     pub(super) fn to_map<'a>(
         &self,
         os_arch_names: impl IntoIterator<Item = &'a LitStr>,
-    ) -> Result<Map> {
+    ) -> Result<Map<'_>> {
         let map = Map {
             inner: self
                 .items
@@ -158,7 +158,7 @@ pub(super) struct Map<'a> {
     inner: HashMap<String, &'a Item>,
 }
 
-impl<'a> Map<'a> {
+impl Map<'_> {
     /// Get the [`Item`] matching the given `arch`.
     ///
     /// # Panics

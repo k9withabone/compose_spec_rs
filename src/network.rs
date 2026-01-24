@@ -136,7 +136,7 @@ impl Network {
             && driver_opts.is_empty()
             && !attachable
             && !enable_ipv6
-            && !ipam.as_ref().is_some_and(|ipam| !ipam.is_empty())
+            && ipam.as_ref().is_none_or(Ipam::is_empty)
             && !internal
             && labels.is_empty()
             && name.is_none()

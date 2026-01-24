@@ -80,34 +80,34 @@ impl<'de> de::Visitor<'de> for Visitor {
         while let Some(field) = map.next_key()? {
             match field {
                 Field::Disable => {
-                    check_duplicate(&disable, "disable")?;
+                    check_duplicate(disable.as_ref(), "disable")?;
                     disable = map.next_value().map(Some)?;
                 }
                 Field::Test => {
-                    check_duplicate(&test, "test")?;
+                    check_duplicate(test.as_ref(), "test")?;
                     map.next_value_seed(DisableOrTest {
                         disable: &mut disable,
                         test: &mut test,
                     })?;
                 }
                 Field::Interval => {
-                    check_duplicate(&interval, "interval")?;
+                    check_duplicate(interval.as_ref(), "interval")?;
                     interval = map.next_value::<DurationOption>()?.0;
                 }
                 Field::Timeout => {
-                    check_duplicate(&timeout, "timeout")?;
+                    check_duplicate(timeout.as_ref(), "timeout")?;
                     timeout = map.next_value::<DurationOption>()?.0;
                 }
                 Field::Retries => {
-                    check_duplicate(&retries, "retries")?;
+                    check_duplicate(retries.as_ref(), "retries")?;
                     retries = map.next_value().map(Some)?;
                 }
                 Field::StartPeriod => {
-                    check_duplicate(&start_period, "start_period")?;
+                    check_duplicate(start_period.as_ref(), "start_period")?;
                     start_period = map.next_value::<DurationOption>()?.0;
                 }
                 Field::StartInterval => {
-                    check_duplicate(&start_interval, "start_interval")?;
+                    check_duplicate(start_interval.as_ref(), "start_interval")?;
                     start_interval = map.next_value::<DurationOption>()?.0;
                 }
                 Field::Extension(extension) => {
@@ -148,7 +148,7 @@ impl<'de> de::Visitor<'de> for Visitor {
 }
 
 /// Checks whether `option` is already set and returns an error if so.
-fn check_duplicate<T, E: de::Error>(option: &Option<T>, field: &'static str) -> Result<(), E> {
+fn check_duplicate<T, E: de::Error>(option: Option<&T>, field: &'static str) -> Result<(), E> {
     if option.is_none() {
         Ok(())
     } else {
@@ -196,7 +196,7 @@ struct DisableOrTest<'a> {
     test: &'a mut Option<Test>,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for DisableOrTest<'a> {
+impl<'de> DeserializeSeed<'de> for DisableOrTest<'_> {
     type Value = ();
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
@@ -204,7 +204,7 @@ impl<'a, 'de> DeserializeSeed<'de> for DisableOrTest<'a> {
     }
 }
 
-impl<'a, 'de> de::Visitor<'de> for DisableOrTest<'a> {
+impl<'de> de::Visitor<'de> for DisableOrTest<'_> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {

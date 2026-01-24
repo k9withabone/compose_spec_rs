@@ -243,7 +243,7 @@ impl<'de> Deserialize<'de> for IdOrName {
 /// [`de::Visitor`] for deserializing [`IdOrName`].
 struct Visitor;
 
-impl<'de> de::Visitor<'de> for Visitor {
+impl de::Visitor<'_> for Visitor {
     type Value = IdOrName;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {

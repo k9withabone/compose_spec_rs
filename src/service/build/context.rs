@@ -86,7 +86,7 @@ impl Context {
             (scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https"))
                 && Path::new(url.path())
                     .extension()
-                    .map_or(false, |ext| ext.eq_ignore_ascii_case("git"))
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("git"))
         })
     }
 

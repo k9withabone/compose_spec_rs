@@ -177,7 +177,6 @@ impl Image {
     #[must_use]
     pub fn registry(&self) -> Option<&str> {
         self.registry_end.map(|end| {
-            // PANIC_SAFETY:
             // `registry_end` is always within `inner`.
             // `inner` only contains ASCII.
             // Checked with `registry()` test.
@@ -249,7 +248,6 @@ impl Image {
     /// ```
     #[must_use]
     pub fn name(&self) -> &str {
-        // PANIC_SAFETY:
         // `name_end()` is always within `inner`.
         // `inner` only contains ASCII.
         // Checked with `name()` test.
@@ -259,7 +257,7 @@ impl Image {
 
     /// The [`Name`] portion of the image.
     #[must_use]
-    pub fn as_name(&self) -> Name {
+    pub fn as_name(&self) -> Name<'_> {
         Name::new_unchecked(self.name(), self.registry_end)
     }
 
@@ -305,7 +303,6 @@ impl Image {
     #[must_use]
     pub fn tag(&self) -> Option<&str> {
         if let Some(TagOrDigestStart::Tag(start)) = self.tag_or_digest_start {
-            // PANIC_SAFETY:
             // `start` is always within `inner`.
             // `inner` only contains ASCII.
             // Checked with `tag_and_digest()` test.
@@ -318,7 +315,7 @@ impl Image {
 
     /// The [`Tag`] portion of the image, if it has one.
     #[must_use]
-    pub fn as_tag(&self) -> Option<Tag> {
+    pub fn as_tag(&self) -> Option<Tag<'_>> {
         self.tag().map(Tag::new_unchecked)
     }
 
@@ -356,7 +353,6 @@ impl Image {
     #[must_use]
     pub fn digest(&self) -> Option<&str> {
         if let Some(TagOrDigestStart::Digest(start)) = self.tag_or_digest_start {
-            // PANIC_SAFETY:
             // `start` is always within `inner`.
             // `inner` only contains ASCII.
             // Checked with `tag_and_digest()` test.
@@ -369,7 +365,7 @@ impl Image {
 
     /// The [`Digest`] portion of the image, if it has one.
     #[must_use]
-    pub fn as_digest(&self) -> Option<Digest> {
+    pub fn as_digest(&self) -> Option<Digest<'_>> {
         self.digest().map(Digest::new_unchecked)
     }
 
@@ -394,10 +390,9 @@ impl Image {
 
     /// The [`TagOrDigest`] portion of the image, if it has one.
     #[must_use]
-    pub fn as_tag_or_digest(&self) -> Option<TagOrDigest> {
+    pub fn as_tag_or_digest(&self) -> Option<TagOrDigest<'_>> {
         match self.tag_or_digest_start {
             Some(TagOrDigestStart::Tag(start)) => {
-                // PANIC_SAFETY:
                 // `start` is always within `inner`.
                 // `inner` only contains ASCII.
                 // Checked with `tag_and_digest()` test.
@@ -406,7 +401,6 @@ impl Image {
                 Some(TagOrDigest::Tag(tag))
             }
             Some(TagOrDigestStart::Digest(start)) => {
-                // PANIC_SAFETY:
                 // `start` is always within `inner`.
                 // `inner` only contains ASCII.
                 // Checked with `tag_and_digest()` test.
@@ -463,7 +457,7 @@ impl Image {
 
     /// The [`Name`] and [`TagOrDigest`] parts of the image.
     #[must_use]
-    pub fn as_parts(&self) -> (Name, Option<TagOrDigest>) {
+    pub fn as_parts(&self) -> (Name<'_>, Option<TagOrDigest<'_>>) {
         (self.as_name(), self.as_tag_or_digest())
     }
 
@@ -698,7 +692,7 @@ impl<'a> From<Digest<'a>> for TagOrDigest<'a> {
     }
 }
 
-impl<'a> AsRef<str> for TagOrDigest<'a> {
+impl AsRef<str> for TagOrDigest<'_> {
     fn as_ref(&self) -> &str {
         match self {
             Self::Tag(tag) => tag.as_ref(),

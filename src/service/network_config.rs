@@ -138,6 +138,7 @@ pub(super) mod option {
     /// # Errors
     ///
     /// Returns an error if the `serializer` does while serializing.
+    #[expect(clippy::ref_option, reason = "required for `serialize_with`")]
     pub(in super::super) fn serialize<S: Serializer>(
         value: &Option<NetworkConfig>,
         serializer: S,
@@ -459,7 +460,7 @@ impl<'a> AsShortIter<'a> for IndexMap<Identifier, Option<Network>> {
 
     fn as_short_iter(&'a self) -> Option<Self::Iter> {
         self.values()
-            .all(|network| network.as_ref().map_or(true, Network::is_empty))
+            .all(|network| network.as_ref().is_none_or(Network::is_empty))
             .then(|| self.keys())
     }
 }

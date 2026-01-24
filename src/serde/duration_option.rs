@@ -16,6 +16,7 @@ use serde::{
 use super::forward_visitor;
 
 /// Serialize an [`Option<Duration>`] as a duration string.
+#[expect(clippy::ref_option, reason = "required for `serialize_with`")]
 pub(crate) fn serialize<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

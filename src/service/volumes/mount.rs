@@ -283,7 +283,7 @@ impl Volume {
                         consistency: None,
                         extensions,
                     },
-            } if volume.as_ref().map_or(true, VolumeOptions::is_empty) && extensions.is_empty() => {
+            } if volume.as_ref().is_none_or(VolumeOptions::is_empty) && extensions.is_empty() => {
                 Ok(ShortVolume {
                     container_path,
                     options: source.map(|source| ShortOptions {
@@ -414,8 +414,7 @@ impl Bind {
                         consistency: None,
                         extensions,
                     },
-            } if bind.as_ref().map_or(
-                true,
+            } if bind.as_ref().is_none_or(
                 |BindOptions {
                      propagation,
                      create_host_path,
