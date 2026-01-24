@@ -8,7 +8,7 @@ edition = "2021"
 license = "MPL-2.0"
 readme = "README.md"
 repository = "https://github.com/k9withabone/compose_spec_rs"
-rust-version = "1.70"
+rust-version = "1.85"
 
 [workspace.lints.rust]
 missing_copy_implementations = "warn"
