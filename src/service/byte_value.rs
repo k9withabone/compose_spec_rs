@@ -7,7 +7,7 @@ use std::{
 };
 
 use compose_spec_macros::SerializeDisplay;
-use serde::{de, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de};
 use thiserror::Error;
 
 use crate::serde::error_chain;
@@ -151,7 +151,7 @@ impl<'de> Deserialize<'de> for ByteValue {
 /// [`de::Visitor`] for deserializing [`ByteValue`] from a [`u64`] or a string.
 struct Visitor;
 
-impl<'de> de::Visitor<'de> for Visitor {
+impl de::Visitor<'_> for Visitor {
     type Value = ByteValue;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {

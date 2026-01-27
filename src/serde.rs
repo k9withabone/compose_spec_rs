@@ -12,8 +12,8 @@ use std::{
 };
 
 use serde::{
-    de::{self, value::SeqAccessDeserializer, IntoDeserializer, SeqAccess, Visitor},
     Deserialize, Deserializer,
+    de::{self, IntoDeserializer, SeqAccess, Visitor, value::SeqAccessDeserializer},
 };
 
 /// Return `true`, for use in `#[serde(default = "default_true")]`.
@@ -214,7 +214,7 @@ impl<U, I, F, B, S> ValueEnumVisitor<U, I, F, B, S> {
     }
 }
 
-impl<'de, U, I, F, B, S, V> Visitor<'de> for ValueEnumVisitor<U, I, F, B, S>
+impl<U, I, F, B, S, V> Visitor<'_> for ValueEnumVisitor<U, I, F, B, S>
 where
     U: FnOnce(u64) -> V,
     I: FnOnce(i64) -> V,
@@ -258,7 +258,7 @@ where
     }
 }
 
-impl<'de, U, I, F, V> Visitor<'de> for ValueEnumVisitor<U, I, F>
+impl<U, I, F, V> Visitor<'_> for ValueEnumVisitor<U, I, F>
 where
     U: FnOnce(u64) -> V,
     I: FnOnce(i64) -> V,
@@ -286,7 +286,7 @@ where
     }
 }
 
-impl<'de, U, I, F, S, V> Visitor<'de> for ValueEnumVisitor<U, I, F, (), S>
+impl<U, I, F, S, V> Visitor<'_> for ValueEnumVisitor<U, I, F, (), S>
 where
     U: FnOnce(u64) -> V,
     I: FnOnce(i64) -> V,
@@ -461,7 +461,7 @@ impl<V> Default for FromStrVisitor<V> {
     }
 }
 
-impl<'de, V> Visitor<'de> for FromStrVisitor<V>
+impl<V> Visitor<'_> for FromStrVisitor<V>
 where
     V: FromStr,
     V::Err: Error,
@@ -522,7 +522,7 @@ impl<V> Default for TryFromStringVisitor<V> {
     }
 }
 
-impl<'de, V> Visitor<'de> for TryFromStringVisitor<V>
+impl<V> Visitor<'_> for TryFromStringVisitor<V>
 where
     String: TryInto<V>,
     for<'a> &'a str: TryInto<V>,
@@ -586,7 +586,7 @@ impl<V> Default for FromStrOrU16Visitor<V> {
     }
 }
 
-impl<'de, V> Visitor<'de> for FromStrOrU16Visitor<V>
+impl<V> Visitor<'_> for FromStrOrU16Visitor<V>
 where
     u16: Into<V>,
     V: FromStr,

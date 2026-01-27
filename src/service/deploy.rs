@@ -10,7 +10,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::{serde::duration_option, Extensions, ListOrMap};
+use crate::{Extensions, ListOrMap, serde::duration_option};
 
 pub use self::{endpoint_mode::EndpointMode, resources::Resources};
 
@@ -129,22 +129,16 @@ impl Deploy {
         endpoint_mode.is_none()
             && labels.is_empty()
             && mode.is_none()
-            && !placement
-                .as_ref()
-                .is_some_and(|placement| !placement.is_empty())
+            && placement.as_ref().is_none_or(Placement::is_empty)
             && replicas.is_none()
-            && !resources
+            && resources.as_ref().is_none_or(Resources::is_empty)
+            && restart_policy.as_ref().is_none_or(RestartPolicy::is_empty)
+            && rollback_config
                 .as_ref()
-                .is_some_and(|resources| !resources.is_empty())
-            && !restart_policy
+                .is_none_or(UpdateOrRollbackConfig::is_empty)
+            && update_config
                 .as_ref()
-                .is_some_and(|restart| !restart.is_empty())
-            && !rollback_config
-                .as_ref()
-                .is_some_and(|rollback| !rollback.is_empty())
-            && !update_config
-                .as_ref()
-                .is_some_and(|update| !update.is_empty())
+                .is_none_or(UpdateOrRollbackConfig::is_empty)
             && extensions.is_empty()
     }
 }

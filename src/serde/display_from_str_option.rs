@@ -7,11 +7,12 @@ use std::{
     str::FromStr,
 };
 
-use serde::{de, Deserialize, Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serializer, de};
 
-use super::{error_chain, FromStrVisitor};
+use super::{FromStrVisitor, error_chain};
 
 /// Serialize an [`Option`]al value using its [`Display`] implementation.
+#[expect(clippy::ref_option, reason = "required for `serialize_with`")]
 pub(crate) fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
 where
     T: Display,

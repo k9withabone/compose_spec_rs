@@ -23,7 +23,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, Error};
+use syn::{Error, parse_macro_input};
 
 mod as_short;
 mod default;

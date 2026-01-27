@@ -1,8 +1,8 @@
 //! [`Prefix`] parsing helper.
 
 use syn::{
-    parse::{Parse, ParseStream},
     Attribute, Error, Ident, Result, Token, Visibility,
+    parse::{Parse, ParseStream},
 };
 
 /// Enum definition prefix, e.g. `#[doc = "Platform docs"] pub enum Platform`.
@@ -26,7 +26,7 @@ impl Parse for Prefix {
 
 impl Prefix {
     /// Construct a helper for checking that the ident is an expected value.
-    pub(super) fn peek_ident(&self) -> PeekIdent {
+    pub(super) fn peek_ident(&self) -> PeekIdent<'_> {
         PeekIdent {
             ident: &self.ident,
             comparisons: Vec::with_capacity(3),
@@ -42,7 +42,7 @@ pub(super) struct PeekIdent<'a> {
     comparisons: Vec<&'static str>,
 }
 
-impl<'a> PeekIdent<'a> {
+impl PeekIdent<'_> {
     /// Whether the [`Prefix`] ident matches an expected value.
     pub(super) fn is(&mut self, ident: &'static str) -> bool {
         self.comparisons.push(ident);

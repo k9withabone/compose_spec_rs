@@ -93,13 +93,13 @@ pub enum InvalidTagError {
     Length,
 }
 
-impl<'a> AsRef<str> for Tag<'a> {
+impl AsRef<str> for Tag<'_> {
     fn as_ref(&self) -> &str {
         self.0
     }
 }
 
-impl<'a> Borrow<str> for Tag<'a> {
+impl Borrow<str> for Tag<'_> {
     fn borrow(&self) -> &str {
         self.0
     }
@@ -113,19 +113,19 @@ impl<'a> TryFrom<&'a str> for Tag<'a> {
     }
 }
 
-impl<'a> PartialEq<str> for Tag<'a> {
+impl PartialEq<str> for Tag<'_> {
     fn eq(&self, other: &str) -> bool {
         self.0 == other
     }
 }
 
-impl<'a> PartialEq<&str> for Tag<'a> {
+impl PartialEq<&str> for Tag<'_> {
     fn eq(&self, other: &&str) -> bool {
         self.0 == *other
     }
 }
 
-impl<'a> Display for Tag<'a> {
+impl Display for Tag<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str(self.0)
     }

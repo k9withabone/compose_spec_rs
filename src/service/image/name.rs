@@ -134,7 +134,6 @@ impl<'a> Name<'a> {
     #[must_use]
     pub fn registry(&self) -> Option<&str> {
         self.registry_end.map(|end| {
-            // PANIC_SAFETY:
             // `registry_end` is always within `inner`.
             // `inner` only contains ASCII.
             // Checked with `registry()` test.
@@ -260,13 +259,13 @@ pub enum InvalidNamePartError {
     },
 }
 
-impl<'a> AsRef<str> for Name<'a> {
+impl AsRef<str> for Name<'_> {
     fn as_ref(&self) -> &str {
         self.inner
     }
 }
 
-impl<'a> Borrow<str> for Name<'a> {
+impl Borrow<str> for Name<'_> {
     fn borrow(&self) -> &str {
         self.inner
     }
@@ -280,43 +279,43 @@ impl<'a> TryFrom<&'a str> for Name<'a> {
     }
 }
 
-impl<'a> PartialEq for Name<'a> {
+impl PartialEq for Name<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.inner.eq(other.inner)
     }
 }
 
-impl<'a> PartialEq<str> for Name<'a> {
+impl PartialEq<str> for Name<'_> {
     fn eq(&self, other: &str) -> bool {
         self.inner == other
     }
 }
 
-impl<'a> PartialEq<&str> for Name<'a> {
+impl PartialEq<&str> for Name<'_> {
     fn eq(&self, other: &&str) -> bool {
         self.inner == *other
     }
 }
 
-impl<'a> PartialOrd for Name<'a> {
+impl PartialOrd for Name<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'a> Ord for Name<'a> {
+impl Ord for Name<'_> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.inner.cmp(other.inner)
     }
 }
 
-impl<'a> Hash for Name<'a> {
+impl Hash for Name<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.inner.hash(state);
     }
 }
 
-impl<'a> Display for Name<'a> {
+impl Display for Name<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str(self.inner)
     }
@@ -358,14 +357,14 @@ mod tests {
         /// Regex is from the
         /// [OCI distribution spec](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
         #[test]
-        #[ignore]
+        #[ignore = "long run time, included in CI"]
         fn new(name in NAME) {
             Name::new(&name)?;
         }
 
         /// Test `registry_end` is accurately parsed.
         #[test]
-        #[ignore]
+        #[ignore = "long run time, included in CI"]
         fn registry(mut registry in REGISTRY, port: Option<u16>, rest in NAME) {
             if let Some(port) = port {
                 write!(registry, ":{port}")?;

@@ -4,7 +4,7 @@
 use std::fmt::{self, Display, Formatter, Write};
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 use thiserror::Error;
 
 use crate::{common::key_impls, serde::forward_visitor};
@@ -243,7 +243,7 @@ impl<'de> Deserialize<'de> for IdOrName {
 /// [`de::Visitor`] for deserializing [`IdOrName`].
 struct Visitor;
 
-impl<'de> de::Visitor<'de> for Visitor {
+impl de::Visitor<'_> for Visitor {
     type Value = IdOrName;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {

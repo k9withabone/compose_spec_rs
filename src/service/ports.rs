@@ -18,7 +18,7 @@ use indexmap::IndexSet;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
-use crate::{impl_from_str, serde::FromStrOrU16Visitor, Extensions, ShortOrLong};
+use crate::{Extensions, ShortOrLong, impl_from_str, serde::FromStrOrU16Visitor};
 
 use super::strip_brackets;
 
@@ -163,7 +163,7 @@ impl Port {
             && self.app_protocol.is_none()
             && self.mode.is_none()
             && self.extensions.is_empty()
-            && self.published.map_or(true, |range| range.end.is_none())
+            && self.published.is_none_or(|range| range.end.is_none())
         {
             Ok(ShortPort {
                 host_ip: self.host_ip,
@@ -445,7 +445,7 @@ impl ShortRanges {
     }
 
     /// Removes the host port range and returns it.
-    pub fn take_host(&mut self) -> Option<Range> {
+    pub const fn take_host(&mut self) -> Option<Range> {
         self.host.take()
     }
 

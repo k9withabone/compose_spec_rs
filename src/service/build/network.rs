@@ -7,7 +7,7 @@ use std::{
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
 
-use crate::{impl_from_str, Identifier, InvalidIdentifierError};
+use crate::{Identifier, InvalidIdentifierError, impl_from_str};
 
 /// Network containers connect to during [`Build`](super::Build) for `RUN` instructions.
 ///

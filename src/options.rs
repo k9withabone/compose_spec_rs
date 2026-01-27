@@ -44,7 +44,7 @@ impl Options {
     /// assert_eq!(two_env["FOO"].as_ref().unwrap().as_string().unwrap(), "foo");
     /// assert_eq!(two_env["BAR"].as_ref().unwrap().as_string().unwrap(), "baz");
     /// ```
-    pub fn apply_merge(&mut self, apply_merge: bool) -> &mut Self {
+    pub const fn apply_merge(&mut self, apply_merge: bool) -> &mut Self {
         self.apply_merge = apply_merge;
         self
     }

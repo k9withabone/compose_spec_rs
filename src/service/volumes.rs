@@ -16,12 +16,12 @@ use std::{
 use compose_spec_macros::{DeserializeFromStr, DeserializeTryFromString, SerializeDisplay};
 use indexmap::IndexSet;
 use serde::{
-    de::{self, Unexpected},
     Deserialize, Deserializer, Serialize, Serializer,
+    de::{self, Unexpected},
 };
 use thiserror::Error;
 
-use crate::{impl_try_from, Identifier, InvalidIdentifierError, ShortOrLong};
+use crate::{Identifier, InvalidIdentifierError, ShortOrLong, impl_try_from};
 
 pub use self::mount::Mount;
 use self::mount::{Bind, BindOptions, Common, Volume};
@@ -730,7 +730,7 @@ impl<'de> Deserialize<'de> for SELinux {
 #[cfg(test)]
 mod tests {
     use proptest::{
-        arbitrary::{any, Arbitrary},
+        arbitrary::{Arbitrary, any},
         option, prop_assert_eq, prop_compose, prop_oneof, proptest,
         strategy::{BoxedStrategy, Just, Strategy},
     };

@@ -13,7 +13,7 @@ use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    impl_from_str, service::Hostname, Extensions, ListOrMap, MapKey, Resource, StringOrNumber,
+    Extensions, ListOrMap, MapKey, Resource, StringOrNumber, impl_from_str, service::Hostname,
 };
 
 impl Resource<Network> {
@@ -136,7 +136,7 @@ impl Network {
             && driver_opts.is_empty()
             && !attachable
             && !enable_ipv6
-            && !ipam.as_ref().is_some_and(|ipam| !ipam.is_empty())
+            && ipam.as_ref().is_none_or(Ipam::is_empty)
             && !internal
             && labels.is_empty()
             && name.is_none()

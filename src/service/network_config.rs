@@ -10,13 +10,13 @@ use std::{
 };
 
 use compose_spec_macros::{DeserializeFromStr, DeserializeTryFromString, SerializeDisplay};
-use indexmap::{map::Keys, IndexMap, IndexSet};
-use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+use indexmap::{IndexMap, IndexSet, map::Keys};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser::SerializeStruct};
 use thiserror::Error;
 
 use crate::{
-    impl_from_str, AsShortIter, Extensions, Identifier, InvalidIdentifierError, MapKey,
-    ShortOrLong, StringOrNumber,
+    AsShortIter, Extensions, Identifier, InvalidIdentifierError, MapKey, ShortOrLong,
+    StringOrNumber, impl_from_str,
 };
 
 use super::Hostname;
@@ -129,7 +129,7 @@ impl<'de> Deserialize<'de> for NetworkConfig {
 /// - `Err(_)`, if both fields are present.
 /// - `Err(_)`, if there is an error deserializing either field value.
 pub(super) mod option {
-    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
     use super::{Field, NetworkConfig, NetworkMode, Networks};
 
@@ -138,6 +138,7 @@ pub(super) mod option {
     /// # Errors
     ///
     /// Returns an error if the `serializer` does while serializing.
+    #[expect(clippy::ref_option, reason = "required for `serialize_with`")]
     pub(in super::super) fn serialize<S: Serializer>(
         value: &Option<NetworkConfig>,
         serializer: S,
@@ -459,7 +460,7 @@ impl<'a> AsShortIter<'a> for IndexMap<Identifier, Option<Network>> {
 
     fn as_short_iter(&'a self) -> Option<Self::Iter> {
         self.values()
-            .all(|network| network.as_ref().map_or(true, Network::is_empty))
+            .all(|network| network.as_ref().is_none_or(Network::is_empty))
             .then(|| self.keys())
     }
 }
@@ -595,10 +596,12 @@ mod tests {
 
     #[test]
     fn missing_err() {
-        assert!(serde_yaml::from_str::<NetworkConfig>("{}")
-            .unwrap_err()
-            .to_string()
-            .contains("missing"));
+        assert!(
+            serde_yaml::from_str::<NetworkConfig>("{}")
+                .unwrap_err()
+                .to_string()
+                .contains("missing")
+        );
     }
 
     #[test]

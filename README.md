@@ -58,7 +58,9 @@ assert_eq!(image.tag(), Some("latest"));
 
 ## Minimum Supported Rust Version (MSRV)
 
-The minimum version of the Rust compiler `compose_spec` can currently compile with is 1.70, which is tested in CI.
+The minimum version of the Rust compiler `compose_spec` can currently compile with is 1.85, which is tested in CI.
+The goal is to match the Rust version used by [Debian stable](https://packages.debian.org/stable/rustc).
+However, this is not a hard requirement and the MSRV may be increased as necessary.
 Increasing the MSRV is **not** considered to be a breaking change.
 
 ## Contribution
