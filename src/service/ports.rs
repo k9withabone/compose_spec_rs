@@ -161,7 +161,7 @@ impl Port {
     pub fn into_short(self) -> Result<ShortPort, Self> {
         if self.name.is_none()
             && self.app_protocol.is_none()
-            && self.mode.is_none()
+            && self.mode.map_or(true, |mode| mode == Mode::default())
             && self.extensions.is_empty()
             && self.published.is_none_or(|range| range.end.is_none())
         {
@@ -978,6 +978,8 @@ pub(super) mod tests {
     mod short_port {
         use std::net::Ipv6Addr;
 
+        use indexmap::IndexMap;
+
         use super::*;
 
         proptest! {
@@ -1004,6 +1006,34 @@ pub(super) mod tests {
             };
             assert_eq!("[::1]:80:80".parse::<ShortPort>()?, port);
             assert_eq!("::1:80:80".parse::<ShortPort>()?, port);
+
+            Ok(())
+        }
+
+        #[test]
+        fn mode_ingress() -> Result<(), Port> {
+            let port = Port {
+                name: None,
+                target: 80,
+                published: Some(Range {
+                    start: 10080,
+                    end: None,
+                }),
+                host_ip: None,
+                protocol: Some(Protocol::Tcp),
+                app_protocol: None,
+                mode: Some(Mode::Ingress),
+                extensions: IndexMap::default(),
+            };
+            let short_port = ShortPort {
+                host_ip: None,
+                protocol: Some(Protocol::Tcp),
+                ranges: ShortRanges {
+                    host: Some(10080.into()),
+                    container: 80.into(),
+                },
+            };
+            assert_eq!(port.into_short()?, short_port);
 
             Ok(())
         }
