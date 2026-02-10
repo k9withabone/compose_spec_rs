@@ -4,7 +4,7 @@
 [![Crates.io MSRV](https://img.shields.io/crates/msrv/compose_spec?style=flat-square&logo=rust)](#minimum-supported-rust-version-msrv)
 [![docs.rs](https://img.shields.io/docsrs/compose_spec?style=flat-square&logo=rust)](https://docs.rs/compose_spec)
 [![License](https://img.shields.io/crates/l/compose_spec?style=flat-square)](./LICENSE)
-[![GitHub Actions CI Workflow Status](https://img.shields.io/github/actions/workflow/status/k9withabone/compose_spec_rs/ci.yaml?branch=main&style=flat-square&logo=github&label=ci)](https://github.com/k9withabone/compose_spec_rs/actions/workflows/ci.yaml?query=branch%3Amain)
+[![GitHub Actions CI Workflow Status](https://img.shields.io/github/actions/workflow/status/containers/compose_spec_rs/ci.yaml?branch=main&style=flat-square&logo=github&label=ci)](https://github.com/containers/compose_spec_rs/actions/workflows/ci.yaml?query=branch%3Amain)
 
 `compose_spec` is a [Rust] library crate for (de)serializing from/to the [Compose specification].
 
@@ -65,7 +65,7 @@ Increasing the MSRV is **not** considered to be a breaking change.
 
 ## Contribution
 
-Contributions, suggestions, and/or comments are appreciated! Feel free to create an [issue](https://github.com/k9withabone/compose_spec_rs/issues), [discussion](https://github.com/k9withabone/compose_spec_rs/discussions), or [pull request](https://github.com/k9withabone/compose_spec_rs/pulls).
+Contributions, suggestions, and/or comments are appreciated! Feel free to create an [issue](https://github.com/containers/compose_spec_rs/issues), [discussion](https://github.com/containers/compose_spec_rs/discussions), or [pull request](https://github.com/containers/compose_spec_rs/pulls).
 Generally, it is preferable to start a discussion for a feature request or open an issue for reporting a bug before submitting changes with a pull request.
 
 ### Project Layout

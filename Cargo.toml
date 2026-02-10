@@ -7,7 +7,7 @@ authors = ["Paul Nettleton <k9@k9withabone.dev>"]
 edition = "2024"
 license = "MPL-2.0"
 readme = "README.md"
-repository = "https://github.com/k9withabone/compose_spec_rs"
+repository = "https://github.com/containers/compose_spec_rs"
 rust-version = "1.85"
 
 [workspace.lints.rust]
@@ -101,7 +101,7 @@ features_always_bump_minor = false
 breaking_always_bump_major = false
 
 [workspace.metadata.git-cliff.remote.github]
-owner = "k9withabone"
+owner = "containers"
 repo = "compose_spec_rs"
 
 [workspace.metadata.git-cliff.changelog]
@@ -226,7 +226,7 @@ sort_commits = "oldest"
 
 [package]
 name = "compose_spec"
-version = "0.3.1-alpha.1"
+version = "0.3.1-alpha.2"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
