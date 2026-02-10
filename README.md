@@ -65,41 +65,9 @@ Increasing the MSRV is **not** considered to be a breaking change.
 
 ## Contribution
 
-Contributions, suggestions, and/or comments are appreciated! Feel free to create an [issue](https://github.com/containers/compose_spec_rs/issues), [discussion](https://github.com/containers/compose_spec_rs/discussions), or [pull request](https://github.com/containers/compose_spec_rs/pulls).
-Generally, it is preferable to start a discussion for a feature request or open an issue for reporting a bug before submitting changes with a pull request.
-
-### Project Layout
-
-`compose_spec` is composed of two packages set up in a Cargo workspace. The root package, `compose_spec`, is the main library.
-The other package, `compose_spec_macros`, located in a directory of the same name, is a procedural macro library used in `compose_spec`. `compose_spec_macros` is not designed to be used outside the `compose_spec` library.
-
-### Local CI
-
-If you are submitting code changes in a pull request and would like to run the CI jobs locally, use the following commands:
-
-- format: `cargo fmt --check --all`
-- clippy: `cargo clippy --workspace --tests`
-- test: `cargo test --workspace -- --include-ignored`
-- doc: `cargo doc --workspace --document-private-items`
-- docs-rs:
-  - Install the nightly Rust toolchain, `rustup toolchain install nightly`.
-  - Install [cargo-docs-rs](https://github.com/dtolnay/cargo-docs-rs).
-  - `cargo docs-rs`
-- spellcheck:
-  - Install [typos](https://github.com/crate-ci/typos).
-  - `typos`
-- msrv:
-  - Install [cargo-msrv](https://github.com/foresterre/cargo-msrv).
-  - `cargo msrv verify`
-- minimal-versions:
-  - Install the nightly Rust toolchain, `rustup toolchain install nightly`.
-  - Install [cargo-hack](https://github.com/taiki-e/cargo-hack).
-  - Install [cargo-minimal-versions](https://github.com/taiki-e/cargo-minimal-versions).
-  - `cargo minimal-versions check --workspace`
-  - `cargo minimal-versions test --workspace`
-- semver-checks:
-  - Install [cargo-semver-checks](https://github.com/obi1kenobi/cargo-semver-checks-action).
-  - `cargo semver-checks`
+Contributions, suggestions, and/or comments are appreciated! See the
+[contribution guide](./CONTRIBUTING.md) for more information on reporting issues, submitting pull
+requests, the project layout, running CI tasks locally, and communication channels.
 
 ## License
 
