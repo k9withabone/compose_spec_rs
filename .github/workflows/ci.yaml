@@ -94,7 +94,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Typos
-        uses: crate-ci/typos@v1.26.0
+        uses: crate-ci/typos@v1
 
   msrv:
     runs-on: ubuntu-latest

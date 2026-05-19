@@ -18,9 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Ensures that all secrets used in each service is defined in the top-level `secrets` field of the `Compose` file.
 - Add `Compose::validate_all()`.
 - Add `Compose::options()` for setting deserialization options.
-- Add `Options::apply_merge()`. ([#2](https://github.com/k9withabone/compose_spec_rs/issues/2))
+- Add `Options::apply_merge()`. ([#2](https://github.com/containers/compose_spec_rs/issues/2))
   - Merges `<<` keys into the surrounding mapping.
-- **BREAKING** *(service)* Add `services[].networks[].driver_opts` attribute. ([#29](https://github.com/k9withabone/compose_spec_rs/issues/29))
+- **BREAKING** *(service)* Add `services[].networks[].driver_opts` attribute. ([#29](https://github.com/containers/compose_spec_rs/issues/29))
   - Added the `driver_opts` field to `compose_spec::service::network_config::Network`.
 - *(service)* Add `Limit` string conversions.
   - Added `Display` and `FromStr` implementations to `compose_spec::service::Limit`.
@@ -29,19 +29,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added the `compose_spec::service::network_config::NetworkMode::Container` enum variant.
 
 ### Bug Fixes
-- *(service)* Image registry with port is valid. ([#22](https://github.com/k9withabone/compose_spec_rs/issues/22))
+- *(service)* Image registry with port is valid. ([#22](https://github.com/containers/compose_spec_rs/issues/22))
   - Image names with a registry that have a port are now valid.
   - Changed `compose_spec::service::image::Name::new()` to allow for using `compose_spec::service::Image::set_registry()` with a registry with a port. The first part of a name is now treated as a registry if it has a dot (.) regardless of whether the name has multiple parts.
   - Added `compose_spec::service::image::InvalidNamePart::RegistryPort` error variant for when a registry's port is not a valid port number.
   - Refactored image tests to not use `unwrap()`.
-- *(service)* Support host IP in brackets for `ports` short syntax. ([#24](https://github.com/k9withabone/compose_spec_rs/issues/24))
-- **BREAKING** *(service)* `user` may have an optional group. ([#23](https://github.com/k9withabone/compose_spec_rs/issues/23))
+- *(service)* Support host IP in brackets for `ports` short syntax. ([#24](https://github.com/containers/compose_spec_rs/issues/24))
+- **BREAKING** *(service)* `user` may have an optional group. ([#23](https://github.com/containers/compose_spec_rs/issues/23))
   - Before this fix values for `services[].user` that included a GID or group name were rejected. The Compose Specification is unfortunately vague for `user` (see https://github.com/compose-spec/compose-spec/issues/39). However, both `docker run --user` and `podman run --user` accept the `{user}[:{group}]` syntax.
   - Renamed `compose_spec::service::UserOrGroup` to `IdOrName`.
   - Renamed `compose_spec::service::user_or_group` module to `user`.
   - Added `compose_spec::service::User`.
   - Changed the type of the `user` field in `compose_spec::Service` to `Option<User>`.
-- **BREAKING** *(service)* Support unlimited ulimits. ([#31](https://github.com/k9withabone/compose_spec_rs/issues/31))
+- **BREAKING** *(service)* Support unlimited ulimits. ([#31](https://github.com/containers/compose_spec_rs/issues/31))
   - Changed `soft` and `hard` fields of `compose_spec::service::Ulimit` to `compose_spec::service::Limit<u64>`.
   - Changed `compose_spec::service::Ulimits` type alias (used for `ulimits` field of `compose_spec::Service` and `compose_spec::service::Build`) to `IndexMap<Resource, ShortOrLong<Limit<u64>, Ulimit>>`.
   - Changed `<Ulimit as AsShort>::Short` to `Limit<u64>`.
@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 - Add fragment documentation.
-- *(macros)* Add symlink to `LICENSE` file. ([#21](https://github.com/k9withabone/compose_spec_rs/issues/21))
+- *(macros)* Add symlink to `LICENSE` file. ([#21](https://github.com/containers/compose_spec_rs/issues/21))
   - This ensures that the `LICENSE` file is included when the `compose_spec_macros` package is published to crates.io via `cargo publish`.
 - *(changelog)* Update git-cliff config for v2.6.0.
 
@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `compose_spec::{Identifier, MapKey, ExtensionKey, service::{build::CacheOption, user_or_group::Name, Hostname, Resource}}`
 - *(service)* Add `service::volumes::mount::Tmpfs::from_target()`.
   - Also implemented `From<service::volumes::AbsolutePath>` for `service::volumes::mount::Tmpfs` using the new function.
-- **BREAKING** *(service)* Add `entitlements` field to `service::Build` ([#15](https://github.com/k9withabone/compose_spec_rs/issues/15)).
+- **BREAKING** *(service)* Add `entitlements` field to `service::Build` ([#15](https://github.com/containers/compose_spec_rs/issues/15)).
 
 ### Bug Fixes
 - **BREAKING** *(service)* Allow for unlimited `pids_limit`.
@@ -134,6 +134,6 @@ The initial release of `compose_spec`!
 - Conversion between short and long syntax forms of values.
 - Conversion between `std::time::Duration` and the duration string format from the compose-spec.
 
-[0.3.0]: https://github.com/k9withabone/compose_spec_rs/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/k9withabone/compose_spec_rs/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/k9withabone/compose_spec_rs/compare/51a31d82c34c13cf8881bf8a9cbda74a6b6aa9b6...v0.1.0
+[0.3.0]: https://github.com/containers/compose_spec_rs/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/containers/compose_spec_rs/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/containers/compose_spec_rs/compare/51a31d82c34c13cf8881bf8a9cbda74a6b6aa9b6...v0.1.0
