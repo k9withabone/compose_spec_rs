@@ -35,6 +35,7 @@ pub type Volumes = IndexSet<ShortOrLong<ShortVolume, Mount>>;
 ///
 /// If a volume [`Mount`] cannot be represented in the [`ShortVolume`] syntax, it is returned in the
 /// [`Err`] variant of the item.
+#[allow(clippy::result_large_err)]
 pub fn into_short_iter(volumes: Volumes) -> impl Iterator<Item = Result<ShortVolume, Mount>> {
     volumes.into_iter().map(|volume| match volume {
         ShortOrLong::Short(volume) => Ok(volume),
