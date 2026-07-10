@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Bug Fixes
+- *(service)* Allow an image to have both a tag and a digest (e.g. `name:tag@digest`).
+  - The [OCI / distribution reference grammar](https://github.com/distribution/reference) permits a reference to carry both a tag and a digest, and Docker, Podman, and Docker Compose all accept such references. `Image::parse()` no longer rejects them.
+  - `Image::tag()` and `Image::digest()` (and `as_tag()` / `as_digest()`) may now both return `Some` for the same image.
+  - **BREAKING** *(service)* `Image::set_tag()` and `Image::set_digest()` no longer remove the other part; each now only sets or removes its own component, placing the tag before the digest.
+  - **BREAKING** *(service)* Removed the `service::image::InvalidImageError::TagAndDigest` variant, as it can no longer occur.
+
 ## [0.3.0] - 2024-10-16
 
 ### New Features

@@ -10,7 +10,6 @@ use std::{
     cmp::Ordering,
     fmt::{self, Display, Formatter},
     hash::{Hash, Hasher},
-    ops::{AddAssign, SubAssign},
 };
 
 use compose_spec_macros::{DeserializeTryFromString, SerializeDisplay};
@@ -26,9 +25,11 @@ pub use self::{
 
 /// Container image specification.
 ///
-/// Images contain a name and an optional tag or digest. Each part of the image specification must
-/// conform to a specific format. See [`Name`], [`Tag`], and [`Digest`] for details. The general
-/// format is `{name}[:{tag}|@{digest}]`.
+/// Images contain a name and an optional tag and/or digest. Each part of the image specification
+/// must conform to a specific format. See [`Name`], [`Tag`], and [`Digest`] for details. The
+/// general format is `{name}[:{tag}][@{digest}]`, matching the
+/// [OCI / distribution reference grammar](https://github.com/distribution/reference), which allows
+/// a reference to carry both a tag and a digest.
 ///
 /// [compose-spec](https://github.com/compose-spec/compose-spec/blob/master/05-services.md#image)
 #[derive(SerializeDisplay, DeserializeTryFromString, Debug, Clone)]
@@ -39,26 +40,35 @@ pub struct Image {
     /// Byte position of `inner` where the registry ends, if the image has a registry part.
     registry_end: Option<usize>,
 
-    /// Byte position of `inner` where the tag or digest starts, after its separator (: or @),
-    /// if the image has a tag or digest.
-    tag_or_digest_start: Option<TagOrDigestStart>,
+    /// Byte position of `inner` where the tag starts, after its `:` separator, if the image has a
+    /// tag. When a digest is also present, it always follows the tag.
+    tag_start: Option<usize>,
+
+    /// Byte position of `inner` where the digest starts, after its `@` separator, if the image has
+    /// a digest.
+    digest_start: Option<usize>,
 }
+
+/// Byte positions parsed from an image string: where the registry ends, and where the tag and the
+/// digest each start (after their `:` / `@` separator), when present.
+type ImagePartStarts = (Option<usize>, Option<usize>, Option<usize>);
 
 impl Image {
     /// Parse an [`Image`] from a string.
     ///
     /// # Errors
     ///
-    /// Images are made up of a [`Name`] and an optional [`Tag`] or [`Digest`]. Each part has
+    /// Images are made up of a [`Name`] and an optional [`Tag`] and/or [`Digest`]. Each part has
     /// specific requirements for that part of the string to conform to. See [`Name::new()`],
     /// [`Tag::new()`], and [`Digest::new()`] for details.
     ///
-    /// This function will also error if the string contains both a tag and digest.
+    /// A reference may contain both a tag and a digest (e.g. `name:tag@digest`), as permitted by
+    /// the OCI / distribution reference grammar.
     ///
     /// # Examples
     ///
     /// ```
-    /// use compose_spec::service::image::{Image, InvalidImageError};
+    /// use compose_spec::service::image::Image;
     ///
     /// let image = Image::parse("quay.io/podman/hello:latest").unwrap();
     ///
@@ -68,27 +78,31 @@ impl Image {
     /// assert_eq!(image.tag(), Some("latest"));
     /// assert_eq!(image.digest(), None);
     ///
-    /// // Images cannot have a tag and a digest.
-    /// let image = "quay.io/podman/hello:latest@sha256:075975296016084fc66b59c35c9d4504765d95aadcd5469f28d2b75750348fc5";
-    /// assert_eq!(Image::parse(image), Err(InvalidImageError::TagAndDigest));
+    /// // Images may have both a tag and a digest.
+    /// let digest = "sha256:075975296016084fc66b59c35c9d4504765d95aadcd5469f28d2b75750348fc5";
+    /// let image = Image::parse(format!("quay.io/podman/hello:latest@{digest}")).unwrap();
+    /// assert_eq!(image.tag(), Some("latest"));
+    /// assert_eq!(image.digest(), Some(digest));
     /// ```
     pub fn parse<T>(image: T) -> Result<Self, InvalidImageError>
     where
         T: AsRef<str> + Into<String>,
     {
-        let (registry_end, tag_or_digest_start) = Self::parse_impl(image.as_ref())?;
+        let (registry_end, tag_start, digest_start) = Self::parse_impl(image.as_ref())?;
 
         Ok(Self {
             inner: image.into(),
             registry_end,
-            tag_or_digest_start,
+            tag_start,
+            digest_start,
         })
     }
 
     /// Concrete implementation for [`Self::parse()`].
-    fn parse_impl(
-        image: &str,
-    ) -> Result<(Option<usize>, Option<TagOrDigestStart>), InvalidImageError> {
+    ///
+    /// Returns the byte positions, within `image`, where the registry ends and where the tag and
+    /// digest start (each after its separator).
+    fn parse_impl(image: &str) -> Result<ImagePartStarts, InvalidImageError> {
         let (image, digest_start) = image
             .split_once('@')
             .map_or(Ok((image, None)), |(image, digest)| {
@@ -103,19 +117,15 @@ impl Image {
                 Tag::new(tag).map(|_| (image, Some(image.len() + 1)))
             })?;
 
-        let tag_or_digest = match (digest_start, tag_start) {
-            (None, None) => None,
-            (None, Some(tag_start)) => Some(TagOrDigestStart::Tag(tag_start)),
-            (Some(digest_start), None) => Some(TagOrDigestStart::Digest(digest_start)),
-            (Some(_), Some(_)) => return Err(InvalidImageError::TagAndDigest),
-        };
-
         let name = Name::new(image)?;
 
-        Ok((name.registry_end(), tag_or_digest))
+        Ok((name.registry_end(), tag_start, digest_start))
     }
 
     /// Create an [`Image`] from validated parts.
+    ///
+    /// To create an image with both a tag and a digest, use [`set_digest()`](Self::set_digest())
+    /// (or [`set_tag()`](Self::set_tag())) on the result.
     ///
     /// # Examples
     ///
@@ -141,15 +151,23 @@ impl Image {
 
         inner.push_str(name);
 
-        let tag_or_digest_start = tag_or_digest.map(|tag_or_digest| {
+        let mut tag_start = None;
+        let mut digest_start = None;
+        if let Some(tag_or_digest) = tag_or_digest {
+            // Add one for the separator.
+            let start = inner.len() + 1;
             tag_or_digest.push_to_string(&mut inner);
-            tag_or_digest.as_start(inner.len())
-        });
+            match tag_or_digest {
+                TagOrDigest::Tag(_) => tag_start = Some(start),
+                TagOrDigest::Digest(_) => digest_start = Some(start),
+            }
+        }
 
         Self {
             inner,
             registry_end,
-            tag_or_digest_start,
+            tag_start,
+            digest_start,
         }
     }
 
@@ -214,14 +232,14 @@ impl Image {
                 self.inner.replace_range(..end, registry);
                 let new_len = registry.len();
                 self.registry_end = Some(new_len);
-                self.update_tag_or_digest_start(end, new_len);
+                self.shift_tag_and_digest_start(end, new_len);
             }
             // Add registry
             (Some(registry), None) => {
                 let registry = registry.into_inner();
                 self.inner = format!("{registry}/{}", &self.inner);
                 self.registry_end = Some(registry.len());
-                self.update_tag_or_digest_start(0, registry.len() + 1);
+                self.shift_tag_and_digest_start(0, registry.len() + 1);
             }
             // Remove registry
             (None, Some(mut end)) => {
@@ -229,7 +247,7 @@ impl Image {
                 end += 1;
                 self.inner.replace_range(..end, "");
                 self.registry_end = None;
-                self.update_tag_or_digest_start(end, 0);
+                self.shift_tag_and_digest_start(end, 0);
             }
             // Status quo
             (None, None) => {}
@@ -280,14 +298,25 @@ impl Image {
 
         self.registry_end = name.registry_end();
 
-        self.update_tag_or_digest_start(end, name.into_inner().len());
+        self.shift_tag_and_digest_start(end, name.into_inner().len());
     }
 
-    /// Return the byte positions where the image name ends.
+    /// Return the byte position within `inner` where the image name ends, i.e. the first separator
+    /// (`:` or `@`), or the end of the string if there is neither a tag nor a digest.
     fn name_end(&self) -> usize {
-        // Subtract one from tag or digest start for separator.
-        self.tag_or_digest_start
-            .map_or_else(|| self.inner.len(), |start| start.into_inner() - 1)
+        // Subtract one from the tag or digest start for its separator.
+        match (self.tag_start, self.digest_start) {
+            (Some(start), _) | (None, Some(start)) => start - 1,
+            (None, None) => self.inner.len(),
+        }
+    }
+
+    /// Return the byte position within `inner` where the tag ends, i.e. the `@` before the digest,
+    /// or the end of the string if there is no digest.
+    fn tag_end(&self) -> usize {
+        // Subtract one from the digest start for its separator.
+        self.digest_start
+            .map_or(self.inner.len(), |start| start - 1)
     }
 
     /// Returns a string slice of the image's tag if it has one.
@@ -302,15 +331,13 @@ impl Image {
     /// ```
     #[must_use]
     pub fn tag(&self) -> Option<&str> {
-        if let Some(TagOrDigestStart::Tag(start)) = self.tag_or_digest_start {
-            // `start` is always within `inner`.
+        self.tag_start.map(|start| {
+            // `start` and `tag_end()` are always within `inner`.
             // `inner` only contains ASCII.
             // Checked with `tag_and_digest()` test.
             #[allow(clippy::indexing_slicing, clippy::string_slice)]
-            Some(&self.inner[start..])
-        } else {
-            None
-        }
+            &self.inner[start..self.tag_end()]
+        })
     }
 
     /// The [`Tag`] portion of the image, if it has one.
@@ -321,7 +348,7 @@ impl Image {
 
     /// Set or remove the image's tag.
     ///
-    /// If the image has a digest it is removed.
+    /// A digest, if present, is left unchanged; the tag is always placed before it.
     ///
     /// # Examples
     ///
@@ -333,9 +360,50 @@ impl Image {
     ///
     /// image.set_tag(Some(Tag::new("latest").unwrap()));
     /// assert_eq!(image.tag(), Some("latest"));
+    /// assert_eq!(image.digest(), Some(digest));
     /// ```
     pub fn set_tag(&mut self, tag: Option<Tag>) {
-        self.set_tag_or_digest(tag.map(Into::into));
+        match (tag, self.tag_start) {
+            // Replace existing tag.
+            (Some(tag), Some(start)) => {
+                let tag = tag.into_inner();
+                let end = self.tag_end();
+                let old_len = end - start;
+                self.inner.replace_range(start..end, tag);
+                // A digest following the tag shifts by the change in tag length.
+                if let Some(digest_start) = self.digest_start.as_mut() {
+                    match tag.len().cmp(&old_len) {
+                        Ordering::Greater => *digest_start += tag.len() - old_len,
+                        Ordering::Less => *digest_start -= old_len - tag.len(),
+                        Ordering::Equal => {}
+                    }
+                }
+            }
+            // Add a tag before the name's end (i.e. before any digest).
+            (Some(tag), None) => {
+                let tag = tag.into_inner();
+                let name_end = self.name_end();
+                self.inner.insert(name_end, ':');
+                self.inner.insert_str(name_end + 1, tag);
+                self.tag_start = Some(name_end + 1);
+                // A digest shifts right by the inserted `:{tag}`.
+                if let Some(digest_start) = self.digest_start.as_mut() {
+                    *digest_start += tag.len() + 1;
+                }
+            }
+            // Remove the tag, including its separator.
+            (None, Some(start)) => {
+                let end = self.tag_end();
+                let removed = end - (start - 1);
+                self.inner.replace_range((start - 1)..end, "");
+                self.tag_start = None;
+                if let Some(digest_start) = self.digest_start.as_mut() {
+                    *digest_start -= removed;
+                }
+            }
+            // Status quo.
+            (None, None) => {}
+        }
     }
 
     /// Returns a string slice of the image's digest if it has one.
@@ -352,15 +420,13 @@ impl Image {
     /// ```
     #[must_use]
     pub fn digest(&self) -> Option<&str> {
-        if let Some(TagOrDigestStart::Digest(start)) = self.tag_or_digest_start {
-            // `start` is always within `inner`.
+        self.digest_start.map(|start| {
+            // The digest is always the last part of `inner`, so `start` is always within `inner`.
             // `inner` only contains ASCII.
             // Checked with `tag_and_digest()` test.
             #[allow(clippy::indexing_slicing, clippy::string_slice)]
-            Some(&self.inner[start..])
-        } else {
-            None
-        }
+            &self.inner[start..]
+        })
     }
 
     /// The [`Digest`] portion of the image, if it has one.
@@ -371,87 +437,91 @@ impl Image {
 
     /// Set or remove the image's digest.
     ///
-    /// If the image has a tag it is removed.
+    /// A tag, if present, is left unchanged; the digest is always placed after it.
     ///
     /// # Examples
     ///
     /// ```
     /// use compose_spec::service::image::{Image, Digest};
     ///
-    /// let mut image = Image::parse(format!("quay.io/podman/hello:latest")).unwrap();
+    /// let mut image = Image::parse("quay.io/podman/hello:latest").unwrap();
     ///
     /// let digest = "sha256:075975296016084fc66b59c35c9d4504765d95aadcd5469f28d2b75750348fc5";
     /// image.set_digest(Some(Digest::new(digest).unwrap()));
     /// assert_eq!(image.digest(), Some(digest));
+    /// assert_eq!(image.tag(), Some("latest"));
     /// ```
     pub fn set_digest(&mut self, digest: Option<Digest>) {
-        self.set_tag_or_digest(digest.map(Into::into));
-    }
-
-    /// The [`TagOrDigest`] portion of the image, if it has one.
-    #[must_use]
-    pub fn as_tag_or_digest(&self) -> Option<TagOrDigest<'_>> {
-        match self.tag_or_digest_start {
-            Some(TagOrDigestStart::Tag(start)) => {
-                // `start` is always within `inner`.
-                // `inner` only contains ASCII.
-                // Checked with `tag_and_digest()` test.
-                #[allow(clippy::indexing_slicing, clippy::string_slice)]
-                let tag = Tag::new_unchecked(&self.inner[start..]);
-                Some(TagOrDigest::Tag(tag))
-            }
-            Some(TagOrDigestStart::Digest(start)) => {
-                // `start` is always within `inner`.
-                // `inner` only contains ASCII.
-                // Checked with `tag_and_digest()` test.
-                #[allow(clippy::indexing_slicing, clippy::string_slice)]
-                let digest = Digest::new_unchecked(&self.inner[start..]);
-                Some(TagOrDigest::Digest(digest))
-            }
-            None => None,
-        }
-    }
-
-    /// Set or remove the image's tag or digest.
-    pub fn set_tag_or_digest(&mut self, tag_or_digest: Option<TagOrDigest>) {
-        match (tag_or_digest, self.tag_or_digest_start) {
-            // Replace tag
-            (Some(TagOrDigest::Tag(tag)), Some(TagOrDigestStart::Tag(start))) => {
-                self.inner.replace_range(start.., tag.into_inner());
-            }
-            // Replace digest
-            (Some(TagOrDigest::Digest(digest)), Some(TagOrDigestStart::Digest(start))) => {
+        // The digest is always the last part of `inner`, so no other positions shift.
+        match (digest, self.digest_start) {
+            // Replace existing digest.
+            (Some(digest), Some(start)) => {
                 self.inner.replace_range(start.., digest.into_inner());
             }
-            // Set tag or digest / replace one with the other
-            (Some(tag_or_digest), Some(_) | None) => {
-                self.inner.truncate(self.name_end());
-                // Add one for separator
-                self.tag_or_digest_start = Some(tag_or_digest.as_start(self.inner.len()));
-                tag_or_digest.push_to_string(&mut self.inner);
+            // Append a digest.
+            (Some(digest), None) => {
+                self.digest_start = Some(self.inner.len() + 1);
+                self.inner.push('@');
+                self.inner.push_str(digest.into_inner());
             }
-            // Remove tag or digest
+            // Remove the digest, including its separator.
             (None, Some(start)) => {
-                // Subtract one from tag or digest start for separator
-                let new_end = start.into_inner() - 1;
-                self.tag_or_digest_start = None;
-                self.inner.truncate(new_end);
+                self.inner.truncate(start - 1);
+                self.digest_start = None;
             }
-            // Status quo
+            // Status quo.
             (None, None) => {}
         }
     }
 
-    /// Update the start position of the tag or digest, if it exists.
+    /// The [`TagOrDigest`] portion of the image, if it has one.
+    ///
+    /// If the image has both a tag and a digest, the [`Digest`] is returned, as it is the more
+    /// specific identifier. Use [`tag()`](Self::tag()) / [`digest()`](Self::digest()) (or their
+    /// [`as_tag()`](Self::as_tag()) / [`as_digest()`](Self::as_digest()) counterparts) to access
+    /// each part individually.
+    #[must_use]
+    pub fn as_tag_or_digest(&self) -> Option<TagOrDigest<'_>> {
+        self.digest().map_or_else(
+            || {
+                self.tag()
+                    .map(|tag| TagOrDigest::Tag(Tag::new_unchecked(tag)))
+            },
+            |digest| Some(TagOrDigest::Digest(Digest::new_unchecked(digest))),
+        )
+    }
+
+    /// Set or remove the image's tag or digest.
+    ///
+    /// [`TagOrDigest::Tag`] delegates to [`set_tag()`](Self::set_tag()) and
+    /// [`TagOrDigest::Digest`] to [`set_digest()`](Self::set_digest()), each of which leaves the
+    /// other part unchanged. [`None`] removes both the tag and the digest.
+    pub fn set_tag_or_digest(&mut self, tag_or_digest: Option<TagOrDigest>) {
+        match tag_or_digest {
+            Some(TagOrDigest::Tag(tag)) => self.set_tag(Some(tag)),
+            Some(TagOrDigest::Digest(digest)) => self.set_digest(Some(digest)),
+            None => {
+                self.set_digest(None);
+                self.set_tag(None);
+            }
+        }
+    }
+
+    /// Shift the tag and digest start positions to account for a change in the length of an earlier
+    /// part of `inner` (e.g. the registry or name).
     ///
     /// The absolute sizes of `old_len` and `new_len` do not matter, only their relative size.
-    fn update_tag_or_digest_start(&mut self, old_len: usize, new_len: usize) {
-        if let Some(tag_or_digest) = &mut self.tag_or_digest_start {
-            match old_len.cmp(&new_len) {
-                Ordering::Less => *tag_or_digest += new_len - old_len,
-                Ordering::Equal => {}
-                Ordering::Greater => *tag_or_digest -= old_len - new_len,
-            }
+    fn shift_tag_and_digest_start(&mut self, old_len: usize, new_len: usize) {
+        let shift = |start: &mut usize| match old_len.cmp(&new_len) {
+            Ordering::Less => *start += new_len - old_len,
+            Ordering::Equal => {}
+            Ordering::Greater => *start -= old_len - new_len,
+        };
+        if let Some(start) = self.tag_start.as_mut() {
+            shift(start);
+        }
+        if let Some(start) = self.digest_start.as_mut() {
+            shift(start);
         }
     }
 
@@ -478,10 +548,6 @@ pub enum InvalidImageError {
     /// Given tag was invalid.
     #[error("invalid image tag")]
     Tag(#[from] InvalidTagError),
-
-    /// Both a tag and digest were given.
-    #[error("image cannot have a tag and a digest")]
-    TagAndDigest,
 
     /// Part of the given image name was invalid.
     #[error("invalid image name part")]
@@ -576,46 +642,6 @@ impl Display for Image {
     }
 }
 
-/// Byte position where the tag or digest starts, after the separator (: or @), in an [`Image`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TagOrDigestStart {
-    /// The [`Image`] contains a [`Tag`].
-    Tag(usize),
-    /// The [`Image`] contains a [`Digest`].
-    Digest(usize),
-}
-
-impl TagOrDigestStart {
-    /// Return the inner start value for either variant.
-    const fn into_inner(self) -> usize {
-        match self {
-            Self::Tag(tag_start) => tag_start,
-            Self::Digest(digest_start) => digest_start,
-        }
-    }
-}
-
-impl AsMut<usize> for TagOrDigestStart {
-    fn as_mut(&mut self) -> &mut usize {
-        match self {
-            Self::Tag(tag_start) => tag_start,
-            Self::Digest(digest_start) => digest_start,
-        }
-    }
-}
-
-impl AddAssign<usize> for TagOrDigestStart {
-    fn add_assign(&mut self, rhs: usize) {
-        *self.as_mut() += rhs;
-    }
-}
-
-impl SubAssign<usize> for TagOrDigestStart {
-    fn sub_assign(&mut self, rhs: usize) {
-        *self.as_mut() -= rhs;
-    }
-}
-
 /// Validated [`Image`] [`Tag`] or [`Digest`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TagOrDigest<'a> {
@@ -660,16 +686,6 @@ impl<'a> TagOrDigest<'a> {
         match self {
             Self::Tag(tag) => tag.as_ref().len() + 1,
             Self::Digest(digest) => digest.as_ref().len() + 1,
-        }
-    }
-
-    /// Create a [`TagOrDigestStart`] based on the [`TagOrDigest`] variant.
-    const fn as_start(&self, name_end: usize) -> TagOrDigestStart {
-        // Add one for separator.
-        let start = name_end + 1;
-        match self {
-            Self::Tag(_) => TagOrDigestStart::Tag(start),
-            Self::Digest(_) => TagOrDigestStart::Digest(start),
         }
     }
 
@@ -803,55 +819,106 @@ mod tests {
     #[test]
     fn tag_and_digest() -> Result<(), InvalidImageError> {
         let mut image = Image::parse("quay.io/podman/hello:latest")?;
-        assert_parts_eq(
-            &image,
-            Some("quay.io"),
-            "quay.io/podman/hello",
-            Some("latest"),
-        );
+        assert_eq!(image.tag(), Some("latest"));
         assert_eq!(image.as_tag().map(Tag::into_inner), Some("latest"));
 
-        // Replace tag
+        // Replace the tag.
         image.set_tag(Some(Tag::new("test")?));
-        assert_parts_eq(
-            &image,
-            Some("quay.io"),
-            "quay.io/podman/hello",
-            Some("test"),
-        );
+        assert_eq!(image, "quay.io/podman/hello:test");
 
-        // Replace tag with digest
+        // Adding a digest leaves the tag in place.
         let digest = "sha256:075975296016084fc66b59c35c9d4504765d95aadcd5469f28d2b75750348fc5";
         image.set_digest(Some(Digest::new(digest)?));
-        assert_parts_eq(
-            &image,
-            Some("quay.io"),
-            "quay.io/podman/hello",
+        assert_eq!(
+            image,
+            format!("quay.io/podman/hello:test@{digest}").as_str()
+        );
+        assert_eq!(image.tag(), Some("test"));
+        assert_eq!(image.digest(), Some(digest));
+        assert_eq!(image.as_digest().map(Digest::into_inner), Some(digest));
+        // `as_tag_or_digest` prefers the digest when both are present.
+        assert_eq!(
+            image.as_tag_or_digest().as_ref().map(AsRef::as_ref),
             Some(digest),
         );
-        assert_eq!(image.as_digest().map(Digest::into_inner), Some(digest));
-        assert_eq!(image, format!("quay.io/podman/hello@{digest}").as_str());
 
-        // Replace digest
+        // Replacing the digest leaves the tag untouched.
         image.set_digest(Some(Digest::new("algo:data")?));
-        assert_parts_eq(
-            &image,
-            Some("quay.io"),
-            "quay.io/podman/hello",
-            Some("algo:data"),
-        );
+        assert_eq!(image, "quay.io/podman/hello:test@algo:data");
+        assert_eq!(image.tag(), Some("test"));
 
-        // Remove tag or digest
+        // Replacing the tag leaves the digest untouched.
+        image.set_tag(Some(Tag::new("latest")?));
+        assert_eq!(image, "quay.io/podman/hello:latest@algo:data");
+        assert_eq!(image.digest(), Some("algo:data"));
+
+        // Removing only the tag keeps the digest.
+        image.set_tag(None);
+        assert_eq!(image, "quay.io/podman/hello@algo:data");
+        assert_eq!(image.tag(), None);
+        assert_eq!(image.digest(), Some("algo:data"));
+
+        // Adding the tag back places it before the digest.
+        image.set_tag(Some(Tag::new("latest")?));
+        assert_eq!(image, "quay.io/podman/hello:latest@algo:data");
+
+        // Removing only the digest keeps the tag.
+        image.set_digest(None);
+        assert_eq!(image, "quay.io/podman/hello:latest");
+        assert_eq!(image.digest(), None);
+        assert_eq!(image.tag(), Some("latest"));
+
+        // `set_tag_or_digest(None)` removes both.
+        image.set_digest(Some(Digest::new(digest)?));
         image.set_tag_or_digest(None);
         assert_parts_eq(&image, Some("quay.io"), "quay.io/podman/hello", None);
+        assert_eq!(image, "quay.io/podman/hello");
 
-        // Add tag back
-        image.set_tag(Some(Tag::new("latest")?));
-        assert_parts_eq(
-            &image,
-            Some("quay.io"),
-            "quay.io/podman/hello",
-            Some("latest"),
+        Ok(())
+    }
+
+    #[test]
+    fn parse_tag_and_digest() -> Result<(), InvalidImageError> {
+        let digest = "sha256:4963247afc4cd33c7d3b2d2816b9f7f8eeebab148d29056c2ca4d7cbc966f2d9";
+
+        // A reference with both a tag and a digest parses and round-trips unchanged.
+        let image = Image::parse(format!("docker.io/valkey/valkey:9@{digest}"))?;
+        assert_eq!(image.registry(), Some("docker.io"));
+        assert_eq!(image.name(), "docker.io/valkey/valkey");
+        assert_eq!(image.tag(), Some("9"));
+        assert_eq!(image.digest(), Some(digest));
+        assert_eq!(image.as_tag().map(Tag::into_inner), Some("9"));
+        assert_eq!(image.as_digest().map(Digest::into_inner), Some(digest));
+        assert_eq!(
+            image,
+            format!("docker.io/valkey/valkey:9@{digest}").as_str()
+        );
+
+        // Registry with a port, plus a tag and a digest.
+        let mut image = Image::parse(format!("quay.io:443/podman/hello:latest@{digest}"))?;
+        assert_eq!(image.registry(), Some("quay.io:443"));
+        assert_eq!(image.name(), "quay.io:443/podman/hello");
+        assert_eq!(image.tag(), Some("latest"));
+        assert_eq!(image.digest(), Some(digest));
+
+        // Changing the registry keeps both the tag and digest intact.
+        image.set_registry(Some(Name::new("docker.io")?));
+        assert_eq!(
+            image,
+            format!("docker.io/podman/hello:latest@{digest}").as_str()
+        );
+        assert_eq!(image.tag(), Some("latest"));
+        assert_eq!(image.digest(), Some(digest));
+
+        // `from_parts` plus `set_digest` builds an image with both.
+        let mut built = Image::from_parts(
+            Name::new("docker.io/valkey/valkey")?,
+            Some(Tag::new("9")?.into()),
+        );
+        built.set_digest(Some(Digest::new(digest)?));
+        assert_eq!(
+            built,
+            format!("docker.io/valkey/valkey:9@{digest}").as_str()
         );
 
         Ok(())
