@@ -31,6 +31,7 @@ pub type Ports = IndexSet<ShortOrLong<ShortPort, Port>>;
 ///
 /// If a [`Port`] cannot be represented in the [`ShortPort`] syntax, it is returned in the [`Err`]
 /// variant of the item.
+#[allow(clippy::result_large_err)]
 pub fn into_short_iter(ports: Ports) -> impl Iterator<Item = Result<ShortPort, Port>> {
     ports.into_iter().map(|port| match port {
         ShortOrLong::Short(port) => Ok(port),
